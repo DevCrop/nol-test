@@ -1,0 +1,28 @@
+# Upload limits
+LimitRequestBody 115343360
+
+<IfModule mod_php.c>
+    php_value upload_max_filesize 110M
+    php_value post_max_size 110M
+    php_value max_execution_time 300
+    php_value max_input_time 300
+    php_value memory_limit 256M
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    Options +FollowSymLinks
+    RewriteEngine On
+
+    RewriteCond %{ENV:GATE_ENFORCE} ^(true|1|on)$ [NC]
+    RewriteRule ^nol-gate(?:/|$) - [R=404,L,NC]
+
+    RewriteRule ^(?:inc|src|config|bootstrap|routes|sql|qa|storage)(?:/|$) - [R=404,L,NC]
+    RewriteRule ^resource/vendor/(?:fullPage\.js-2\.9\.7/(?:examples|tests)|tinymce/plugins/example)(?:/|$) - [R=404,L,NC]
+    RewriteRule \.(?:sql|bak|old|orig|env)$ - [R=404,L,NC]
+
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    RewriteRule ^ index.php [L]
+</IfModule>

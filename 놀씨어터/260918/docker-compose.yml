@@ -1,0 +1,65 @@
+services:
+  web:
+    build: .
+    ports:
+      - '${WEB_PORT:-8618}:80'
+    volumes:
+      - ./:/var/www/html
+      - ./apache.conf:/etc/apache2/sites-available/000-default.conf:ro
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      GATE_HOST: ${GATE_HOST:-gate.local}
+      GATE_ENFORCE: ${GATE_ENFORCE:-true}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8618,http://gate.local:8618}
+      SESSION_NAME: ${SESSION_NAME:-NOLGATESESSID}
+      SESSION_LIFETIME: ${SESSION_LIFETIME:-1800}
+      SESSION_DOMAIN: ${SESSION_DOMAIN:-}
+      SESSION_SECURE: ${SESSION_SECURE:-false}
+      SESSION_SAMESITE: ${SESSION_SAMESITE:-Lax}
+      ACCOUNT_IDLE_DAYS: ${ACCOUNT_IDLE_DAYS:-90}
+      PASSWORD_MAX_DAYS: ${PASSWORD_MAX_DAYS:-90}
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:?DB_NAME required}
+      DB_USER: ${DB_USER:?DB_USER required}
+      DB_PASS: ${DB_PASS:?DB_PASS required}
+      DB_CHARSET: utf8mb4
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.0
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+    ports:
+      - '127.0.0.1:${DB_HOST_PORT:-3318}:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD required}
+      MYSQL_DATABASE: ${DB_NAME:?DB_NAME required}
+      MYSQL_USER: ${DB_USER:?DB_USER required}
+      MYSQL_PASSWORD: ${DB_PASS:?DB_PASS required}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '-u', 'root', '-p${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD required}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  phpmyadmin:
+    profiles: [tools]
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - '${PMA_PORT:-9618}:80'
+    environment:
+      PMA_HOST: db
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD required}
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:

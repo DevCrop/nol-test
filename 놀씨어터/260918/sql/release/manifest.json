@@ -1,0 +1,11 @@
+{
+    "project": "noltheater",
+    "sitekey": "NOLTHE",
+    "baseline_sha256": "139bc406ca75afbf3201ddd41d0b0afbb24efe60dd392b8c768bb43b2dee75c2",
+    "generated_at": "2026-09-21T04:01:26+00:00",
+    "files": {
+        "preflight.sql": "ecc0077e4d48c6288e2577cabb139d89bef946f24ee82f3c31d23d5a1c9d43b9",
+        "changes.sql": "ec83dc688942f009b4a94440332597cab55ba0b8e04c14dc2909919bbbed7577",
+        "target-schema.json": "79a9285b78b5d193f4a6c283ddc71e9563349d6a70fd012eb04ec88d17740e9c"
+    }
+}
