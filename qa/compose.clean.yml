@@ -1,0 +1,48 @@
+# Isolated QA only: no published ports, no production credentials.
+services:
+  db:
+    image: mysql:8.0
+    command: [--character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --default-authentication-plugin=mysql_native_password]
+    environment:
+      MYSQL_ROOT_PASSWORD: qa-isolated-root
+      MYSQL_DATABASE: dbusrbluesq0211
+      MYSQL_USER: qa_app
+      MYSQL_PASSWORD: qa-isolated-app
+    volumes:
+      - clean_data:/var/lib/mysql
+      - ../260918.sql:/docker-entrypoint-initdb.d/001-original.sql:ro
+    healthcheck:
+      test: [CMD, mysqladmin, ping, -h, 127.0.0.1, -uroot, -pqa-isolated-root]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+  web:
+    build: ..
+    volumes:
+      - ../:/var/www/html
+      - ../apache.conf:/etc/apache2/sites-available/000-default.conf:ro
+    environment:
+      APP_ENV: development
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: dbusrbluesq0211
+      DB_USER: qa_app
+      DB_PASS: qa-isolated-app
+      DB_ROOT_PASSWORD: qa-isolated-root
+      PUBLIC_HOST: localhost
+      GATE_HOST: gate.local
+      GATE_ENFORCE: 'true'
+      GATE_ALLOW_IPS: ''
+      TRUSTED_PROXY_CIDRS: ''
+      MFA_ENABLED: 'false'
+      SMTP_HOST: ''
+      SMTP_USER: ''
+      SMTP_PASS: ''
+      SMTP_FROM: ''
+      SESSION_NAME: BLUESQ_QA_SESSION
+      SESSION_SECURE: 'false'
+    depends_on:
+      db:
+        condition: service_healthy
+volumes:
+  clean_data:

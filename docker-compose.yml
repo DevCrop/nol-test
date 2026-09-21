@@ -1,0 +1,52 @@
+services:
+  web:
+    build: .
+    ports:
+      - '${WEB_PORT:-8628}:80'
+    volumes:
+      - ./:/var/www/html
+      - ./apache.conf:/etc/apache2/sites-available/000-default.conf:ro
+    env_file: .env
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.0
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+    ports:
+      - '127.0.0.1:${DB_HOST_PORT:-3328}:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD required}
+      MYSQL_DATABASE: ${DB_NAME:?DB_NAME required}
+      MYSQL_USER: ${DB_USER:?DB_USER required}
+      MYSQL_PASSWORD: ${DB_PASS:?DB_PASS required}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '-u', 'root', '-p${DB_ROOT_PASSWORD}']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  phpmyadmin:
+    profiles: [tools]
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - '${PMA_PORT:-9628}:80'
+    environment:
+      PMA_HOST: db
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD required}
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:
+

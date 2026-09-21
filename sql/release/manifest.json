@@ -1,0 +1,11 @@
+{
+    "project": "bluesquare",
+    "sitekey": "BLUESQ",
+    "baseline_sha256": "782c45b2c3f866c47a2dcfec694ed6dd2071c0ea234eba3a89ed6e0814ffeda1",
+    "generated_at": "2026-09-21T04:01:26+00:00",
+    "files": {
+        "preflight.sql": "a300b2faa52e88a1de2dd207ea8b16fb5f0deb77e068e5b1aa5d5d718ee9174d",
+        "changes.sql": "167be2b39322857eb2af2a8bad2836c03bc85d41aaa3888dbe5d20822092eb3a",
+        "target-schema.json": "24cd7e1dbda3042d9c5b5a6a0e513809c1fe1f4b09c6d8a08f36f537739aa614"
+    }
+}

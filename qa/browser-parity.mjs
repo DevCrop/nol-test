@@ -1,0 +1,63 @@
+import fs from 'node:fs/promises';
+import {execFileSync} from 'node:child_process';
+const docker = (...args) => execFileSync('docker', ['exec','bluesquare260918-web-1','php','qa/browser-session-fixture.php',...args],{encoding:'utf8'}).trim();
+const fixture = JSON.parse(docker('create'));
+const targets = await (await fetch('http://127.0.0.1:9223/json/list')).json();
+const ws = new WebSocket(targets.find(t=>t.type==='page').webSocketDebuggerUrl);
+await new Promise((resolve,reject)=>{ws.onopen=resolve;ws.onerror=reject;});
+let seq=0;const pending=new Map();const errors=[];
+ws.onmessage=event=>{const m=JSON.parse(event.data);if(m.method==='Runtime.exceptionThrown')errors.push(m.params.exceptionDetails.text);if(!m.id)return;const p=pending.get(m.id);if(!p)return;pending.delete(m.id);m.error?p.reject(Error(m.error.message)):p.resolve(m.result);};
+const call=(method,params={})=>new Promise((resolve,reject)=>{const id=++seq;pending.set(id,{resolve,reject});ws.send(JSON.stringify({id,method,params}));});
+const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const evaluate=async expression=>(await call('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true})).result.value;
+const navigate=async path=>{await call('Page.navigate',{url:'http://gate.local:8628'+path});await pause(1500);};
+const checks=[];
+const expect=(ok,name)=>{checks.push({name,ok:!!ok});if(!ok)throw Error(name);};
+try {
+  await call('Page.enable');await call('Runtime.enable');await call('Network.enable');
+  await call('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
+  await navigate('/admin/index.php');
+  expect(await evaluate("!!document.querySelector('input[name=_csrf]')"),'login renders CSRF');
+  await call('Network.setCookie',{name:fixture.name,value:fixture.sid,url:'http://gate.local:8628/',httpOnly:true,sameSite:'Lax'});
+  await navigate('/admin/pages/account/new.php');
+  expect(await evaluate("!!document.querySelector('#uid') && !!document.querySelector('input[name=_csrf]')"),'account form authenticated with CSRF');
+  expect(await evaluate("!document.querySelector('[data-pii-lock] label').dispatchEvent(new Event('copy',{bubbles:true,cancelable:true}))"),'privacy text copy is prevented');
+  expect(await evaluate("document.querySelector('#uid').dispatchEvent(new Event('copy',{bubbles:true,cancelable:true}))"),'input copy remains accessible');
+  expect(await evaluate("document.querySelector('#password').minLength === 8"),'NOL-compatible password input');
+  expect(await evaluate("document.querySelector('.no-menu-item.active > .no-menu-link .no-menu-title')?.textContent === '계정 및 권한 관리'"),'dedicated account menu is active');
+  expect(await evaluate("document.querySelector('a[aria-current=page]')?.textContent.includes('계정 생성')"),'create subtab is active');
+  expect(await evaluate("document.querySelectorAll('input[name=role_code][type=radio]').length === 2 && document.querySelectorAll('input[name=active_status][type=radio]').length === 2"),'NOL role and status radio controls');
+  const first=await evaluate("document.querySelector('[data-session-countdown]').textContent");
+  await pause(2200);
+  const second=await evaluate("document.querySelector('[data-session-countdown]').textContent");
+  expect(first!==second,'countdown decreases while idle');
+  const ping=await evaluate("fetch('/admin/lib/session/ping.php',{method:'POST',headers:{'X-Loading-Silent':'1'}}).then(async r=>({status:r.status,...await r.json()}))");
+  expect(ping.status===200 && ping.expiresIn>=1798,'browser activity POST renews server session');
+  const desktop=(await call('Page.captureScreenshot',{format:'png',captureBeyondViewport:false})).data;
+  await fs.writeFile(new URL('./artifacts/parity-account-desktop.png',import.meta.url),Buffer.from(desktop,'base64'));
+  await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});await pause(500);
+  expect(await evaluate("document.documentElement.scrollWidth <= innerWidth"),'mobile account page has no horizontal overflow');
+  const mobile=(await call('Page.captureScreenshot',{format:'png',captureBeyondViewport:false})).data;
+  await fs.writeFile(new URL('./artifacts/parity-account-mobile.png',import.meta.url),Buffer.from(mobile,'base64'));
+  await navigate('/admin/pages/account/password.php');
+  expect(await evaluate("!!document.querySelector('#new_password') && !document.querySelector('#email')"),'NOL password-only screen without separate MFA setting');
+  expect(await evaluate("document.documentElement.scrollWidth <= innerWidth"),'mobile security page has no horizontal overflow');
+  const pwdShot=(await call('Page.captureScreenshot',{format:'png'})).data;
+  await fs.writeFile(new URL('./artifacts/parity-password-mobile.png',import.meta.url),Buffer.from(pwdShot,'base64'));
+  const mfa = JSON.parse(docker('mfa'));
+  try {
+    await call('Network.setCookie',{name:mfa.name,value:mfa.sid,url:'http://gate.local:8628/',httpOnly:true,sameSite:'Lax'});
+    await navigate('/admin/mfa.php');
+    expect(await evaluate("!!document.querySelector('#mfa_email') && !document.querySelector('#code')"),'NOL MFA email-entry step');
+    expect(await evaluate("document.documentElement.scrollWidth <= innerWidth"),'mobile MFA has no horizontal overflow');
+    const mfaShot=(await call('Page.captureScreenshot',{format:'png'})).data;
+    await fs.writeFile(new URL('./artifacts/parity-mfa-mobile.png',import.meta.url),Buffer.from(mfaShot,'base64'));
+  } finally { docker('cleanup',mfa.uid,mfa.sid); }
+  expect(errors.length===0,'no browser JavaScript exceptions');
+  await fs.writeFile(new URL('./artifacts/parity-browser-result.json',import.meta.url),JSON.stringify({checks,errors},null,2));
+  console.log(JSON.stringify({passed:checks.length,failed:0}));
+} finally {
+  docker('cleanup',fixture.uid,fixture.sid);
+  await call('Browser.close').catch(()=>{});
+  ws.close();
+}

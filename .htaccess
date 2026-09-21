@@ -1,0 +1,20 @@
+LimitRequestBody 150000000
+php_value post_max_size 120M
+php_value upload_max_filesize 100M
+
+Options -Indexes
+
+RewriteEngine On
+RewriteRule (^|/)\. - [F,L]
+RewriteRule \.(sql|log|md|bak|backup|old|test)$ - [F,L,NC]
+RewriteRule (^|/)composer\.(json|lock)$ - [F,L,NC]
+RewriteRule ^(qa|sql)/ - [R=404,L,NC]
+RewriteRule (^|/)(vendor/.*/(examples?|tests?)|index\.test\.php|test\.js)$ - [R=404,L,NC]
+RewriteRule ^uploads/board/file_ - [F,L,NC]
+RewriteRule ^uploads/popup/.*(?:^|[_-])test(?:[_-]|\.) - [F,L,NC]
+
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>

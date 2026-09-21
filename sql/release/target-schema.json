@@ -1,0 +1,232 @@
+{
+    "nb_admin": {
+        "ddl": "CREATE TABLE `nb_admin` (\n  `no` int NOT NULL AUTO_INCREMENT,\n  `sitekey` varchar(6) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL COMMENT '사이트 유니크 키',\n  `uid` varchar(25) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL COMMENT '아이디',\n  `upwd` varchar(255) NOT NULL,\n  `uname` varchar(25) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL COMMENT '관리자명',\n  `email` varchar(190) DEFAULT NULL,\n  `active_status` enum('N','Y') CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL DEFAULT 'N' COMMENT '사용여부',\n  `login_fail_count` int NOT NULL DEFAULT '0',\n  `login_locked_until` datetime DEFAULT NULL,\n  `last_login_at` datetime DEFAULT NULL,\n  `password_changed_at` datetime DEFAULT NULL,\n  `password_must_change` tinyint(1) NOT NULL DEFAULT '0',\n  `login_token` varchar(64) DEFAULT NULL,\n  `role_code` varchar(16) NOT NULL DEFAULT 'admin',\n  `idle_locked_at` datetime DEFAULT NULL,\n  `created_at` datetime DEFAULT NULL,\n  `updated_at` datetime DEFAULT NULL,\n  PRIMARY KEY (`no`) USING BTREE\n) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3 COMMENT='관리자 계정 관리'",
+        "columns": [
+            {
+                "COLUMN_NAME": "no",
+                "COLUMN_TYPE": "int",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "sitekey",
+                "COLUMN_TYPE": "varchar(6)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "uid",
+                "COLUMN_TYPE": "varchar(25)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "upwd",
+                "COLUMN_TYPE": "varchar(255)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "uname",
+                "COLUMN_TYPE": "varchar(25)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "email",
+                "COLUMN_TYPE": "varchar(190)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "active_status",
+                "COLUMN_TYPE": "enum('N','Y')",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "login_fail_count",
+                "COLUMN_TYPE": "int",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "login_locked_until",
+                "COLUMN_TYPE": "datetime",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "last_login_at",
+                "COLUMN_TYPE": "datetime",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "password_changed_at",
+                "COLUMN_TYPE": "datetime",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "password_must_change",
+                "COLUMN_TYPE": "tinyint(1)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "login_token",
+                "COLUMN_TYPE": "varchar(64)",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "role_code",
+                "COLUMN_TYPE": "varchar(16)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "idle_locked_at",
+                "COLUMN_TYPE": "datetime",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "created_at",
+                "COLUMN_TYPE": "datetime",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "updated_at",
+                "COLUMN_TYPE": "datetime",
+                "IS_NULLABLE": "YES"
+            }
+        ]
+    },
+    "nb_admin_audit": {
+        "ddl": "CREATE TABLE `nb_admin_audit` (\n  `no` bigint unsigned NOT NULL AUTO_INCREMENT,\n  `sitekey` varchar(16) NOT NULL,\n  `actor_no` int NOT NULL DEFAULT '0',\n  `actor_uid` varchar(64) NOT NULL DEFAULT '',\n  `actor_ip` varchar(45) NOT NULL DEFAULT '',\n  `action` varchar(16) NOT NULL,\n  `entity` varchar(64) NOT NULL,\n  `target_no` bigint NOT NULL DEFAULT '0',\n  `target_label` varchar(255) NOT NULL DEFAULT '',\n  `detail_json` text,\n  `created_at` datetime NOT NULL,\n  PRIMARY KEY (`no`),\n  KEY `idx_actor_created` (`actor_no`,`created_at`),\n  KEY `idx_target` (`entity`,`target_no`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
+        "columns": [
+            {
+                "COLUMN_NAME": "no",
+                "COLUMN_TYPE": "bigint unsigned",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "sitekey",
+                "COLUMN_TYPE": "varchar(16)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "actor_no",
+                "COLUMN_TYPE": "int",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "actor_uid",
+                "COLUMN_TYPE": "varchar(64)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "actor_ip",
+                "COLUMN_TYPE": "varchar(45)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "action",
+                "COLUMN_TYPE": "varchar(16)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "entity",
+                "COLUMN_TYPE": "varchar(64)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "target_no",
+                "COLUMN_TYPE": "bigint",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "target_label",
+                "COLUMN_TYPE": "varchar(255)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "detail_json",
+                "COLUMN_TYPE": "text",
+                "IS_NULLABLE": "YES"
+            },
+            {
+                "COLUMN_NAME": "created_at",
+                "COLUMN_TYPE": "datetime",
+                "IS_NULLABLE": "NO"
+            }
+        ]
+    },
+    "nb_admin_privacy_access": {
+        "ddl": "CREATE TABLE `nb_admin_privacy_access` (\n  `no` bigint unsigned NOT NULL AUTO_INCREMENT,\n  `sitekey` varchar(16) NOT NULL,\n  `actor_no` int NOT NULL DEFAULT '0',\n  `actor_uid` varchar(64) NOT NULL DEFAULT '',\n  `actor_ip` varchar(45) NOT NULL DEFAULT '',\n  `action` varchar(16) NOT NULL,\n  `entity` varchar(64) NOT NULL,\n  `target_no` bigint NOT NULL DEFAULT '0',\n  `subject_label` varchar(255) NOT NULL DEFAULT '',\n  `task` varchar(255) NOT NULL DEFAULT '',\n  `reason` varchar(500) NOT NULL DEFAULT '',\n  `created_at` datetime NOT NULL,\n  PRIMARY KEY (`no`),\n  KEY `idx_actor_created` (`actor_no`,`created_at`),\n  KEY `idx_target` (`entity`,`target_no`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
+        "columns": [
+            {
+                "COLUMN_NAME": "no",
+                "COLUMN_TYPE": "bigint unsigned",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "sitekey",
+                "COLUMN_TYPE": "varchar(16)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "actor_no",
+                "COLUMN_TYPE": "int",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "actor_uid",
+                "COLUMN_TYPE": "varchar(64)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "actor_ip",
+                "COLUMN_TYPE": "varchar(45)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "action",
+                "COLUMN_TYPE": "varchar(16)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "entity",
+                "COLUMN_TYPE": "varchar(64)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "target_no",
+                "COLUMN_TYPE": "bigint",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "subject_label",
+                "COLUMN_TYPE": "varchar(255)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "task",
+                "COLUMN_TYPE": "varchar(255)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "reason",
+                "COLUMN_TYPE": "varchar(500)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "created_at",
+                "COLUMN_TYPE": "datetime",
+                "IS_NULLABLE": "NO"
+            }
+        ]
+    },
+    "blue_schema_migrations": {
+        "ddl": "CREATE TABLE `blue_schema_migrations` (\n  `version` varchar(32) NOT NULL,\n  `applied_at` datetime NOT NULL,\n  PRIMARY KEY (`version`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci",
+        "columns": [
+            {
+                "COLUMN_NAME": "version",
+                "COLUMN_TYPE": "varchar(32)",
+                "IS_NULLABLE": "NO"
+            },
+            {
+                "COLUMN_NAME": "applied_at",
+                "COLUMN_TYPE": "datetime",
+                "IS_NULLABLE": "NO"
+            }
+        ]
+    }
+}

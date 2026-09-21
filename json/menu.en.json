@@ -1,0 +1,14 @@
+{
+  "site_name": "no-temp-en",
+  "pages": [
+    {
+      "title": "gnb1",
+      "dirname": "gnb1",
+      "pages": [
+        {
+          "filename": "lnb1"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "site_name": "블루스퀘어",
+  "pages": [
+    {
+      "title": "What's ON",
+      "dirname": "whatson",
+      "pages": [
+        {
+          "title": "What's ON",
+          "en-title": "What's ON",
+          "filename": "whatson"
+        }
+      ]
+    },
+    {
+      "title": "공연장 소개",
+      "en-title": "Introduction",
+      "dirname": "intro",
+      "pages": [
+        {
+          "title": "블루스퀘어",
+          "en-title": "Blue Square",
+          "filename": "bluesquare"
+        },
+	{
+          "title": "공연시설",
+          "en-title": "Theater Facility",
+          "filename": "fac"
+        },
+        {
+          "title": "편의시설 및 서비스 ",
+          "en-title": "Service Facility",
+          "filename": "service"
+        },
+        {
+          "title": "층별안내",
+          "en-title": "Floor Guide",
+          "filename": "floor"
+        }
+      ]
+    },
+    {
+      "title": "대관 안내",
+      "en-title": "Rental Information",
+      "dirname": "rental",
+      "pages": [
+        {
+          "title": "대관절차",
+          "en-title": "Rental Process",
+          "filename": "process"
+        },
+        {
+          "title": "대관료",
+          "en-title": "Rental Fee",
+          "filename": "fee"
+        },
+        {
+          "title": "대관자료",
+          "en-title": "Rental Materials",
+          "board_no": 10
+        },
+        {
+          "title": "대관신청",
+          "en-title": "Rental Inquiry",
+          "filename": "confirm"
+        }
+      ]
+    },
+    {
+      "title": "고객센터",
+      "en-title": "Customer Service",
+      "dirname": "cs",
+      "pages": [
+        {
+          "title": "공지사항",
+          "en-title": "Notice",
+          "board_no": 8
+        },
+        {
+          "title": "FAQ",
+          "en-title": "FAQ",
+          "board_no": 9
+        },
+        {
+          "title": "오시는 길",
+          "en-title": "Contact Us",
+          "filename": "contact"
+        },
+        {
+          "title": "주차안내",
+          "en-title": "Parking Guide",
+          "filename": "parking"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+/* NOL 관리자 no-admin-column--detail 구조를 블루의 기존 공통 CSS와 함께 재사용. */
+.no-account-page .account-form{width:100%;max-width:none}
+.no-account-page .no-admin-column--detail .no-admin-block{width:100%;display:flex}
+.no-account-page .no-admin-column--detail .no-admin-title{width:25%;text-align:right;padding:0 2rem 0 1rem;font-size:1.4rem;font-weight:400}
+.no-account-page .no-admin-column--detail .no-admin-content{width:75%;padding:0 1rem;min-width:0;display:flex;flex-direction:column;justify-content:center}
+.no-account-page input.no-input--detail,.no-account-page select{max-width:100%;width:100%;min-height:4rem;border:1px solid var(--border-color);border-radius:.4rem;background:var(--card-background-color,#fff);color:var(--title-color);padding:.8rem 1.2rem}
+.no-account-page input:focus-visible,.no-account-page select:focus-visible{outline:2px solid var(--primary-color);outline-offset:2px}
+.no-account-page .account-help,.no-account-page .security-help{font-size:1.3rem;line-height:1.5;color:var(--muted);margin:.8rem 0}
+.no-account-page .security-help,.no-account-page .security-message,.no-account-page .account-buttons,.no-account-page .security-actions{width:100%}
+.no-account-page .account-buttons,.no-account-page .security-actions{justify-content:center;gap:.8rem;flex-wrap:wrap}
+.no-account-page .account-buttons .no-btn,.no-account-page .security-actions .no-btn,.no-account-page .account-reset button{width:auto;min-width:10rem;padding-left:2rem;padding-right:2rem;white-space:nowrap}
+.no-account-page .account-reset{margin-top:3rem;padding-top:2rem;border-top:1px solid var(--border-color)}
+.no-account-page .account-actions{display:flex;gap:.6rem;flex-wrap:wrap}
+.no-account-page .account-inline{display:inline}
+.no-account-page .account-flash,.no-account-page .security-message{padding:1.2rem 1.6rem;background:#eef8ff;color:#176b9c;margin-bottom:1.6rem}
+.no-account-page .account-flash.error,.no-account-page .account-state.locked{color:#b42318}
+@media(max-width:768px){.no-account-page .no-admin-column--detail .no-admin-block{flex-direction:column}.no-account-page .no-admin-column--detail .no-admin-title,.no-account-page .no-admin-column--detail .no-admin-content{width:100%;padding:0;text-align:left}.no-account-page .no-admin-title{margin-bottom:.8rem}}
