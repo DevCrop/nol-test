@@ -29,9 +29,14 @@ try {
     $idleRow = \Security\AdminAccount::findByNo($no); $idleRow['last_login_at'] = date('Y-m-d H:i:s', strtotime('-' . (ACCOUNT_IDLE_DAYS + 1) . ' days'));
     $idleBlocked = false; try { \Security\AdminAccount::assertLoginAllowed($idleRow); } catch (RuntimeException $e) { $idleBlocked = strpos($e->getMessage(), '장기') !== false; }
     qa_expect($idleBlocked, 'long-idle account is rejected');
-    \Security\AuditLogger::record('update','qa',$no,'qa'); \Security\PrivacyLogger::record('view','qa',$no,'홍길동','QA');
+    \Security\AuditLogger::record('update','qa',$no,'qa',['uname'=>'raw-person','nested'=>['Email'=>'private@example.com','code'=>'123456','session_id'=>'private-session'],'role_code'=>'admin']); \Security\PrivacyLogger::record('view','qa',$no,'홍길동','QA');
     qa_expect((int) $pdo->query("SELECT COUNT(*) FROM nb_admin_audit WHERE entity='qa'")->fetchColumn() > 0, 'audit log writes');
     qa_expect((int) $pdo->query("SELECT COUNT(*) FROM nb_admin_privacy_access WHERE entity='qa'")->fetchColumn() > 0, 'privacy access log writes');
+    $auditRead=$pdo->prepare("SELECT detail_json FROM nb_admin_audit WHERE entity='qa' AND target_no=? ORDER BY no DESC LIMIT 1");$auditRead->execute([$no]);$detail=(string)$auditRead->fetchColumn();
+    qa_expect(strpos($detail,'private')===false && strpos($detail,'raw-person')===false && strpos($detail,'123456')===false && strpos($detail,'role_code')!==false,'audit omits nested personal data and authentication values');
+    \Security\AuditLogger::record('update','account',$no,$uid);
+    $auditRead=$pdo->prepare("SELECT target_label FROM nb_admin_audit WHERE entity='account' AND target_no=? AND actor_uid=? ORDER BY no DESC LIMIT 1");$auditRead->execute([$no,$uid]);
+    qa_expect((string)$auditRead->fetchColumn()===\Security\PiiMask::identifier($uid),'account audit target identifier masked');
 
     $managedUid = 'qa_managed_' . bin2hex(random_bytes(3));
     $managedNo = \Security\AdminAccount::createManaged(['uid'=>$managedUid,'uname'=>'관리계정','email'=>$managedUid.'@example.com','active_status'=>'Y','role_code'=>'admin','password'=>'Valid!Pass123','password_confirm'=>'Valid!Pass123']);
@@ -48,6 +53,7 @@ try {
     qa_expect(password_verify('Reset!Pass123', (string) $managed['upwd']) && (int) $managed['password_must_change'] === 1 && empty($managed['login_token']), 'password reset invalidates session and forces change');
     qa_expect(\Security\AdminAccount::deleteManaged($managedNo, 1) && !\Security\AdminAccount::findByNo($managedNo), 'managed account deletion');
 } finally {
+    if(!empty($no))$pdo->prepare("DELETE FROM nb_admin_audit WHERE entity='account' AND target_no=? AND actor_uid=?")->execute([$no,$uid]);
     if (!empty($no)) { $pdo->exec("DELETE FROM nb_admin_audit WHERE entity='qa'"); $pdo->exec("DELETE FROM nb_admin_privacy_access WHERE entity='qa'"); $pdo->prepare('DELETE FROM nb_admin WHERE no=?')->execute([$no]); }
     if ($managedUid !== '') $pdo->prepare('DELETE FROM nb_admin WHERE uid=? AND sitekey=?')->execute([$managedUid, 'BLUESQ']);
 }

@@ -57,7 +57,7 @@ $board_no = $_GET['board_no'] ?? null;
                             <a href="javascript:void(0);" onclick="history.back(-1);" title="cancel">Cancel</a>
                         </div>
                         <div class="no-confirm-btns__post">
-                            <a href="javascript:void(0);" onclick="doPasswordConfirm('<?= htmlspecialchars($_REQUEST['mode'] ?? '') ?>')" title="confirm">Confirm</a>
+                            <a href="javascript:void(0);" data-mode="<?= htmlspecialchars((string) ($_REQUEST['mode'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" onclick="doPasswordConfirm(this.dataset.mode)" title="confirm">Confirm</a>
                         </div>
                     </div>
                 </div>

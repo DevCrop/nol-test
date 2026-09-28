@@ -4,8 +4,8 @@ include_once "../../inc/lib/base.class.php";
 $depthnum = 1;
 $pagenum = 5;
 
-$no = $_REQUEST['no'] ?? null;
-$board_no = $_REQUEST['board_no'] ?? null;
+$no = (int) ($_REQUEST['no'] ?? 0);
+$board_no = (int) ($_REQUEST['board_no'] ?? 0);
 
 if (!$board_no) {
     error("잘못된 접근입니다", $NO_IS_SUBDIR . "/");
@@ -40,14 +40,14 @@ try {
                 file_attach_3, file_attach_origin_3, file_attach_4, file_attach_origin_4, 
                 file_attach_5, file_attach_origin_5 
               FROM nb_board a
-              WHERE a.no = :no";
+              WHERE a.no = :no AND a.sitekey = 'BLUESQ' AND a.is_view = 'Y'";
     $stmt = $db->prepare($query);
     $stmt->bindParam(':no', $no, PDO::PARAM_INT);
     $stmt->execute();
     $data = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$data) {
-        error("정보를 찾을 수 없습니다");
+        http_response_code(404); exit('정보를 찾을 수 없습니다.');
     }
 
 } catch (PDOException $e) {
@@ -56,17 +56,20 @@ try {
 }
 
 // 비밀글 확인
-if ($data['is_secret'] === "Y" && $_SESSION['board_secret_confirmed_' . $no] !== "Y") {
+if ($data['is_secret'] === "Y" && ($_SESSION['board_secret_confirmed_' . $no] ?? 'N') !== "Y") {
     error("비밀번호 확인이 필요한 게시물입니다.");
 }
 
 // Board and Role Information
+$board_no = (int) $data['board_no'];
 $board_info = getBoardInfoByNo($board_no);
 $isSecret = ($board_info[0]['secret_yn'] === "Y");
 $role_info = getBoardRole($board_no, $NO_USR_LEV);
 
-if ($role_info[0]['role_edit'] === "N") {
-    alert("접근 권한이 없습니다.");
+$ownsPost = (int) $NO_USR_NO > 0 && (int) $NO_USR_NO === (int) $data['user_no'];
+$confirmedGuest = (int) $data['user_no'] === 0 && ($_SESSION['board_secret_confirmed_' . $no] ?? 'N') === 'Y';
+if (($role_info[0]['role_edit'] ?? 'N') !== 'Y' || (!$ownsPost && !$confirmedGuest)) {
+    http_response_code(403); exit('접근 권한이 없습니다.');
 }
 
 // 타이틀과 메뉴 항목 설정

@@ -1,5 +1,6 @@
 <?php
-require_once dirname(__DIR__) . '/inc/lib/db.php'; // DB 클래스 파일 경로 설정
+require_once dirname(__DIR__) . '/inc/lib/db.php';
+header('Content-Type: application/json; charset=utf-8');
 
 // ✅ Helper function to sanitize inputs
 function sanitize($input) {
@@ -12,7 +13,7 @@ $genre = isset($_GET['genre']) ? sanitize($_GET['genre']) : '';
 $place = isset($_GET['place']) ? sanitize($_GET['place']) : '';
 $year = isset($_GET['year']) ? sanitize($_GET['year']) : '';
 $endDateFilter = isset($_GET['end_date']) ? sanitize($_GET['end_date']) : 'all';
-$page = isset($_GET['page']) ? intval($_GET['page']) : 1;
+$page = max(1, min(100000, intval($_GET['page'] ?? 1)));
 $listSize = 16; // Default items per page
 
 // ✅ Validate and prepare filters
@@ -102,23 +103,14 @@ try {
     $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
     $stmt->bindValue(':listSize', (int)$listSize, PDO::PARAM_INT);
 
-    // ✅ Debug SQL preparation (PHP 7.4 안전 버전)
-    $debugSql = $sql;
-    foreach ($filters as $key => $value) {
-        $debugSql = str_replace($key, $pdo->quote($value), $debugSql);
-    }
-    $debugSql = str_replace(':offset', (int)$offset, $debugSql);
-    $debugSql = str_replace(':listSize', (int)$listSize, $debugSql);
-    file_put_contents('debug_sql.log', $debugSql . PHP_EOL, FILE_APPEND);
-
     // ✅ Execute the query
     $stmt->execute();
     $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // ✅ Count total rows for pagination
-    $countSql = "SELECT COUNT(*) FROM nb_works w";
+    $countSql = "SELECT COUNT(*) FROM nb_works w WHERE w.is_featured != 1";
     if (!empty($sqlFilters)) {
-        $countSql .= " WHERE " . implode(' AND ', $sqlFilters);
+        $countSql .= " AND " . implode(' AND ', $sqlFilters);
     }
     $countStmt = $pdo->prepare($countSql);
     foreach ($filters as $key => $value) {
@@ -142,16 +134,15 @@ try {
         'totalItems' => $totalRows, // 전체 아이템 개수 추가
         'genres' => $genres,
         'places' => $places,
-        'debugSql' => $debugSql,
     ]);
 } catch (PDOException $e) {
     http_response_code(500);
+    error_log('Public work listing failed');
 
     // ✅ Respond with error
     echo json_encode([
         'error' => 'Query execution failed',
-        'message' => $e->getMessage(),
-        'debugSql' => $debugSql ?? '',
+        'message' => 'Internal server error.',
     ]);
     exit;
 }

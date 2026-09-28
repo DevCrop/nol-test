@@ -106,6 +106,8 @@ try {
 
     $stmt->execute();
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($rows as &$row) unset($row['secret_pwd']);
+    unset($row);
 
     echo json_encode([
         'rows' => $rows,

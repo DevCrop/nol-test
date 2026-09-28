@@ -8,5 +8,7 @@ $stored = basename((string) ($row[$field] ?? '')); $origin = basename((string) (
 $path = \Security\UploadGuard::pathInside($_SERVER['DOCUMENT_ROOT'] . '/uploads/board', $stored);
 if (!$row || $stored === '' || $path === null) { http_response_code(404); exit('파일을 찾을 수 없습니다.'); }
 \Security\PrivacyLogger::record('download', 'request', (int) $no, (string) ($row['manager_name'] ?? ''), '대관신청 첨부파일', $reason);
+// Legacy includes can emit whitespace; it must never prefix a binary download.
+while (ob_get_level() > 0) ob_end_clean();
 header('Content-Type: application/octet-stream'); header('X-Content-Type-Options: nosniff'); header("Content-Disposition: attachment; filename*=UTF-8''" . rawurlencode($origin)); header('Content-Length: ' . filesize($path)); readfile($path); exit;
 

@@ -1,6 +1,7 @@
 <?php
 
-require_once dirname(__DIR__) . '/inc/lib/db.php'; // DB 클래스 파일 경로 설정
+require_once dirname(__DIR__) . '/inc/lib/db.php';
+header('Content-Type: application/json; charset=utf-8');
 
 // Helper function to sanitize inputs
 function sanitize($input)
@@ -16,13 +17,13 @@ try {
     $updateSql = "
         UPDATE nb_board
         SET category_no = 22
-        WHERE category_no = 21 AND w_edate < :currentDate
+        WHERE category_no = 21 AND w_edate < :currentDate AND sitekey = 'BLUESQ'
     ";
     $updateStmt = $pdo->prepare($updateSql);
     $updateStmt->bindValue(':currentDate', $currentDate);
     $updateStmt->execute();
 } catch (PDOException $e) {
-    file_put_contents('error.log', 'Update Error: ' . $e->getMessage() . PHP_EOL, FILE_APPEND);
+    error_log('Public work category refresh failed');
 }
 
 // Get query parameters
@@ -31,7 +32,7 @@ $category = sanitize($_GET['category_no'] ?? '');
 $year = sanitize($_GET['year'] ?? ''); // Expecting a year like '2024'
 $extra4 = sanitize($_GET['extra4'] ?? '');
 $extra1 = sanitize($_GET['extra1'] ?? '');
-$page = intval($_GET['page'] ?? 1);
+$page = max(1, min(100000, intval($_GET['page'] ?? 1)));
 $listSize = 12; // Default items per page
 
 // Validate and prepare filters
@@ -40,6 +41,7 @@ $sqlFilters = [];
 
 // Add fixed board_no = 12 filter
 $sqlFilters[] = "b.board_no = 12";
+$sqlFilters[] = "b.sitekey = 'BLUESQ' AND b.is_view = 'Y' AND COALESCE(b.is_secret, 'N') <> 'Y'";
 
 if (!empty($searchTerm)) {
     $sqlFilters[] = "(b.title LIKE :searchTerm OR b.contents LIKE :searchTerm)";
@@ -102,20 +104,11 @@ try {
     $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
     $stmt->bindValue(':listSize', $listSize, PDO::PARAM_INT);
 
-    // Debug: Build the final SQL query for debugging
-    $debugSql = $sql;
-    foreach ($filters as $key => $value) {
-        $debugSql = str_replace($key, "'" . addslashes($value) . "'", $debugSql);
-    }
-    $debugSql = str_replace(':offset', $offset, $debugSql);
-    $debugSql = str_replace(':listSize', $listSize, $debugSql);
-
-    // Log the debug SQL to a file
-    file_put_contents('debug_sql.log', $debugSql . PHP_EOL, FILE_APPEND);
-
     // Execute the query
     $stmt->execute();
     $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($results as &$row) unset($row['secret_pwd']);
+    unset($row);
 
     // Count total rows for pagination
     $countSql = "
@@ -141,16 +134,15 @@ try {
             'currentPage' => $page,
             'totalPages' => $totalPages,
         ],
-        'query' => $debugSql
     ]);
 } catch (PDOException $e) {
     http_response_code(500);
+    error_log('Public work query failed');
 
     // Respond with error and debug query
     echo json_encode([
         'error' => 'Query execution failed',
-        'message' => $e->getMessage(),
-        'query' => $debugSql ?? ''
+        'message' => 'Internal server error.'
     ]);
     exit;
 }

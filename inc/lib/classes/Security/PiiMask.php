@@ -3,6 +3,13 @@ namespace Security;
 
 final class PiiMask
 {
+    public static function identifier(string $value): string
+    {
+        $value = trim($value); $length = mb_strlen($value, 'UTF-8');
+        if ($length === 0) return '';
+        $visible = $length >= 4 ? 3 : max(0, $length - 1);
+        return mb_substr($value, 0, $visible, 'UTF-8') . str_repeat('*', $length - $visible);
+    }
     public static function name(string $value): string
     {
         $value = trim($value); $len = mb_strlen($value, 'UTF-8');

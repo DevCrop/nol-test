@@ -21,6 +21,11 @@ qa_expect(request_status('gate.local', '/pages/about.php') === 404, 'gate host h
 qa_expect(request_status('gate.local', '/admin/index.php') === 200, 'gate login reachable');
 qa_expect(request_status('localhost', '/260918.sql') === 403, 'SQL dump blocked');
 qa_expect(request_status('localhost', '/index.test.php') === 404, 'test page absent');
+foreach(['localhost','gate.local'] as $host) {
+    foreach(['/resource/vendor/fullPage.js-2.9.7/examples/backgrounds.html','/resource/vendor/tinymce/plugins/jbimages/ci/index.php/uploader/upload'] as $vendorPath) {
+        qa_expect(in_array(request_status($host,$vendorPath),[403,404],true),'vendor example or retired uploader denied on '.$host.' '.$vendorPath);
+    }
+}
 qa_expect(request_status('localhost', '/qa/run-all.php') === 404 && request_status('localhost', '/sql/migrate.php') === 404, 'QA and migration controllers are not web reachable');
 qa_expect(post_status('gate.local', '/admin/pages/works/ajax/works.process.php') === 403, 'admin POST without CSRF is forbidden');
 qa_expect(post_status('localhost', '/module/ajax/request.process.php') === 403, 'public POST without CSRF is forbidden');

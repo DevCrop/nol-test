@@ -252,10 +252,12 @@ try {
         'failedMails' => $failedMails
     ]);
 } catch (PDOException $e) {
+    error_log('Rental request database failure');
+    http_response_code(500);
     echo json_encode([
         'result' => "fail",
         "msg" => "처리 중 문제가 발생하였습니다. 관리자에게 문의해주세요.",
-        "error" => $e->getMessage()
+        "error" => 'Internal server error.'
     ]);
 }
 ?>

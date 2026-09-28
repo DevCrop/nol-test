@@ -53,7 +53,7 @@ $board_title = $board_info[0]['title'] ?? '';
 
                 <div class="no-btn-pos no-content-block">
                     <a href="javascript:void(0);" class="no-btn-sz--action no-btn-light" onclick="history.back(-1);" title="취소">취소</a>
-                    <a href="javascript:void(0);" class="no-btn-sz--action no-btn-primary" onclick="doCommentPasswordConfirm('<?= htmlspecialchars($_REQUEST['mode'] ?? '', ENT_QUOTES, 'UTF-8') ?>')" title="확인">확인</a>
+                    <a href="javascript:void(0);" class="no-btn-sz--action no-btn-primary" data-mode="<?= htmlspecialchars((string) ($_REQUEST['mode'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" onclick="doCommentPasswordConfirm(this.dataset.mode)" title="확인">확인</a>
                 </div>
             </div>
         </section>

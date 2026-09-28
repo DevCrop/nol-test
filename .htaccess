@@ -10,6 +10,7 @@ RewriteRule \.(sql|log|md|bak|backup|old|test)$ - [F,L,NC]
 RewriteRule (^|/)composer\.(json|lock)$ - [F,L,NC]
 RewriteRule ^(qa|sql)/ - [R=404,L,NC]
 RewriteRule (^|/)(vendor/.*/(examples?|tests?)|index\.test\.php|test\.js)$ - [R=404,L,NC]
+RewriteRule ^resource/vendor/(?:fullPage\.js-2\.9\.7/(?:examples|tests)|tinymce/plugins/(?:example|jbimages))(?:/|$) - [R=404,L,NC]
 RewriteRule ^uploads/board/file_ - [F,L,NC]
 RewriteRule ^uploads/popup/.*(?:^|[_-])test(?:[_-]|\.) - [F,L,NC]
 

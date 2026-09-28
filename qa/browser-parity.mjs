@@ -19,10 +19,13 @@ try {
   await navigate('/admin/index.php');
   expect(await evaluate("!!document.querySelector('input[name=_csrf]')"),'login renders CSRF');
   await call('Network.setCookie',{name:fixture.name,value:fixture.sid,url:'http://gate.local:8628/',httpOnly:true,sameSite:'Lax'});
+  await navigate('/admin/pages/account/index.php');
+  expect(await evaluate("document.querySelector('tbody')?.textContent.includes('qa_***') && !document.querySelector('tbody').textContent.includes("+JSON.stringify(fixture.uid)+")"),'account list masks the synthetic account ID');
   await navigate('/admin/pages/account/new.php');
   expect(await evaluate("!!document.querySelector('#uid') && !!document.querySelector('input[name=_csrf]')"),'account form authenticated with CSRF');
   expect(await evaluate("!document.querySelector('[data-pii-lock] label').dispatchEvent(new Event('copy',{bubbles:true,cancelable:true}))"),'privacy text copy is prevented');
   expect(await evaluate("document.querySelector('#uid').dispatchEvent(new Event('copy',{bubbles:true,cancelable:true}))"),'input copy remains accessible');
+  expect(await evaluate("(()=>{const x=document.querySelector('#uid');x.readOnly=true;const blocked=!x.dispatchEvent(new Event('copy',{bubbles:true,cancelable:true}));x.readOnly=false;return blocked;})()"),'readonly account input copy prevented');
   expect(await evaluate("document.querySelector('#password').minLength === 8"),'NOL-compatible password input');
   expect(await evaluate("document.querySelector('.no-menu-item.active > .no-menu-link .no-menu-title')?.textContent === '계정 및 권한 관리'"),'dedicated account menu is active');
   expect(await evaluate("document.querySelector('a[aria-current=page]')?.textContent.includes('계정 생성')"),'create subtab is active');
@@ -33,6 +36,11 @@ try {
   expect(first!==second,'countdown decreases while idle');
   const ping=await evaluate("fetch('/admin/lib/session/ping.php',{method:'POST',headers:{'X-Loading-Silent':'1'}}).then(async r=>({status:r.status,...await r.json()}))");
   expect(ping.status===200 && ping.expiresIn>=1798,'browser activity POST renews server session');
+  for (const page of ['board/board.list.php','design/banner.list.php','design/popup.list.php','opera/index.php','works/index.php','request/request.schedule.list.php','request/request.list.php','setting/site.config.php','setting/site.data.list.php','account/audit.php','account/access.php']) {
+    await navigate('/admin/pages/'+page);
+    expect(await evaluate("!!document.querySelector('[data-session-countdown]') && !/Fatal error|SQLSTATE|Internal Server Error/.test(document.body.innerText)"),'active menu renders '+page);
+  }
+  await navigate('/admin/pages/account/new.php');
   const desktop=(await call('Page.captureScreenshot',{format:'png',captureBeyondViewport:false})).data;
   await fs.writeFile(new URL('./artifacts/parity-account-desktop.png',import.meta.url),Buffer.from(desktop,'base64'));
   await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});await pause(500);

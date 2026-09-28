@@ -17,10 +17,22 @@ final class AuditLogger
     public static function record(string $action, string $entity, int $targetNo = 0, string $label = '', array $detail = []): void
     {
         if (!in_array($action, ['create', 'update', 'delete'], true)) return;
-        foreach (['password','upwd','token','session','code','email','phone','contents'] as $key) unset($detail[$key]);
+        $detail = self::scrub($detail);
+        if ($entity === 'account' && $targetNo > 0) $label = PiiMask::identifier($label);
         try {
             $stmt = \DB::getInstance()->prepare('INSERT INTO nb_admin_audit (sitekey, actor_no, actor_uid, actor_ip, action, entity, target_no, target_label, detail_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())');
             $stmt->execute(['BLUESQ', (int) ($_SESSION['no_adm_login_no'] ?? 0), (string) ($_SESSION['no_adm_login_uid'] ?? ''), ClientIp::get(), $action, substr($entity, 0, 64), $targetNo, mb_substr($label, 0, 255), $detail ? json_encode($detail, JSON_UNESCAPED_UNICODE) : null]);
         } catch (\Throwable $e) { error_log('[audit] write failed'); }
+    }
+
+    private static function scrub(array $detail): array
+    {
+        $deny = ['password','upwd','upwd_confirm','pwd','pwd_old','pwd_new','pwd_new_confirm','login_token','token','session','session_id','code','code_plain','code_hash','otp','captcha','captcha_secure','secret','uname','name','uid','email','phone','mobile','address','contents','footer_ssn'];
+        $clean = [];
+        foreach ($detail as $key => $value) {
+            if (in_array(strtolower((string) $key), $deny, true)) continue;
+            $clean[$key] = is_array($value) ? self::scrub($value) : $value;
+        }
+        return $clean;
     }
 }

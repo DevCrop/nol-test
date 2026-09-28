@@ -5,6 +5,7 @@ qa_expect(!\Security\ClientIp::allowed('11.1.2.3', ['10.0.0.0/8']), 'CIDR reject
 qa_expect(\Security\ClientIp::get(['REMOTE_ADDR'=>'203.0.113.7','HTTP_X_FORWARDED_FOR'=>'10.0.0.1']) === '203.0.113.7', 'untrusted proxy header ignored');
 qa_expect(\Security\ClientIp::allowed('10.2.3.4', ['10.0.0.0/8']) && !\Security\ClientIp::allowed('10.2.3.4', ['192.168.0.0/16']), 'trusted proxy CIDR selection');
 qa_expect(\Security\PiiMask::name('홍길동') === '홍*동', 'Korean name masked');
+qa_expect(\Security\PiiMask::identifier('abcdef') === 'abc***' && \Security\PiiMask::identifier('ab') === 'a*', 'NPG identifier long and short boundary');
 qa_expect(strpos(\Security\PiiMask::email('tester@example.com'), 'example.com') !== false, 'email domain retained');
 $dirty = '<img src="x" onerror="alert(1)"><script>alert(2)</script><a href="javascript:alert(3)">x</a>';
 $clean = \Security\HtmlSanitizer::clean($dirty);

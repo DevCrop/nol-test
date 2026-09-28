@@ -157,7 +157,15 @@ if ($method === 'UPDATE') {
 
             $fields['id'] = $id;
             $sql = "UPDATE nb_works SET $setClause WHERE id = :id";
-            $success = DB::query($sql, $fields);
+            // A valid unchanged save is not a database failure. AuditedStatement
+            // still uses affected rows to avoid recording a fictitious mutation.
+            try {
+                $statement = DB::getInstance()->prepare($sql);
+                $success = $statement->execute($fields);
+            } catch (PDOException $e) {
+                error_log('Works update failed');
+                $success = false;
+            }
 
             $data['success'] = $success;
             $data['message'] = $success ? "업데이트에 성공했습니다." : "업데이트에 실패했습니다.";

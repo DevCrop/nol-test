@@ -37,7 +37,7 @@
 
   document.querySelectorAll('[data-pii-lock]').forEach((root) => {
     ['copy', 'cut', 'dragstart', 'contextmenu'].forEach((name) => root.addEventListener(name, (event) => {
-      if (event.target.closest('input,textarea,select,button')) return; event.preventDefault();
+      if (event.target.closest('input:not([readonly]):not([disabled]),textarea:not([readonly]):not([disabled]),select:not([disabled]),button,[contenteditable="true"]')) return; event.preventDefault();
     }));
   });
 })();

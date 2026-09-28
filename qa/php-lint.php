@@ -1,7 +1,10 @@
 <?php
 require __DIR__ . '/bootstrap.php';
 $root = dirname(__DIR__); $bad = [];
-$it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
+$dirs = new RecursiveCallbackFilterIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS), static function ($file) use ($root) {
+    return !in_array($file->getPathname(), [$root . '/.git', $root . '/qa/artifacts', $root . '/uploads'], true);
+});
+$it = new RecursiveIteratorIterator($dirs);
 foreach ($it as $file) {
     if ($file->getExtension() !== 'php' || strpos($file->getPathname(), DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR) !== false) continue;
     $cmd = escapeshellarg(PHP_BINARY) . ' -d short_open_tag=1 -l ' . escapeshellarg($file->getPathname()) . ' 2>&1';

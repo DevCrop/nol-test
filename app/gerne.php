@@ -8,12 +8,14 @@ $db = DB::getInstance();
 
 try {
     // SQL 쿼리 실행
-    $query = "SELECT * FROM nb_board WHERE board_no IN (12)";
+    $query = "SELECT * FROM nb_board WHERE board_no = 12 AND sitekey = 'BLUESQ' AND is_view = 'Y' AND COALESCE(is_secret, 'N') <> 'Y'";
     $stmt = $db->prepare($query);
     $stmt->execute();
 
     // 결과 가져오기
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($rows as &$row) unset($row['secret_pwd']);
+    unset($row);
 
     // JSON 응답 반환
     header('Content-Type: application/json');

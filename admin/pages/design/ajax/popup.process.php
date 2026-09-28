@@ -5,6 +5,7 @@ include_once "../../../lib/admin.check.ajax.php";
 
 $mode = isset($_POST['mode']) ? $_POST['mode'] : null;
 $db = DB::getInstance();
+$uploads_dir = $UPLOAD_DIR_POPUP;
 
 try {
     if ($mode === "save") {
