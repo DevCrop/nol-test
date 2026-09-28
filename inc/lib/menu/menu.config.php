@@ -13,7 +13,7 @@ $LOCALE_LIST = array(
 
 // 경로 정보 ==============================================
 // 서버루트 - include
-$SERVER_ROOT	= $_SERVER['DOCUMENT_ROOT'];
+$SERVER_ROOT	= defined('ROOT') ? ROOT : dirname(__DIR__, 3);
 
 // ✅ 페이지경로로 사용 - lang 없음
 $ROOT			= $NO_IS_SUBDIR;

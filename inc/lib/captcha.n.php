@@ -1,34 +1,39 @@
 <?php
-require_once __DIR__ . '/security.bootstrap.php';
-if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
 // 이미지 초기화 (120 x 30 픽셀)
 $image = imagecreatetruecolor(120, 30);
-imagealphablending($image, false);
-imagesavealpha($image, true);
+if (!$image) {
+    die('이미지를 생성할 수 없습니다.');
+}
 
-// 투명 배경 설정
-$transparent = imagecolorallocatealpha($image, 0, 0, 0, 127);
-imagefill($image, 0, 0, $transparent);
+// 배경색 설정 및 색상 할당
+$background = imagecolorallocate($image, 11, 32, 63);
+if ($background === false) {
+    imagedestroy($image);
+    die('배경색을 설정할 수 없습니다.');
+}
+imagefill($image, 0, 0, $background);
 
-// 텍스트 및 선 색상 설정
+$linecolor = imagecolorallocate($image, 255, 255, 255);
 $textcolor = imagecolorallocate($image, 255, 255, 255);
 
-// 랜덤한 숫자 생성 (5자리)
-$captcha_code = '';
+session_start();
+
+// 캔버스에 랜덤 숫자 추가
+$digit = '';
 for ($x = 15; $x <= 95; $x += 20) {
     $num = rand(0, 9);
-    $captcha_code .= $num;
+    $digit .= $num;
     $fontSize = rand(3, 5);
-    $yPosition = rand(5, 14);
+    $yPosition = rand(2, 14);
     imagechar($image, $fontSize, $x, $yPosition, (string)$num, $textcolor);
 }
 
-// 세션에 새로운 캡차 코드 저장
-$_SESSION['captcha_secure'] = $captcha_code;
+// 세션 변수에 숫자 기록
+$_SESSION['captcha_secure'] = $digit;
 
-// 이미지 출력
+
+// 이미지 출력 및 정리
 header('Content-Type: image/png');
 imagepng($image);
 imagedestroy($image);
-?>

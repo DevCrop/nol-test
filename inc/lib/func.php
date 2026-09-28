@@ -1,98 +1,10 @@
 <?php
 
-
 /**
- * Check if an image exists in the request, if it was successfully uploaded, and if its size is greater than 0.
- *
- * @param string $key
- * @param array|null $files
- * @return bool
+ * 공통 유틸 함수 (NOL 씨어터 대학로 공연장)
+ * - 세종번역 등 타 프로젝트용 메일 함수 제거 (CASE 2 대응)
+ * - 메일 발송은 sendMailer() 또는 환경변수 기반 SMTP 활용
  */
-function hasImage(string $key, ?array $files = null): bool
-{
-    $files = $files ?? $_FILES;
-
-    // Check if the file exists, has no errors, and its size is greater than 0
-    if (isset($files[$key]) && $files[$key]['error'] === UPLOAD_ERR_OK && $files[$key]['size'] > 0) {
-        return true;
-    }
-
-    return false;
-}
-
-/**
- * Upload an image to the server.
- *
- * @param string $key
- * @param string|null $uploadDir
- * @param array|null $allowedExtensions
- * @param int $maxFileSize
- * @param array|null $files
- * @return string|null
- * @throws RuntimeException
- */
-
-function uploadImage(string $key, string $uploadDir = null, ?array $allowedExtensions = null, int $maxFileSize = 10485760, ?array $files = null): ?string
-{
-
-    $files = $files ?? $_FILES;
-    $uploadDir = $uploadDir ?? $_SERVER['DOCUMENT_ROOT'] . '/uploads';
-    if (!isset($files[$key]) || $files[$key]['error'] !== UPLOAD_ERR_OK) {
-		return null;
-    }
-
-    $file = $files[$key];
-    try { [$fileExtension] = \Security\UploadGuard::image($file); }
-    catch (Throwable $e) { return null; }
-
-    if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true)) {
-		return null;
-        //throw new RuntimeException("Failed to create upload directory: {$uploadDir}.");
-    }
-
-    $uniqueFileName = bin2hex(random_bytes(16)) . '.' . $fileExtension;
-    $destination = rtrim($uploadDir, '/') . '/' . $uniqueFileName;
-	
-    if (!move_uploaded_file($file['tmp_name'], $destination)) {
-		return null;
-        //throw new RuntimeException("Failed to move uploaded file to destination: {$destination}.");
-    }
-
-	
-    return $uniqueFileName;
-}
-
-/**
- * Check if an image exists on the server.
- *
- * @param string $fileName
- * @param string|null $folder
- * @return bool
- */
-function existImage(string $fileName, string $folder = null): bool
-{
-    $baseDir = $_SERVER['DOCUMENT_ROOT'] . '/uploads';
-    $folder = $folder ? rtrim($folder, '/') : '';
-    $filePath = $baseDir . ($folder ? "/{$folder}" : '') . '/' . ltrim($fileName, '/');
-
-    return \Security\UploadGuard::pathInside($baseDir, ltrim(($folder ? $folder . '/' : '') . $fileName, '/')) !== null;
-}
-
-/**
- * Delete an image from the server.
- *
- * @param string $fileName
- * @param string|null $folder
- * @return bool
- */
-function deleteImage(string $fileName, string $folder = null): bool
-{
-    $baseDir = $_SERVER['DOCUMENT_ROOT'] . '/uploads';
-    $folder = $folder ? rtrim($folder, '/') : '';
-    $relative = ltrim(($folder ? $folder . '/' : '') . $fileName, '/');
-    $filePath = \Security\UploadGuard::pathInside($baseDir, $relative);
-    return $filePath !== null && unlink($filePath);
-}
 
 // 페이지 이동
 function location($go_url) {
@@ -125,78 +37,46 @@ function alert($msg, $go_url = "") {
     }
 }
 
-function getBanner($loc, $limit = 1, $return_type = 'html') {
+function getBanner(string $loc, int $limit = 1): array
+{
     global $NO_SITE_UNIQUE_KEY;
-    
-    // Initialize an empty array to store the results
-    $r = array();
 
-    // Define the query with placeholders for parameterized statements
-    $query = "
-        SELECT * 
-        FROM nb_banner 
-        WHERE sitekey = :sitekey 
-          AND b_loc = :loc 
-          AND b_view = 'Y' 
-          AND ((b_sdate <= CURDATE() AND b_edate >= CURDATE()) OR b_none_limit = 'Y') 
-        ORDER BY b_idx ASC, no ASC 
+    // 안전한 LIMIT 정수화 (최소 1)
+    $limit = max(1, (int)$limit);
+
+    $sql = "
+        SELECT
+            no, sitekey, b_loc, b_img, b_img_mobile, b_link, b_target, b_view,
+            b_title, b_idx, b_none_limit, b_sdate, b_edate, b_rdate, b_desc, b_contents
+        FROM nb_banner
+        WHERE sitekey = :sitekey
+          AND b_loc   = :loc
+          AND b_view  = 'Y'
+          AND (
+                b_none_limit = 'Y'
+                OR (
+                    (b_sdate IS NULL OR b_sdate <= CURDATE())
+                AND (b_edate IS NULL OR b_edate >= CURDATE())
+                )
+          )
+        ORDER BY b_idx DESC, no DESC
         LIMIT :limit
     ";
 
-    // Get the PDO instance
-    $db = DB::getInstance();
+    try {
+        $db   = DB::getInstance();
+        $stmt = $db->prepare($sql);
+        $stmt->bindValue(':sitekey', $NO_SITE_UNIQUE_KEY, PDO::PARAM_STR);
+        $stmt->bindValue(':loc',     $loc,               PDO::PARAM_STR);
+        $stmt->bindValue(':limit',   $limit,             PDO::PARAM_INT); // LIMIT 바인딩
 
-    // Prepare the statement
-    $stmt = $db->prepare($query);
-
-    // Bind parameters with appropriate data types
-    $stmt->bindParam(':sitekey', $NO_SITE_UNIQUE_KEY, PDO::PARAM_STR);
-    $stmt->bindParam(':loc', $loc, PDO::PARAM_STR);
-    $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
-
-    // Execute the statement
-    $stmt->execute();
-
-    // Fetch all results into an associative array
-    $r = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // Return the results array
-    return $r;
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        // 실패시 빈 배열 반환
+        return [];
+    }
 }
-
-
-function getFeaturedWorks($limit = 10) {
-    // Initialize an empty array to store results
-    $r = array();
-
-    // Define the query
-    $query = "
-        SELECT * 
-        FROM nb_works 
-        WHERE is_featured = 1
-        ORDER BY start_date ASC 
-        LIMIT :limit
-    ";
-
-    // Get the PDO instance
-    $db = DB::getInstance();
-
-    // Prepare the statement
-    $stmt = $db->prepare($query);
-
-    // Bind the limit parameter
-    $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
-
-    // Execute the query
-    $stmt->execute();
-
-    // Fetch all results as an associative array
-    $r = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // Return the results array
-    return $r;
-}
-
 
 
 // 경고창만 출력
@@ -284,7 +164,6 @@ function file_check($filename, $file_str = "php|htm|html|inc|shtm|ztx|dot|cgi|pl
     }
 }
 
-
 // 특수문자 제거
 function doRemoveSpecial($str) {
     return preg_replace("/[ #&+\-%@=\/\\\:;,'\"\^`~_|!\?\*$#<>()\[\]\{\}]/i", "", $str);
@@ -298,40 +177,80 @@ function makeLinks($str, $target) {
     }, $str);
 }
 
-// 이미지 업로드
+// 이미지 업로드 (화이트리스트: 악성파일 업로드 방지)
+function imageUpload($path, $upfile, $origin_file = '', $return_origin = false, $custom_allowed_ext = null) {
+    require_once dirname(__DIR__, 2) . '/nol-gate/lib/upload.guard.php';
+    $allowed_ext = is_array($custom_allowed_ext) && !empty($custom_allowed_ext)
+        ? array_map('strtolower', $custom_allowed_ext)
+        : ['jpg', 'jpeg', 'png', 'gif', 'webp', 'ico'];
+    $max_file_size = 10485760; // 10MB
 
-function imageUpload($path, $upfile, $origin_file = '', $return_origin = false, $allowed_ext = null) {
-    $max_file_size = 20971520;
+
+
+    // 빈값이거나 업로드 파일이 없을 경우 공백 반환
     if (empty($upfile) || !isset($upfile['name']) || $upfile['error'] === UPLOAD_ERR_NO_FILE) {
         return ['origin' => '', 'saved' => ''];
     }
+
     try {
-        [$ext] = \Security\UploadGuard::attachment($upfile, $max_file_size);
-        if (is_array($allowed_ext) && !in_array($ext, array_map('strtolower', $allowed_ext), true)) throw new RuntimeException('허용되지 않는 파일 형식입니다.');
-        $file_saved = bin2hex(random_bytes(20)) . ".{$ext}";
-        $file_origin = basename((string) $upfile['name']);
+        // 파일 크기 제한 확인
+        if ($upfile['size'] > $max_file_size) {
+            throw new Exception("이미지 사이즈가 10MB 이하로 등록해주세요.");
+        }
+
+        // 확장자 검증
+        $ext = strtolower(pathinfo($upfile['name'], PATHINFO_EXTENSION));
+        if (!in_array($ext, $allowed_ext)) {
+            throw new Exception("허용되지 않는 파일입니다.");
+        }
+        [$valid, $error] = no_upload_guard_check((string)$upfile['name'], $ext, (string)$upfile['tmp_name'], (int)$upfile['size'], $max_file_size);
+        if (!$valid || $upfile['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($upfile['tmp_name'])) {
+            throw new Exception($error ?: '유효한 업로드 파일이 아닙니다.');
+        }
+        // Replacement filenames are names, not client-selected paths.
+        if ($origin_file && (basename(str_replace('\\', '/', $origin_file)) !== $origin_file || strpos($origin_file, "\0") !== false)) {
+            throw new Exception('유효하지 않은 기존 파일명입니다.');
+        }
+
+        // 파일 이름 생성
+        $file_saved = uniqid('', true) . ".$ext";
+        $file_origin = $upfile['name'];
+
+        // 디렉터리 생성
         if (!is_dir($path) && !mkdir($path, 0755, true) && !is_dir($path)) {
-            throw new RuntimeException('파일 업로드 경로를 생성하지 못했습니다.');
+            throw new Exception("파일 업로드 경로를 생성하지 못했습니다.");
         }
-        if (!move_uploaded_file($upfile['tmp_name'], $path . DIRECTORY_SEPARATOR . $file_saved)) throw new RuntimeException('파일 업로드에 실패했습니다.');
-        if ($origin_file) {
-            $old = \Security\UploadGuard::pathInside($path, basename((string) $origin_file));
-            if ($old !== null) unlink($old);
+
+		// echo json_encode(['files' => $_FILES, 'tmp' => $upfile['tmp_name'], 'path' => "$path/$file_saved"]); exit; 
+        // 파일 이동
+        if (!move_uploaded_file($upfile['tmp_name'], "$path/$file_saved")) {
+            throw new Exception("파일 업로드에 실패했습니다.");
         }
+
+        // 기존 파일 삭제
+        $oldPath = $origin_file ? no_upload_guard_path($path, "$path/$origin_file") : null;
+        if ($oldPath !== null) {
+            unlink($oldPath);
+        }
+
+        // 결과 반환
         return $return_origin ? ['origin' => $file_origin, 'saved' => $file_saved] : ['origin' => '', 'saved' => $file_saved];
-    } catch (Throwable $e) {
-        $message = $e instanceof RuntimeException ? $e->getMessage() : blue_safe_error($e);
-        echo json_encode(["result" => "fail", "msg" => $message]);
+    
+    } catch (Exception $e) {
+        echo json_encode(["result" => "fail", "msg" => ClientFault::message($e)]);
         exit;
     }
 }
 
+
 function imageDelete(string $path): bool
 {
-    $root = realpath((string) ($_SERVER['DOCUMENT_ROOT'] ?? '') . '/uploads');
-    $candidate = realpath($path);
-    if ($root === false || $candidate === false || strpos($candidate, $root . DIRECTORY_SEPARATOR) !== 0 || !is_file($candidate)) return false;
-    return unlink($candidate);
+    // Check if path is provided and if file exists
+    if ($path && file_exists($path)) {
+        return unlink($path); // Return the result of the unlink operation directly
+    }
+
+    return false; // Return false if the file doesn't exist or path is empty
 }
 
 
@@ -339,7 +258,8 @@ function imageDelete(string $path): bool
 // 페이지 리스트 출력
 function print_pagelist($page, $list_amount, $page_count, $param, $page_type = "") {
     global $code, $catcode, $orderby, $skin_dir, $ptype;
-    $skin_dir = $skin_dir ?: "/admin/manage";
+    $defaultAdminBase = isset($GLOBALS['NO_ADMIN_BASE']) ? $GLOBALS['NO_ADMIN_BASE'] : '';
+    $skin_dir = $skin_dir ?: ($defaultAdminBase . "/manage");
     $param = $param ? "&$param" : "";
 
     $spage = floor(($page - 1) / $list_amount) * $list_amount + 1;

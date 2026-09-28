@@ -1,6 +1,6 @@
 <?php
-require_once __DIR__ . '/security.bootstrap.php';
-if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+
+session_start();
 header('Content-Type: image/gif');
 
 $captcha = '';

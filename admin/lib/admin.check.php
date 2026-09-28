@@ -1,5 +1,0 @@
-<?php
-
-	\Security\AuthSession::enforce();
-
-?>

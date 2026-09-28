@@ -1,7 +1,11 @@
 <?php
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
-$scripts = ['php-lint.php','security-unit.php','proxy-policy.php','security-regression.php','db-integration.php','http-smoke.php','auth-http.php','mfa-flow.php','diagnostic-http.php','migration-release.php']; $failed = 0;
-foreach ($scripts as $script) {
-    echo "\n=== {$script} ===\n"; passthru(escapeshellarg(PHP_BINARY) . ' -d short_open_tag=1 ' . escapeshellarg(__DIR__ . '/' . $script), $status); if ($status !== 0) $failed++;
+$failed=0;
+foreach(glob(__DIR__.'/*.php') as $file) {
+    if(in_array(basename($file), ['run-all.php', 'browser-fixture.php'], true)) continue;
+    echo "\n=== ".basename($file)." ===\n";
+    passthru(escapeshellarg(PHP_BINARY).' -d short_open_tag=1 '.escapeshellarg($file),$status);
+    if($status!==0) $failed++;
 }
-echo "\n" . ($failed ? "FAILED {$failed}" : 'ALL QA PASSED') . "\n"; exit($failed ? 1 : 0);
+echo $failed ? "FAILED {$failed}\n" : "ALL QA PASSED\n";
+exit($failed ? 1 : 0);

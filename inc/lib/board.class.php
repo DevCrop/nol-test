@@ -1,29 +1,20 @@
 <?php
 
-function getBoardData($boardNo, $limit = 8) {
+function getBoardInfoByName($nm) {
+    global $NO_SITE_UNIQUE_KEY;
     $connect = DB::getInstance(); // PDO 인스턴스 가져오기
-    $limit = max(1, min(100, (int) $limit));
 
-    $query = "
-        SELECT 
-            b.* 
-        FROM 
-            nb_board b
-        WHERE 
-            b.board_no = :board_no AND b.sitekey = 'BLUESQ' AND b.is_view = 'Y' AND COALESCE(b.is_secret, 'N') <> 'Y'
-        ORDER BY 
-            b.no ASC
-        LIMIT $limit
-    ";
-
+    $query = "SELECT a.no, a.sitekey, a.title, a.skin, a.top_banner_image, a.contents, a.view_yn, a.secret_yn, 
+                     a.sort_no, a.list_size, a.fileattach_yn, a.fileattach_cnt, a.comment_yn, a.depth1, 
+                     a.depth2, a.depth3, a.lnb_path, a.view_skin 
+              FROM nb_board_manage a 
+              WHERE a.sitekey = :sitekey AND a.title = :title";
+    
     $stmt = $connect->prepare($query);
-    $stmt->execute([
-        ':board_no' => $boardNo,
-    ]);
-
+    $stmt->execute([':sitekey' => $NO_SITE_UNIQUE_KEY, ':title' => $nm]);
+    
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
-
 
 function getBoardInfoByNo($board_no) {
     global $NO_SITE_UNIQUE_KEY;
@@ -64,9 +55,8 @@ function getBoardLimit($board_no, $limit = 5, $orderby = null) {
     global $extra_fields;
     $connect = DB::getInstance();
 
-    $limit = max(1, min(100, (int) $limit));
-    $mainqry = "WHERE a.sitekey = :sitekey AND a.board_no = :board_no AND a.is_view = 'Y' AND COALESCE(a.is_secret, 'N') <> 'Y'";
-    $orderByqry = in_array($orderby, ['a.no ASC', 'a.no DESC', 'a.regdate ASC', 'a.regdate DESC'], true) ? $orderby : "a.is_notice='Y' DESC, a.regdate DESC";
+    $mainqry = "WHERE a.sitekey = :sitekey AND a.board_no = :board_no";
+    $orderByqry = $orderby ? $orderby : "a.is_notice='Y' DESC, a.regdate DESC";
     
     $query = "SELECT a.no, a.board_no, a.user_no, a.category_no, a.comment_cnt, a.title, a.contents, 
                      a.regdate, a.read_cnt, a.direct_url, a.thumb_image, a.is_admin_writed, a.is_notice, 
@@ -139,9 +129,4 @@ function getBoardCategoryCnt($category_no) {
     
     return $stmt->fetch(PDO::FETCH_ASSOC)['cnt'];
 }
-
-
 ?>
-
-
-

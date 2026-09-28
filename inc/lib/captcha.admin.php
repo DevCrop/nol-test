@@ -1,6 +1,4 @@
 <?php
-require_once __DIR__ . '/security.bootstrap.php';
-if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
 // 이미지 초기화 (120 x 30 픽셀)
 $image = imagecreatetruecolor(120, 30);
@@ -18,6 +16,8 @@ imagefill($image, 0, 0, $background);
 
 $linecolor = imagecolorallocate($image, 255, 255, 255);
 $textcolor = imagecolorallocate($image, 255, 255, 255);
+
+require_once __DIR__ . '/session.boot.php';
 
 // 캔버스에 랜덤 숫자 추가
 $digit = '';

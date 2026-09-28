@@ -1,11 +1,11 @@
-# Isolated QA only: no published ports, no production credentials.
+# Disposable local QA, no published ports or real SMTP credentials.
 services:
   db:
     image: mysql:8.0
     command: [--character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --default-authentication-plugin=mysql_native_password]
     environment:
       MYSQL_ROOT_PASSWORD: qa-isolated-root
-      MYSQL_DATABASE: dbusrbluesq0211
+      MYSQL_DATABASE: dbusrdaehakro0605
       MYSQL_USER: qa_app
       MYSQL_PASSWORD: qa-isolated-app
     volumes:
@@ -25,7 +25,7 @@ services:
       APP_ENV: development
       DB_HOST: db
       DB_PORT: 3306
-      DB_NAME: dbusrbluesq0211
+      DB_NAME: dbusrdaehakro0605
       DB_USER: qa_app
       DB_PASS: qa-isolated-app
       DB_ROOT_PASSWORD: qa-isolated-root
@@ -33,13 +33,12 @@ services:
       GATE_HOST: gate.local
       GATE_ENFORCE: 'true'
       GATE_ALLOW_IPS: ''
-      TRUSTED_PROXY_CIDRS: ''
       MFA_ENABLED: 'false'
       SMTP_HOST: ''
       SMTP_USER: ''
       SMTP_PASS: ''
       SMTP_FROM: ''
-      SESSION_NAME: BLUESQ_QA_SESSION
+      SESSION_NAME: NOL_QA_SESSION
       SESSION_SECURE: 'false'
     depends_on:
       db:

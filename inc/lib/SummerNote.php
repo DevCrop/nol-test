@@ -7,7 +7,8 @@ class SummerNote {
     public static function save($html_content){
         if (!$html_content) return;
 
-        $uploadDir = $_SERVER['DOCUMENT_ROOT'] . self::$UPLOAD_DIR;
+        $projectRoot = defined('ROOT') ? ROOT : dirname(__DIR__, 2);
+        $uploadDir = rtrim($projectRoot, '/\\') . self::$UPLOAD_DIR;
         $baseDir = self::$UPLOAD_BASE_DIR;
 
         $content = htmlspecialchars_decode($html_content);
@@ -29,8 +30,13 @@ class SummerNote {
                     list(, $base64_data) = explode(',', $data);
 
                     $mimeType = explode(':', $info)[1];
-                    $extension = explode('/', $mimeType)[1];
-                    
+                    $extension = strtolower(trim(explode('/', $mimeType)[1] ?? ''));
+                    // 확장자 화이트리스트: 클라이언트 MIME 조작 시 악성 확장자 저장 방지
+                    $allowed_ext = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+                    if ($extension === '' || !in_array($extension, $allowed_ext, true)) {
+                        continue;
+                    }
+
                     $filename = uniqid() . '.' . $extension;
                     if (!file_exists($uploadDir)) {
                         mkdir($uploadDir, 0777, true);
@@ -48,7 +54,8 @@ class SummerNote {
     public static function delete($html_content){
         if (!$html_content) return;
 
-        $uploadDir = $_SERVER['DOCUMENT_ROOT'] . self::$UPLOAD_DIR;
+        $projectRoot = defined('ROOT') ? ROOT : dirname(__DIR__, 2);
+        $uploadDir = rtrim($projectRoot, '/\\') . self::$UPLOAD_DIR;
         $content = html_entity_decode(htmlspecialchars_decode($html_content));
 
         $doc = new DOMDocument();

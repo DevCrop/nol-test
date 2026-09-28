@@ -1,9 +1,11 @@
 <?php
-	include_once $_SERVER['DOCUMENT_ROOT'] . "/inc/lib/base.class.php";
-	ini_set('display_errors', 'on');
-	error_reporting(-1);
+	include_once __DIR__ . "/base.class.php";
+	ini_set('display_errors', '0');
+	ini_set('display_startup_errors', '0');
+	ini_set('log_errors', '1');
+	error_reporting(E_ALL);
 
-	$path = $_SERVER['DOCUMENT_ROOT'] . "/upload";
+	$path = $NO_PROJECT_ROOT . "/upload";
 	if (is_dir($path)) {
 		echo "ok";
 	} else {

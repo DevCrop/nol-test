@@ -147,61 +147,34 @@ class Menu {
     return $pages;
   }
 
-public function isPageActive($page) {
-    $uriPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH); // 현재 URI 경로 추출
-    $pagePath = parse_url($page['path'], PHP_URL_PATH); // 페이지 path의 경로 추출
-
-    // 기본 경로가 동일한지 확인
-    if ($uriPath !== $pagePath) {
-        return false; // 경로가 다르면 false
+  public function isPageActive($page){
+    $uri = $_SERVER['REQUEST_URI'];
+    $path_list = parse_url($page['path']);
+    $params = array();
+    // board
+    if(isset($path_list['query'])){
+      parse_str($path_list['query'], $params);
     }
+    
+    if(isset($params['board_no'])){
+      $isActive = true;
 
-    // 쿼리 파라미터 추출
-    $pageQueryParams = [];
-    $currentQueryParams = [];
-
-    if (isset(parse_url($page['path'])['query'])) {
-        parse_str(parse_url($page['path'], PHP_URL_QUERY), $pageQueryParams); // 메뉴 path의 쿼리 파라미터 추출
-    }
-
-    if (isset(parse_url($_SERVER['REQUEST_URI'])['query'])) {
-        parse_str(parse_url($_SERVER['REQUEST_URI'], PHP_URL_QUERY), $currentQueryParams); // 현재 URI의 쿼리 파라미터 추출
-    }
-
-    // `board_no`가 있는 경우 특별 처리
-    if (isset($pageQueryParams['board_no'])) {
-        $isActive = true;
-
-        foreach ($pageQueryParams as $key => $value) {
-            if (!isset($currentQueryParams[$key])) {
-                $isActive = false; // 필수 파라미터가 없으면 false
-                break;
-            }
-
-            if ($currentQueryParams[$key] !== $value) {
-                $isActive = false; // 값이 일치하지 않으면 false
-                break;
-            }
+      foreach($params as $k => $v){
+        
+        if(!isset($_GET[$k])){
+          $isActive = false;
+          break; 
+        } else if($_GET[$k] !== $params[$k]){
+          $isActive = false;
+          break; 
         }
-
-        return $isActive; // board_no 처리 후 결과 반환
+      }
+      return $isActive;
+    } else {
+      // page
+      return $page['path'] === $uri;
     }
-
-    // 필수 쿼리 파라미터가 설정되어 있는 경우 비교
-    foreach ($pageQueryParams as $key => $value) {
-        if (!isset($currentQueryParams[$key])) {
-            return false; // 필수 파라미터가 없는 경우 false
-        }
-
-        // 빈 값이 허용되지 않으면 strict 비교
-        if ($value !== '' && $currentQueryParams[$key] !== $value) {
-            return false; // 값이 일치하지 않는 경우 false
-        }
-    }
-
-    return true; // 모든 조건이 만족되면 true
-}
-
+  }
 
   public function getDirname($prev_page, $v){
     $prev_dirname = '';

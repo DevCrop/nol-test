@@ -1,101 +1,143 @@
 <?php
+declare(strict_types=1);
 
-include_once $_SERVER['DOCUMENT_ROOT'] . "/inc/lib/db.php"; // DB 클래스 포함
+include_once __DIR__ . "/base.class.php";
 
-$no = isset($_REQUEST['no']) ? intval($_REQUEST['no']) : 0;
-$fld = isset($_REQUEST['fld']) ? $_REQUEST['fld'] : '';
+$no = isset($_REQUEST['no']) ? (int)$_REQUEST['no'] : 0;
+$fld = isset($_REQUEST['fld']) ? (string)$_REQUEST['fld'] : '';
 
-if ($no <= 0 || empty($fld)) {
-    die("잘못된 요청입니다.");
+if ($no <= 0) {
+    http_response_code(400);
+    exit('잘못된 요청입니다. (no)');
 }
 
-// PDO 인스턴스 가져오기
-$db = DB::getInstance();
-if ($db === null) {
-    die("DB 연결 실패");
+$allowedFld = ['thumb', 'thumb_2', 'attach1', 'attach2', 'attach3', 'attach4', 'attach5'];
+if (!in_array($fld, $allowedFld, true)) {
+    http_response_code(400);
+    exit('유효하지 않은 필드 값입니다.');
 }
 
-// SQL 실행
-$query = "SELECT thumb_image, file_attach_1, file_attach_2, file_attach_3, file_attach_4, file_attach_5,
-                 file_attach_origin_1, file_attach_origin_2, file_attach_origin_3, file_attach_origin_4, file_attach_origin_5
-          FROM nb_board 
-          WHERE no = :no";
+$query = "
+    SELECT
+        thumb_image,
+        thumb_image_2,
+        file_attach_1, file_attach_2, file_attach_3, file_attach_4, file_attach_5,
+        file_attach_origin_1, file_attach_origin_2, file_attach_origin_3, file_attach_origin_4, file_attach_origin_5
+    FROM nb_board
+    WHERE no = ?
+";
 
-$stmt = $db->prepare($query);
-$stmt->bindValue(':no', $no, PDO::PARAM_INT);
+$stmt = $connect->prepare($query);
+$stmt->bind_param("i", $no);
 $stmt->execute();
-$data = $stmt->fetch(PDO::FETCH_ASSOC);
+$result = $stmt->get_result();
+$data = $result->fetch_assoc();
+$stmt->close();
 
 if (!$data) {
-    die("정보를 찾을 수 없습니다.");
+    http_response_code(404);
+    exit('정보를 찾을 수 없습니다.');
 }
 
-$filename = "";
-$filename_origin = ""; // 원본 파일명 저장
+$filename = '';
+$filenameOrigin = '';
 
 switch ($fld) {
-    case "thumb":
-        $filename = $data['thumb_image'];
-        $filename_origin = "thumbnail.jpg";
+    case 'thumb':
+        $filename = (string)($data['thumb_image'] ?? '');
+        $filenameOrigin = $filename;
         break;
-    case "attach1":
-        $filename = $data['file_attach_1'];
-        $filename_origin = $data['file_attach_origin_1'];
+    case 'thumb_2':
+        $filename = (string)($data['thumb_image_2'] ?? '');
+        $filenameOrigin = $filename;
         break;
-    case "attach2":
-        $filename = $data['file_attach_2'];
-        $filename_origin = $data['file_attach_origin_2'];
+    case 'attach1':
+        $filename = (string)($data['file_attach_1'] ?? '');
+        $filenameOrigin = (string)($data['file_attach_origin_1'] ?? '');
         break;
-    case "attach3":
-        $filename = $data['file_attach_3'];
-        $filename_origin = $data['file_attach_origin_3'];
+    case 'attach2':
+        $filename = (string)($data['file_attach_2'] ?? '');
+        $filenameOrigin = (string)($data['file_attach_origin_2'] ?? '');
         break;
-    case "attach4":
-        $filename = $data['file_attach_4'];
-        $filename_origin = $data['file_attach_origin_4'];
+    case 'attach3':
+        $filename = (string)($data['file_attach_3'] ?? '');
+        $filenameOrigin = (string)($data['file_attach_origin_3'] ?? '');
         break;
-    case "attach5":
-        $filename = $data['file_attach_5'];
-        $filename_origin = $data['file_attach_origin_5'];
+    case 'attach4':
+        $filename = (string)($data['file_attach_4'] ?? '');
+        $filenameOrigin = (string)($data['file_attach_origin_4'] ?? '');
         break;
-    default:
-        die("유효하지 않은 필드 값입니다.");
+    case 'attach5':
+        $filename = (string)($data['file_attach_5'] ?? '');
+        $filenameOrigin = (string)($data['file_attach_origin_5'] ?? '');
+        break;
 }
 
-if (!isset($UPLOAD_DIR_BOARD) || empty($UPLOAD_DIR_BOARD)) {
-    die("파일 경로가 설정되지 않았습니다.");
+if ($filename === '') {
+    http_response_code(404);
+    exit('해당 필드에 파일이 없습니다.');
 }
 
-$filepath = $UPLOAD_DIR_BOARD . "/" . $filename;
+if ($filenameOrigin === '') {
+    $filenameOrigin = $filename;
+}
 
-if (!file_exists($filepath)) {
-    die("파일을 찾을 수 없습니다.");
+$baseDir = rtrim($UPLOAD_DIR_BOARD ?? '', '/');
+$filepath = $baseDir . '/' . $filename;
+
+if (!is_file($filepath)) {
+    http_response_code(404);
+    exit('파일을 찾을 수 없습니다.');
 }
 
 $filesize = filesize($filepath);
-$path_parts = pathinfo($filepath);
-$filename = $path_parts['basename'];
-
-// 파일명이 없을 경우 기본 이름 설정
-if (!$filename_origin) {
-    $filename_origin = "download." . $path_parts['extension'];
+if ($filesize === false) {
+    http_response_code(500);
+    exit('파일 크기를 확인할 수 없습니다.');
 }
 
-// 다운로드 헤더 설정
-header("Pragma: public");
-header("Expires: 0");
-header("Content-Type: application/octet-stream");
-header("Content-Disposition: attachment; filename=\"$filename_origin\"");
-header("Content-Transfer-Encoding: binary");
-header("Content-Length: $filesize");
+$ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
 
-// 출력 버퍼 정리 후 파일 전송
-if (ob_get_length()) {
-    ob_end_clean();
+if (preg_match('/MSIE|Trident/i', $ua)) {
+    $disposition = 'attachment; filename="' . rawurlencode($filenameOrigin) . '"';
+    header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+    header('Pragma: public');
+} elseif (preg_match('/Firefox/i', $ua)) {
+    $disposition = "attachment; filename*=UTF-8''" . rawurlencode($filenameOrigin);
+    header('Cache-Control: no-cache, must-revalidate');
+    header('Pragma: no-cache');
+} else {
+    $safe = addcslashes($filenameOrigin, "\"\\");
+    $disposition = 'attachment; filename="' . $safe . '"; filename*=UTF-8\'\'' . rawurlencode($filenameOrigin);
+    header('Cache-Control: no-cache, must-revalidate');
+    header('Pragma: no-cache');
 }
+
+header('Expires: 0');
+header('Content-Type: application/octet-stream');
+header("Content-Disposition: $disposition");
+header('Content-Transfer-Encoding: binary');
+header('Content-Length: ' . $filesize);
+
+if (function_exists('ob_get_level')) {
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+} else {
+    ob_clean();
+}
+
 flush();
-readfile($filepath);
+
+$fp = fopen($filepath, 'rb');
+if ($fp !== false) {
+    while (!feof($fp)) {
+        echo fread($fp, 8192);
+        flush();
+    }
+    fclose($fp);
+} else {
+    readfile($filepath);
+}
 
 exit;
-
-?>

@@ -1,20 +1,18 @@
+# Secrets and original/customer data are local only.
 .env
-.phpunit.result.cache
-qa/artifacts/*
-!qa/artifacts/.gitkeep
-storage/*.log
-
-# Local secrets, customer data, and runtime files are never published.
 .env.*
 !.env.example
 !.env.production.example
-/.well-known/
-/.bash*
 /260918.sql
 /uploads/
-/logs/
 /storage/
+/logs/
 /resource/file/
+/.well-known/
+/.bash*
+qa/artifacts/*
+!qa/artifacts/.gitkeep
+node_modules/
 *.log
 *.bak
 *.backup
@@ -26,4 +24,4 @@ storage/*.log
 *.pfx
 *.p12
 *.pdf
-node_modules/
+# sql/release and sql/migrations contain schema changes, not the original dump.
