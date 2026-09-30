@@ -13,6 +13,7 @@
 qa/artifacts/*
 !qa/artifacts/.gitkeep
 node_modules/
+.DS_Store
 *.log
 *.bak
 *.backup

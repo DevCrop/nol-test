@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/AuthSession.php';
 require_once __DIR__ . '/SmtpMailer.php';
+require_once __DIR__ . '/MfaEmail.php';
 
 class Mfa
 {
@@ -70,8 +71,9 @@ class Mfa
         if (time() - (int) $p['sent_at'] < 30) throw new RuntimeException('잠시 후 다시 요청하세요.');
         $row = self::currentAccount($p);
         $code = (string) random_int(100000, 999999);
-        $outbox = ['to' => trim((string) $row['email']), 'subject' => '관리자 로그인 인증번호',
-            'body' => "관리자 로그인 인증번호는 {$code} 입니다.\n" . self::ttlMinutes() . '분 안에 입력해 주세요.', 'skip' => false];
+        $message = MfaEmail::compose('놀씨어터', $code, (int) $p['expires']);
+        $outbox = ['to' => trim((string) $row['email']), 'subject' => $message['subject'],
+            'body' => $message['text'], 'html' => $message['html'], 'skip' => false];
         // Keep the session lock through delivery: parallel resends cannot bypass cooldown.
         static::deliver($outbox);
         $_SESSION['mfa_pending']['code_hash'] = password_hash($code, PASSWORD_DEFAULT);
@@ -107,6 +109,6 @@ class Mfa
     public static function clear(): void { AuthSession::forgetMfa(); }
     protected static function deliver(array $outbox): void
     {
-        SmtpMailer::send($outbox['to'], $outbox['subject'], $outbox['body']);
+        SmtpMailer::send($outbox['to'], $outbox['subject'], $outbox['body'], $outbox['html'] ?? null);
     }
 }

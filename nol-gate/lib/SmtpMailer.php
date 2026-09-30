@@ -5,7 +5,7 @@ class SmtpMailer
     /** @var list<string> */
     private static $trace = [];
 
-    public static function send(string $to, string $subject, string $body): void
+    public static function send(string $to, string $subject, string $body, ?string $html = null): void
     {
         self::$trace = [];
         $host = SMTP_HOST;
@@ -15,7 +15,7 @@ class SmtpMailer
         $from = SMTP_FROM !== '' ? SMTP_FROM : SMTP_USER;
         $fromName = SMTP_FROM_NAME;
 
-        self::debug('start', 'to=' . $to . ' from=' . $from . ' host=' . $host . ':' . $port . ' user=' . $user);
+        self::debug('start', 'SMTP delivery started');
 
         if ($user === '' || $pass === '') {
             throw new RuntimeException('SMTP 계정이 없습니다.');
@@ -60,11 +60,22 @@ class SmtpMailer
                 'Date: ' . date('r'),
                 'Message-ID: <' . bin2hex(random_bytes(12)) . '@nol-gate>',
                 'MIME-Version: 1.0',
-                'Content-Type: text/plain; charset=UTF-8',
-                'Content-Transfer-Encoding: 8bit',
             ];
-
-            $data = implode("\r\n", $headers) . "\r\n\r\n" . $body . "\r\n.";
+            if ($html !== null) {
+                $boundary = 'mfa_' . bin2hex(random_bytes(18));
+                $headers[] = 'Content-Type: multipart/alternative; boundary="' . $boundary . '"';
+                $payload = '';
+                foreach (['text/plain' => $body, 'text/html' => $html] as $type => $content) {
+                    $payload .= '--'.$boundary."\r\nContent-Type: ".$type."; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n";
+                    $payload .= chunk_split(base64_encode($content), 76, "\r\n");
+                }
+                $payload .= '--'.$boundary."--\r\n";
+            } else {
+                $headers[] = 'Content-Type: text/plain; charset=UTF-8';
+                $headers[] = 'Content-Transfer-Encoding: base64';
+                $payload = chunk_split(base64_encode($body), 76, "\r\n");
+            }
+            $data = implode("\r\n", $headers) . "\r\n\r\n" . $payload . "\r\n.";
             self::command($socket, $data, [250], 'BODY');
             fwrite($socket, "QUIT\r\n");
         } catch (Throwable $e) {
@@ -115,14 +126,12 @@ class SmtpMailer
 
     private static function debug(string $step, string $detail): void
     {
+        $detail = (string) preg_replace('/[A-Z0-9._%+\x27-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i', '[email]', $detail);
         $line = date('c') . " [smtp] {$step} {$detail}";
         self::$trace[] = $line;
         error_log($line);
 
-        $dir = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'storage';
-        if (!is_dir($dir)) {
-            @mkdir($dir, 0775, true);
-        }
-        @file_put_contents($dir . DIRECTORY_SEPARATOR . 'mfa-smtp.log', $line . PHP_EOL, FILE_APPEND | LOCK_EX);
+        // The server error log is configured outside the document root.
+        // Never duplicate SMTP diagnostics or recipient data into hosted files.
     }
 }
