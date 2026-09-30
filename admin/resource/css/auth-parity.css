@@ -1,4 +1,5 @@
 /* NOL 관리자 인증 컴포넌트에서 재사용 (2026-09-21). */
+.no-login-page #no-main { padding-bottom: 4rem; }
 .no-login-header {
   padding: 2.5rem 0 3rem;
   margin-bottom: 6rem;

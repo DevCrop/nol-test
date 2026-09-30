@@ -1,114 +1,58 @@
-const $ = (selector) => {
-  return document.querySelector(selector);
-};
-
-const initLogin = () => {
-  const invalidText = document.querySelectorAll('.no-invalid');
-  const user = {
-    id: $('#uid'),
-    pwd: $('#upwd'),
-    captcha: $('#r_captcha'),
+// NOL 인증 입력 구조와 동일하게 처리하되 블루의 일반 POST 흐름을 유지한다.
+(() => {
+  'use strict';
+  const form = document.getElementById('login_form');
+  if (!form) return;
+  const password = form.querySelector('#upwd');
+  const toggle = form.querySelector('.no-pwd-btn');
+  const submit = form.querySelector('[type="submit"]');
+  const fields = [
+    [form.querySelector('#uid'), '아이디를 입력하세요.'],
+    [password, '비밀번호를 입력하세요.'],
+    [form.querySelector('#r_captcha'), '보안코드 5자리를 입력하세요.'],
+  ];
+  let submitting = false;
+  toggle.addEventListener('click', () => {
+    const visible = password.type === 'password';
+    password.type = visible ? 'text' : 'password';
+    toggle.setAttribute('aria-pressed', String(visible));
+    toggle.setAttribute('aria-label', visible ? '비밀번호 숨기기' : '비밀번호 보기');
+    toggle.querySelector('.no-pwd-text').textContent = visible ? '숨기기' : '보기';
+    toggle.querySelector('.no-pwd-icon').classList.toggle('fa-eye', !visible);
+    toggle.querySelector('.no-pwd-icon').classList.toggle('fa-eye-slash', visible);
+  });
+  const setError = (input, message) => {
+    const error = input.closest('.no-auth-field').querySelector('.no-invalid');
+    input.classList.toggle('invalid', !!message);
+    input.setAttribute('aria-invalid', String(!!message));
+    error.classList.toggle('show', !!message);
+    if (message) error.querySelector('span').textContent = message;
   };
-  const pwdButton = {
-    el: $('.no-pwd-btn'),
-    text: $('.no-pwd-text'),
-    icon: $('.no-pwd-icon'),
-  };
-  const submitButton = $('.no-btn--submit');
-
-  const showErrorText = (input, message) => {
-    input.classList.add('invalid');
-    input.parentElement.querySelector('.no-invalid').classList.add('show');
-	input.parentElement.querySelector('.no-invalid').innerText = message;
-  };
-  const hideErrorText = (input) => {
-    input.classList.remove('invalid');
-    input.parentElement.querySelector('.no-invalid').classList.remove('show');
-  };
-
-  const isEmpty = (input, type = 'text') => {
-    if (type === 'number') {
-      return input.value.trim() === '';
-    }
-    return input.value.trim() === '' || input.value.trim().length === 0;
-  };
-
-  const switchPasswordType = () => {
-    if (user.pwd.type === 'text') {
-      user.pwd.type = 'password';
-      pwdButton.text.textContent = 'Show';
-      pwdButton.icon.classList.replace('fa-eye-slash', 'fa-eye');
+  fields.forEach(([input]) => input.addEventListener('input', () => setError(input, '')));
+  form.addEventListener('submit', (event) => {
+    if (submitting) { event.preventDefault(); return; }
+    let firstInvalid = null;
+    fields.forEach(([input, message]) => {
+      const valid = input.id === 'r_captcha'
+        ? /^[0-9]{5}$/.test(input.value.trim())
+        : input.value.trim() !== '';
+      setError(input, valid ? '' : message);
+      if (!valid && !firstInvalid) firstInvalid = input;
+    });
+    if (firstInvalid) {
+      event.preventDefault();
+      firstInvalid.focus();
       return;
     }
-
-    user.pwd.type = 'text';
-    pwdButton.text.textContent = 'Hide';
-    pwdButton.icon.classList.replace('fa-eye', 'fa-eye-slash');
-  };
-
-  const incorrectCaptcha = () => {
-	  alert('이상합니다.');
-	validation({inputValue: user.captcha, isValid: isValid.captcha, type: 'number'}, '보안코드가 일치하지 않습니다. 정확히 입력해주세요.');
-  }
-
-  const processLogin = (e) => {
-    e.preventDefault();
-    const loginForm = $('#login_form');
-
-    const isValid = {
-      id: false,
-      pwd: false,
-      captcha: false,
-    };
-
-    const validation = (validInfo, message) => {
-      if (isEmpty(validInfo.inputValue, validInfo.type)) {
-        showErrorText(validInfo.inputValue, message);
-        isValid[validInfo.isValid] = false;
-      } else {
-        hideErrorText(validInfo.inputValue);
-        isValid[validInfo.isValid] = true;
-      }
-    };
-
-    // validate input value
-    validation({inputValue: user.id, isValid: "id" }, '아이디를 입력하세요.');
-    validation({inputValue: user.pwd, isValid: "pwd"}, '비밀번호를 입력하세요.');
-    validation({inputValue: user.captcha, isValid:"captcha", type: 'number'}, '보안코드를 5자리를 입력하세요.');
-
-	// match id and password
-	/*
-	const matchUserInfo = (isMatch = true) => {
-		const loginError = $('.no-login-error');
-
-		if(!isMatch){
-			loginError.classList.add('show');
-			isValid.match = false;
-			return; 
-		}
-		loginError.classList.add('hide');
-		isValid.match = true;
-	}
-	*/
-
-    // focus invalid text
-    const invalidText = loginForm.querySelector('.no-invalid.show');
-    if (invalidText) {
-      invalidText.parentElement.querySelector('input').focus();
-    }
-
-    // check all input is success
-    for (input in isValid) {
-		
-      if (isValid[input] === false) return;
-    }
-
-    loginForm.submit();
-	console.log(loginForm);
-  };
-
-  pwdButton.el.addEventListener('click', switchPasswordType);
-  submitButton.addEventListener('click', processLogin);
-};
-
-initLogin();
+    submitting = true;
+    submit.disabled = true;
+    form.setAttribute('aria-busy', 'true');
+    document.body.classList.add('is-loading');
+  });
+  window.addEventListener('pageshow', () => {
+    submitting = false;
+    submit.disabled = false;
+    form.removeAttribute('aria-busy');
+    document.body.classList.remove('is-loading');
+  });
+})();

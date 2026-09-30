@@ -7,6 +7,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>				
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>사이트 관리 시스템</title>
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -15,11 +16,12 @@
     <link rel="stylesheet" href="/resource/vendor/fontawsome/css/all.css" />
 	<link rel="stylesheet" href="./resource/css/style.css"/>
 	<link rel="stylesheet" href="./resource/css/security.css"/>
+	<link rel="stylesheet" href="./resource/css/auth-parity.css?v=<?=filemtime(__DIR__ . '/resource/css/auth-parity.css')?>"/>
 
 	<!-- admin only -->
-	<script type="text/javascript" src="./resource/js/login.js" defer></script>
+	<script type="text/javascript" src="./resource/js/login.js?v=<?=filemtime(__DIR__ . '/resource/js/login.js')?>" defer></script>
 </head>
-	<body class="no-sub-body">
+	<body class="no-sub-body no-login-page">
     <div class="no-sub-wrap">
       <header class="no-login-header">
         <h1 class="no-login-logo">
@@ -51,49 +53,52 @@
                   <span><?=htmlspecialchars($loginError, ENT_QUOTES, 'UTF-8')?></span>
                 </div>
 
-                <div class="no-form-control no-form-control--login">
+                <div class="no-auth-field">
                   <label for="uid">아이디</label>
-                  <input type="text" name="uid" id="uid" placeholder="아이디" />
-                  <span class="no-form-icon">
-                    <i class="bx bxs-user"></i>
-                  </span>
-                  <p class="no-invalid">
+                  <div class="no-auth-input">
+                    <i class="bx bxs-user" aria-hidden="true"></i>
+                    <input type="text" name="uid" id="uid" placeholder="아이디" autocomplete="username" aria-describedby="uid-error" />
+                  </div>
+                  <p class="no-invalid" id="uid-error">
                     <i class="bx bxs-info-circle"></i>
                     <span>아이디를 입력하세요.</span>
                   </p>
                 </div>
                 <!-- form-control -->
-                <div class="no-form-control no-form-control--login">
-                  <div class="no-form-pwd">
+                <div class="no-auth-field">
+                  <div class="no-auth-field__head">
                     <label for="upwd">비밀번호</label>
 
-                    <div class="no-pwd-btn">
+                    <button type="button" class="no-pwd-btn" aria-label="비밀번호 보기" aria-pressed="false">
                       <i class="fa-regular fa-eye no-pwd-icon"></i>
-                      <span class="no-pwd-text">Show</span>
-                    </div>
+                      <span class="no-pwd-text">보기</span>
+                    </button>
                   </div>
+                  <div class="no-auth-input">
+                  <i class="bx bxs-lock" aria-hidden="true"></i>
                   <input
                     type="password"
                     name="upwd"
                     id="upwd"
                     placeholder="비밀번호"
+                    autocomplete="current-password"
+                    aria-describedby="upwd-error"
                   />
-                  <div class="no-form-icon">
-                    <i class="bx bxs-lock"></i>
                   </div>
-                  <p class="no-invalid">
+                  <p class="no-invalid" id="upwd-error">
                     <i class="bx bxs-info-circle"></i>
                     <span>비밀번호를 입력하세요.</span>
                   </p>
                 </div>
                 <!-- form-control -->
-                <div class="no-form-control no-form-control--login">
+                <div class="no-auth-field">
                   <label for="r_captcha">보안코드</label>
 
-                  <div class="no-form-flex">
+                  <div class="no-auth-captcha">
                     <div class="no-captcha-image">
                       <img src="../inc/lib/captcha.admin.n.php" alt="captcha" style="height:32px;" />
                     </div>
+                    <div class="no-auth-input no-auth-input--captcha">
                     <input
                       type="text"
                       name="r_captcha"
@@ -101,13 +106,16 @@
                       placeholder="보안코드"
                       autocomplete="off"
                       maxlength="5"
+                      inputmode="numeric"
+                      aria-describedby="captcha-error"
                       class="no-captcha-input"
                     />
-                    <p class="no-invalid">
+                    </div>
+                  </div>
+                    <p class="no-invalid" id="captcha-error">
                       <i class="bx bxs-info-circle"></i>
                       <span>보안코드를 입력하세요.</span>
                     </p>
-                  </div>
                 </div>
                 <!-- form-control -->
               </div>
@@ -137,17 +145,5 @@
       </footer>
     </div>
 
-	<style>
-		.no-form-control--login{
-		display: block; 
-			background: none;
-			border: 0; 
-			height: auto;
-		}
-		.no-form-control--login .no-form-icon{
-			left: 2.2rem;
-		}
-	</style>
   </body>
-  <script>document.getElementById('login_form').addEventListener('submit',()=>document.body.classList.add('is-loading'));</script>
 </html>

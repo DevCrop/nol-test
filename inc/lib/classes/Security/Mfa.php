@@ -81,15 +81,23 @@ final class Mfa
     {
         $user = (string) blue_env('SMTP_USER', ''); $pass = (string) blue_env('SMTP_PASS', '');
         if ($user === '' || $pass === '') {
-            if (APP_ENV === 'development') { file_put_contents(dirname(__DIR__, 4) . '/storage/mfa-mail.log', date('c') . " {$to} {$code}\n", FILE_APPEND | LOCK_EX); return; }
+            // Offline QA may exercise challenge state without external delivery.
+            // Browser requests must never silently bypass a missing SMTP setup.
+            if (APP_ENV === 'development' && PHP_SAPI === 'cli' && is_file('/.dockerenv')) return;
             throw new \RuntimeException('인증 메일 설정이 완료되지 않았습니다.');
         }
         $root = dirname(__DIR__, 2) . '/PHPMailer_new/src/';
         require_once $root . 'Exception.php'; require_once $root . 'PHPMailer.php'; require_once $root . 'SMTP.php';
         $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
         $mail->isSMTP(); $mail->Host = (string) blue_env('SMTP_HOST', 'smtp.gmail.com'); $mail->Port = (int) blue_env('SMTP_PORT', 587);
-        $mail->SMTPAuth = true; $mail->Username = $user; $mail->Password = $pass; $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->SMTPAuth = true; $mail->Username = $user; $mail->Password = $pass;
+        $mail->SMTPSecure = $mail->Port === 465
+            ? \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS
+            : \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
         $mail->CharSet = 'UTF-8'; $mail->setFrom((string) blue_env('SMTP_FROM', $user), (string) blue_env('SMTP_FROM_NAME', 'Blue Square'));
-        $mail->addAddress($to); $mail->Subject = '블루스퀘어 관리자 로그인 인증번호'; $mail->Body = "인증번호는 {$code} 입니다. " . (int) ceil(MFA_TTL_SECONDS / 60) . "분 안에 입력하세요."; $mail->send();
+        $message = MfaEmail::compose('블루스퀘어', $code, (int) $_SESSION['mfa_pending']['expires']);
+        $mail->addAddress($to); $mail->Subject = $message['subject'];
+        $mail->isHTML(true); $mail->Body = $message['html']; $mail->AltBody = $message['text'];
+        $mail->send();
     }
 }
