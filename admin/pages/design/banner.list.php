@@ -217,7 +217,7 @@
                                                 </td>
                                                 <td>
                                                     <?php if ($v['b_target'] != '_none' && isset($v['b_link'])): ?>
-                                                        <a href="<?= htmlspecialchars($v['b_link']) ?>" target="_blank"><?= htmlspecialchars($v['b_link']) ?></a>
+                                                        <a href="<?= htmlspecialchars(\Security\SafeLink::normalize((string)$v['b_link']) ?: '#', ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener noreferrer"><?= htmlspecialchars($v['b_link'], ENT_QUOTES, 'UTF-8') ?></a>
                                                     <?php else: ?>
                                                         링크없음
                                                     <?php endif; ?>

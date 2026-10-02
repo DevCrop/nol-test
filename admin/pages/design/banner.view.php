@@ -278,7 +278,7 @@ $query = "SELECT *
                                             id="b_title"
                                             class="no-input--detail"
                                             placeholder="제목을 입력해주세요."
-                                            value="<?=$data['b_title']?>" 
+                                            value="<?=htmlspecialchars((string)$data['b_title'], ENT_QUOTES, 'UTF-8')?>"
                                         />
                                     </div>
                                 </div>
@@ -295,7 +295,7 @@ $query = "SELECT *
                                             id="b_desc"
                                             class="no-input--detail"
                                             placeholder="제목을 입력해주세요."
-                                            value="<?=$data['b_desc']?>"
+                                            value="<?=htmlspecialchars((string)$data['b_desc'], ENT_QUOTES, 'UTF-8')?>"
                                         />
                                     </div>
                                 </div>
@@ -395,7 +395,7 @@ $query = "SELECT *
                                             id="b_link"
                                             class="no-input--detail"
                                             placeholder="링크주소를 입력해주세요."
-                                            value="<?=$data['b_link']?>"
+                                            value="<?= htmlspecialchars($data['b_link'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
                                         />
                                     </div>
                                 </div>

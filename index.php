@@ -67,24 +67,19 @@
 
 <main class="no-main">
 
-<!--
-<?php
-$banners = DB::query("SELECT * FROM nb_banner WHERE b_view = 'Y' ORDER BY b_idx ASC"); // b_view가 'Y'인 것만 가져오고 b_idx 순으로 정렬
-?>-->
-
-
 <?php
 
 // 현재 날짜 설정
 $current_date = date('Y-m-d'); // 오늘 날짜를 "YYYY-MM-DD" 형식으로 가져옵니다.
 
 // SQL 쿼리: 날짜 필터 조건 추가 (0000-00-00 예외 처리)
-$banners = DB::query("SELECT * FROM nb_banner WHERE b_view = 'Y' AND (
-    (b_sdate_view <= :current_date AND b_edate_view >= :current_date) OR
-    (b_sdate_view = '0000-00-00' AND b_edate_view = '0000-00-00')
-) ORDER BY b_idx ASC", [
-    'current_date' => $current_date
-]);
+try {
+    $banners = \Security\MainBanner::visible(DB::getInstance(), $NO_SITE_UNIQUE_KEY, $current_date);
+} catch (Throwable $e) {
+    error_log('Main banner query failed');
+    $banners = [];
+    if (!headers_sent()) http_response_code(503);
+}
 
 
 ?>
@@ -101,14 +96,14 @@ $banners = DB::query("SELECT * FROM nb_banner WHERE b_view = 'Y' AND (
                     // 장소 이름 기본값 설정
                     $place_name = $v['b_location'] ?? "알 수 없음";
                     // 링크 설정
-                    $link = $v['b_link'] ?? "#";
+                    $link = ($v['b_target'] ?? '_none') === '_none' ? '#' : (\Security\SafeLink::normalize((string) ($v['b_link'] ?? '')) ?: '#');
                 ?>
                 <li class="swiper-slide poster">
-					<a href="<?= $link ?>" <?= ($v['b_target'] == '_blank') ? 'target="_blank" rel="noopener noreferrer"' : '' ?>>
+					<a href="<?= htmlspecialchars($link, ENT_QUOTES, 'UTF-8') ?>" <?= ($v['b_target'] == '_blank') ? 'target="_blank" rel="noopener noreferrer"' : '' ?>>
                         <figure>
                             <picture>
-                                <source srcset="<?= $mobile_banner_image ?>" media="(max-width: 768px)">
-                                <img src="<?= $desktop_banner_image ?>" alt="">
+                                <source srcset="<?= htmlspecialchars($mobile_banner_image, ENT_QUOTES, 'UTF-8') ?>" media="(max-width: 768px)">
+                                <img src="<?= htmlspecialchars($desktop_banner_image, ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars($v['b_title'], ENT_QUOTES, 'UTF-8') ?>">
                             </picture>
                         </figure>
                         

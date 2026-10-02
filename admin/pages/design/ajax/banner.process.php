@@ -7,6 +7,15 @@ $pdo = DB::getInstance();
 $mode = $_POST['mode'] ?? '';
 $b_location = $_POST['b_location'] ?? ''; // b_location 기본값 설정
 
+if (in_array($mode, ['save', 'edit'], true)) {
+    try { $_POST = array_replace($_POST, \Security\BannerInput::validate($_POST)); }
+    catch (InvalidArgumentException $e) {
+        http_response_code(400);
+        echo json_encode(['result'=>'fail', 'msg'=>$e->getMessage()], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+}
+
 if ($mode === "save") {
     try {
         $b_loc = $_POST['b_loc'] ?? '';
@@ -17,12 +26,12 @@ if ($mode === "save") {
 
         $b_none_view = $_POST['b_none_view'] ?? '';
         $b_none_limit = $_POST['b_none_limit'] ?? '';
-        $b_sdate = $_POST['b_sdate'] ?? '';
+        $b_sdate = $_POST['b_sdate'];
 
-        $b_sdate_view = $_POST['b_sdate_view'] ?? '';
-        $b_edate_view = $_POST['b_edate_view'] ?? '';
+        $b_sdate_view = $_POST['b_sdate_view'];
+        $b_edate_view = $_POST['b_edate_view'];
 
-        $b_edate = $_POST['b_edate'] ?? '';
+        $b_edate = $_POST['b_edate'];
         $b_desc = $_POST['b_desc'] ?? '';
         $b_contents = $_POST['content'] ?? '';
 
@@ -92,10 +101,10 @@ if ($mode === "save") {
     $b_idx = $_POST['b_idx'] ?? '';
     $b_none_view = $_POST['b_none_view'] ?? '';
     $b_none_limit = $_POST['b_none_limit'] ?? '';
-    $b_sdate = $_POST['b_sdate'] ?? '';
-    $b_edate = $_POST['b_edate'] ?? '';
-    $b_sdate_view = $_POST['b_sdate_view'] ?? '';
-    $b_edate_view = $_POST['b_edate_view'] ?? '';
+    $b_sdate = $_POST['b_sdate'];
+    $b_edate = $_POST['b_edate'];
+    $b_sdate_view = $_POST['b_sdate_view'];
+    $b_edate_view = $_POST['b_edate_view'];
     $b_desc = $_POST['b_desc'] ?? '';
     $b_contents = $_POST['content'] ?? '';
 
@@ -157,11 +166,13 @@ if ($mode === "save") {
 
 	// ✅ 기존 파일 삭제 (업로드 성공 시에만)
 	if ($result) {
-		if ($uploadResult && $savedFile !== $data['b_img'] && !empty($data['b_img']) && file_exists($data['b_img'])) {
-			unlink($data['b_img']);
+		if ($uploadResult && $savedFile !== $data['b_img'] && !empty($data['b_img'])) {
+			$old = \Security\UploadGuard::pathInside($uploads_dir, (string)$data['b_img']);
+			if ($old !== null) unlink($old);
 		}
-		if ($uploadResult2 && $savedFile2 !== $data['b_img_mobile'] && !empty($data['b_img_mobile']) && file_exists($data['b_img_mobile'])) {
-			unlink($data['b_img_mobile']);
+		if ($uploadResult2 && $savedFile2 !== $data['b_img_mobile'] && !empty($data['b_img_mobile'])) {
+			$old = \Security\UploadGuard::pathInside($uploads_dir, (string)$data['b_img_mobile']);
+			if ($old !== null) unlink($old);
 		}
 	}
 
