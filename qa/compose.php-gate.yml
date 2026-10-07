@@ -1,0 +1,6 @@
+# Same DocumentRoot as public site. QA credentials only, no SMTP or published ports.
+services:
+  web:
+    environment:
+      GATE_HOST: gate.noltheater-daehakro.com
+      GATE_ROUTE_MODE: path

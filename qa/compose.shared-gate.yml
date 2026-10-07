@@ -1,0 +1,7 @@
+# Override for shared DocumentRoot QA; never uses real SMTP credentials.
+# docker compose -p nol-sharedqa -f qa/compose.clean.yml -f qa/compose.shared-gate.yml up -d
+services:
+  web:
+    environment:
+      GATE_HOST: gate.noltheater-daehakro.com
+      GATE_ROUTE_MODE: rewrite

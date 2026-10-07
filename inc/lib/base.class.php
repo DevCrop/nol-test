@@ -69,6 +69,8 @@ if (!file_exists($autoloadPath)) {
 
 include_once $autoloadPath;
 
+if (class_exists('Gate')) Gate::routeSharedRoot();
+
 if (class_exists('Gate') && Gate::shouldHideAdminDir()) {
     if (!headers_sent()) {
         http_response_code(404);
@@ -137,7 +139,7 @@ $configuredAdminDir = getenv('NO_ADMIN_DIR');
 $NO_ADMIN_DIR = $configuredAdminDir ? trim($configuredAdminDir, "/\\") : "nol-gate";
 $NO_ADMIN_BASE = ($NO_WEB_BASE !== '' ? $NO_WEB_BASE : '') . "/" . $NO_ADMIN_DIR;
 $NO_ADMIN_PATH = $NO_PROJECT_ROOT . "/" . $NO_ADMIN_DIR;
-if (class_exists('Gate') && Gate::isCurrent()) {
+if (class_exists('Gate') && Gate::isCurrent() && !Gate::usesSharedRoot()) {
     $NO_ADMIN_BASE = '';
 }
 $NO_ADMIN_PAGES_BASE = $NO_ADMIN_BASE . "/pages";

@@ -7,11 +7,13 @@ if(env('APP_ENV')!=='development'||!is_file('/.dockerenv')) exit(1);
 $pdo=new PDO('mysql:host='.env('DB_HOST').';dbname='.env('DB_NAME').';charset=utf8mb4',env('DB_USER'),env('DB_PASS'),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
 $uid='qa_idle_'.bin2hex(random_bytes(4));$no=0;$sessions=[];$pass=0;$fail=0;
 function expectHttp($ok,$name) {global $pass,$fail;if($ok){$pass++;echo "PASS {$name}\n";}else{$fail++;echo "FAIL {$name}\n";}}
-function requestIdle($sid,$method='GET') {
-    $ctx=stream_context_create(['http'=>['method'=>$method,'header'=>"Host: gate.local\r\nCookie: ".session_name()."=".$sid."\r\nX-Requested-With: XMLHttpRequest\r\nX-CSRF-Token: ".$GLOBALS['qaCsrf']."\r\n",'ignore_errors'=>true,'follow_location'=>0,'timeout'=>10]]);
-    $body=file_get_contents('http://127.0.0.1/ajax/session.activity.php',false,$ctx);
+function requestIdle($sid,$method='GET',$qaPath='/ajax/session.activity.php') {
+    $qaHost=(string)env('GATE_HOST','gate.local');
+    $qaBase=env('GATE_ROUTE_MODE','root')==='path' ? '/nol-gate' : '';
+    $ctx=stream_context_create(['http'=>['method'=>$method,'header'=>"Host: ".$qaHost."\r\nCookie: ".session_name()."=".$sid."\r\nX-Requested-With: XMLHttpRequest\r\nX-CSRF-Token: ".$GLOBALS['qaCsrf']."\r\n",'ignore_errors'=>true,'follow_location'=>0,'timeout'=>10]]);
+    $body=file_get_contents('http://127.0.0.1'.$qaBase.$qaPath,false,$ctx);
     preg_match('/\s(\d{3})\s/',$http_response_header[0]??'',$m);
-    return [(int)($m[1]??0),json_decode($body,true)];
+    return [(int)($m[1]??0),json_decode($body,true),(string)$body];
 }
 try {
     $token=bin2hex(random_bytes(32));
@@ -25,6 +27,12 @@ try {
     expectHttp($status===200 && ($data['remaining']??0)<=1680 && ($data['remaining']??0)>1660,'status polling does not extend NOL session');
     [$status,$data]=requestIdle($sid,'POST');
     expectHttp($status===200 && ($data['remaining']??0)>=1798,'activity extends NOL server deadline');
+    if(env('GATE_ROUTE_MODE','root')==='path') {
+        [$pageStatus,,$pageBody]=requestIdle($sid,'GET','/pages/board/board.list.php');
+        preg_match('/window\.NO_ADMIN_BASE\s*=\s*([^;]+);/', $pageBody, $baseMatch);
+        expectHttp($pageStatus===200 && json_decode($baseMatch[1]??'null',true)==='/nol-gate',
+            'authenticated page renders shared-root API base');
+    }
     session_id($sid);session_start();$_SESSION['no_adm_last_activity']=time()-1800;session_write_close();
     [$status]=requestIdle($sid);
     expectHttp($status===401,'NOL idle expiry returns JSON 401');

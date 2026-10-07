@@ -13,13 +13,39 @@ LimitRequestBody 115343360
     Options +FollowSymLinks
     RewriteEngine On
 
+    # Deny environment backups/prepared deployment files as well as .env itself.
+    RewriteRule (^|/)\.env(?:\.[^/]*)?(?:/|$) - [R=404,L,NC]
+
+    # Shared-hosting gate: the provider must first send this host to this account.
+    # Keep the browser URL at /; do not expose the physical admin directory.
+    RewriteCond %{HTTP_HOST} ^gate\.noltheater-daehakro\.com(?::[0-9]+)?$ [NC]
+    RewriteCond %{ENV:GATE_ROUTE_MODE} ^rewrite$ [NC]
+    RewriteCond %{THE_REQUEST} \s/+nol-gate(?:[/\s?]) [NC]
+    RewriteRule ^ - [R=404,L]
+
     RewriteCond %{ENV:GATE_ENFORCE} ^(true|1|on)$ [NC]
+    RewriteCond %{HTTP_HOST} !^gate\.noltheater-daehakro\.com(?::[0-9]+)?$ [NC]
     RewriteRule ^nol-gate(?:/|$) - [R=404,L,NC]
 
     RewriteRule ^(?:inc|src|config|bootstrap|routes|sql|qa|storage)(?:/|$) - [R=404,L,NC]
     RewriteRule ^resource/vendor/(?:fullPage\.js-2\.9\.7/(?:examples|tests)|tinymce/plugins/example)(?:/|$) - [R=404,L,NC]
     RewriteRule ^resource/vendor/tinymce/plugins/jbimages(?:/|$) - [R=404,L,NC]
     RewriteRule \.(?:sql|bak|old|orig|env)$ - [R=404,L,NC]
+
+    # Shared files must retain their child directory access rules.
+    RewriteRule ^uploads/request(?:/|$) - [R=403,L,NC]
+    RewriteRule ^uploads/.*\.(?:php[0-9]?|phtml|phar)(?:/|$) - [R=403,L,NC]
+
+    # These resources live outside nol-gate, just like the dedicated vhost aliases.
+    RewriteCond %{HTTP_HOST} ^gate\.noltheater-daehakro\.com(?::[0-9]+)?$ [NC]
+    RewriteRule ^(?:resource/(?:vendor|images)|captcha|uploads)(?:/|$) - [L,NC]
+
+    RewriteCond %{HTTP_HOST} ^gate\.noltheater-daehakro\.com(?::[0-9]+)?$ [NC]
+    RewriteRule ^nol-gate(?:/|$) - [L,NC]
+
+    RewriteCond %{HTTP_HOST} ^gate\.noltheater-daehakro\.com(?::[0-9]+)?$ [NC]
+    RewriteCond %{ENV:GATE_ROUTE_MODE} ^rewrite$ [NC]
+    RewriteRule ^(.*)$ nol-gate/$1 [END]
 
     RewriteCond %{REQUEST_FILENAME} -f [OR]
     RewriteCond %{REQUEST_FILENAME} -d
