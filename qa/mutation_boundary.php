@@ -21,7 +21,8 @@ function boundaryHttp($path, $sid, array $data, ?array $file=null, ?string $csrf
     foreach($data as $k=>$v) $body.="--$boundary\r\nContent-Disposition: form-data; name=\"$k\"\r\n\r\n$v\r\n";
     if($file) $body.="--$boundary\r\nContent-Disposition: form-data; name=\"".($file[2]??'file')."\"; filename=\"".$file[0]."\"\r\nContent-Type: image/png\r\n\r\n".$file[1]."\r\n";
     $body.="--$boundary--\r\n";
-    $ctx=stream_context_create(['http'=>['method'=>'POST','header'=>"Host: gate.local\r\nCookie: ".session_name()."=$sid\r\nX-Requested-With: XMLHttpRequest\r\nContent-Type: multipart/form-data; boundary=$boundary\r\n",'content'=>$body,'ignore_errors'=>true,'follow_location'=>0,'timeout'=>10]]);
+    $qaHost=(string)env('GATE_HOST','gate.local');
+    $ctx=stream_context_create(['http'=>['method'=>'POST','header'=>"Host: ".$qaHost."\r\nCookie: ".session_name()."=$sid\r\nX-Requested-With: XMLHttpRequest\r\nContent-Type: multipart/form-data; boundary=$boundary\r\n",'content'=>$body,'ignore_errors'=>true,'follow_location'=>0,'timeout'=>10]]);
     $response=file_get_contents('http://127.0.0.1'.$path,false,$ctx); preg_match('/\s(\d{3})\s/',$http_response_header[0]??'',$m);
     return [(int)($m[1]??0),json_decode($response,true),(string)$response];
 }

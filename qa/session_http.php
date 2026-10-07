@@ -27,10 +27,11 @@ try {
     expectHttp($status===200 && ($data['remaining']??0)<=1680 && ($data['remaining']??0)>1660,'status polling does not extend NOL session');
     [$status,$data]=requestIdle($sid,'POST');
     expectHttp($status===200 && ($data['remaining']??0)>=1798,'activity extends NOL server deadline');
-    if(env('GATE_ROUTE_MODE','root')==='path') {
+    if(in_array(env('GATE_ROUTE_MODE','root'),['path','internal'],true)) {
         [$pageStatus,,$pageBody]=requestIdle($sid,'GET','/pages/board/board.list.php');
         preg_match('/window\.NO_ADMIN_BASE\s*=\s*([^;]+);/', $pageBody, $baseMatch);
-        expectHttp($pageStatus===200 && json_decode($baseMatch[1]??'null',true)==='/nol-gate',
+        $expectedBase=env('GATE_ROUTE_MODE','root')==='path' ? '/nol-gate' : '';
+        expectHttp($pageStatus===200 && json_decode($baseMatch[1]??'null',true)===$expectedBase,
             'authenticated page renders shared-root API base');
     }
     session_id($sid);session_start();$_SESSION['no_adm_last_activity']=time()-1800;session_write_close();

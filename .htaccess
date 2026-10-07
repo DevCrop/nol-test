@@ -19,7 +19,6 @@ LimitRequestBody 115343360
     # Shared-hosting gate: the provider must first send this host to this account.
     # Keep the browser URL at /; do not expose the physical admin directory.
     RewriteCond %{HTTP_HOST} ^gate\.noltheater-daehakro\.com(?::[0-9]+)?$ [NC]
-    RewriteCond %{ENV:GATE_ROUTE_MODE} ^rewrite$ [NC]
     RewriteCond %{THE_REQUEST} \s/+nol-gate(?:[/\s?]) [NC]
     RewriteRule ^ - [R=404,L]
 
@@ -44,7 +43,6 @@ LimitRequestBody 115343360
     RewriteRule ^nol-gate(?:/|$) - [L,NC]
 
     RewriteCond %{HTTP_HOST} ^gate\.noltheater-daehakro\.com(?::[0-9]+)?$ [NC]
-    RewriteCond %{ENV:GATE_ROUTE_MODE} ^rewrite$ [NC]
     RewriteRule ^(.*)$ nol-gate/$1 [END]
 
     RewriteCond %{REQUEST_FILENAME} -f [OR]

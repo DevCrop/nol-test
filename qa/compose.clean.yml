@@ -31,6 +31,7 @@ services:
       DB_ROOT_PASSWORD: qa-isolated-root
       PUBLIC_HOST: localhost
       GATE_HOST: gate.local
+      GATE_ROUTE_MODE: root
       GATE_ENFORCE: 'true'
       GATE_ALLOW_IPS: ''
       MFA_ENABLED: 'false'

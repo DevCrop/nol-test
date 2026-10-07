@@ -1,5 +1,7 @@
 # 동일 호스팅 PHP gate 라우팅
 
+> 과거 path/302 방식 검증 기록입니다. 2026-10-08부터 주소창 경로를 유지하는 internal 방식이 현재 기준입니다. QA_GATE_INTERNAL_20261008.md를 참조하세요.
+
 ## 최종 재확인
 
 - 컨테이너 재시작 후 DB healthy 상태에서 라우팅 20 PASS / 0 FAIL, 세션·관리자 API base 5 PASS / 0 FAIL, Apache Syntax OK.
