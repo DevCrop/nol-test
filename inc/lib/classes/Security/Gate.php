@@ -10,7 +10,10 @@ final class Gate
         $admin = $path === '/admin' || strpos($path, '/admin/') === 0;
         $gate = GATE_HOST !== '' && hash_equals(strtolower(GATE_HOST), $host);
         if (GATE_ENFORCE && $admin && !$gate) self::deny(404);
-        if ($gate && $path === '/') {
+        if ($gate && ($path === '/' || $path === '/index.php')) {
+            if (!in_array($_SERVER['REQUEST_METHOD'] ?? 'GET', ['GET', 'HEAD'], true)) {
+                http_response_code(405); header('Allow: GET, HEAD'); exit;
+            }
             header('Location: /admin/', true, 302);
             exit;
         }

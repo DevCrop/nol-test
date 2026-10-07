@@ -6,7 +6,8 @@ if (APP_ENV !== 'development' || !is_file('/.dockerenv')) exit("Docker developme
 $pdo=DB::getInstance(); $no=0; $sessions=[];
 function httpQa(string $path,string $sid,string $method='GET',array $data=[]): array {
     $body=http_build_query($data);
-    $context=stream_context_create(['http'=>['method'=>$method,'header'=>"Host: gate.local\r\nCookie: ".session_name()."=".$sid."\r\nX-Requested-With: XMLHttpRequest\r\nContent-Type: application/x-www-form-urlencoded\r\n",'content'=>$body,'ignore_errors'=>true,'follow_location'=>0,'timeout'=>10]]);
+    $qaHost=(string)blue_env('GATE_HOST','gate.local');
+    $context=stream_context_create(['http'=>['method'=>$method,'header'=>"Host: ".$qaHost."\r\nCookie: ".session_name()."=".$sid."\r\nX-Requested-With: XMLHttpRequest\r\nContent-Type: application/x-www-form-urlencoded\r\n",'content'=>$body,'ignore_errors'=>true,'follow_location'=>0,'timeout'=>10]]);
     $result=file_get_contents('http://127.0.0.1'.$path,false,$context);
     preg_match('/\s(\d{3})\s/',$http_response_header[0]??'',$m);
     return [(int)($m[1]??0),json_decode($result,true),$http_response_header];

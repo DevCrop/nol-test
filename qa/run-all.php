@@ -4,4 +4,6 @@ $scripts = ['php-lint.php','security-unit.php','proxy-policy.php','security-regr
 foreach ($scripts as $script) {
     echo "\n=== {$script} ===\n"; passthru(escapeshellarg(PHP_BINARY) . ' -d short_open_tag=1 ' . escapeshellarg(__DIR__ . '/' . $script), $status); if ($status !== 0) $failed++;
 }
+passthru(escapeshellarg(PHP_BINARY) . ' -d short_open_tag=1 ' . escapeshellarg(__DIR__ . '/gate-php-routing.php'), $status);
+if ($status !== 0) $failed++;
 echo "\n" . ($failed ? "FAILED {$failed}" : 'ALL QA PASSED') . "\n"; exit($failed ? 1 : 0);
