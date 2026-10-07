@@ -1,15 +1,16 @@
 
 <!-- jQuery -->
+<script>window.BLUE_ADMIN_BASE = <?=json_encode(blue_admin_base())?>;</script>
 <meta name="csrf-token" content="<?=htmlspecialchars(\Security\Csrf::token(), ENT_QUOTES, 'UTF-8')?>">
 <script type="text/javascript" src="<?=$NO_IS_SUBDIR?>/resource/vendor/jquery/jquery.min.js"></script>
 <script type="text/javascript" src="<?=$NO_IS_SUBDIR?>/resource/vendor/jquery/jquery-ui.js"></script>
 
 <!--  js  -->
-<script type="text/javascript" src="<?=$NO_IS_SUBDIR?>/admin/resource/js/admin.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>" defer></script>
-<script type="text/javascript" src="<?=$NO_IS_SUBDIR?>/admin/resource/js/script.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>" defer></script>
-<script type="text/javascript" src="<?=$NO_IS_SUBDIR?>/admin/resource/js/form.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>" defer></script>
-<script type="text/javascript" src="<?=$NO_IS_SUBDIR?>/admin/resource/js/theme.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>" defer></script>
-<script type="text/javascript" src="<?=$NO_IS_SUBDIR?>/admin/resource/js/security.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>" defer></script>
+<script type="text/javascript" src="<?=$NO_IS_SUBDIR?><?=blue_admin_base()?>/resource/js/admin.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>" defer></script>
+<script type="text/javascript" src="<?=$NO_IS_SUBDIR?><?=blue_admin_base()?>/resource/js/script.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>" defer></script>
+<script type="text/javascript" src="<?=$NO_IS_SUBDIR?><?=blue_admin_base()?>/resource/js/form.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>" defer></script>
+<script type="text/javascript" src="<?=$NO_IS_SUBDIR?><?=blue_admin_base()?>/resource/js/theme.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>" defer></script>
+<script type="text/javascript" src="<?=$NO_IS_SUBDIR?><?=blue_admin_base()?>/resource/js/security.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>" defer></script>
 
 
 <!-- <script type="text/javascript" src="<?=$NO_IS_SUBDIR?>/resource/js/html5shiv.js?v=<?=$STATIC_FRONT_JS_MODIFY_DATE?>"></script>

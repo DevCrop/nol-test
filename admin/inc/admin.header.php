@@ -45,7 +45,7 @@
             </li>
             <? if($_SESSION['no_adm_login_uid']){?>
             <li class="no-nav-item">
-                <form method="post" action="<?=$NO_IS_SUBDIR?>/admin/lib/login/logout.php">
+                <form method="post" action="<?=$NO_IS_SUBDIR?><?=blue_admin_base()?>/lib/login/logout.php">
                 <button type="submit" class="no-nav-link" style="border:0;background:none;width:100%;cursor:pointer">
                 <span class="no-menu-icon sm">
                     <i class="bx bx-log-out"></i>
@@ -56,7 +56,7 @@
             </li>
             <? } ?>
             <li class="no-nav-item">
-                <a href="<?=$NO_IS_SUBDIR?>/admin/pages/account/password.php" class="no-nav-link">
+                <a href="<?=$NO_IS_SUBDIR?><?=blue_admin_base()?>/pages/account/password.php" class="no-nav-link">
                 <span class="no-bullet--status blink"></span>
                 <span class="no-menu-icon sm">
                     <i class="bx bx-user"></i>

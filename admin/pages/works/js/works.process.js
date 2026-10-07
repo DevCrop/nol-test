@@ -204,7 +204,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 					const formData = new FormData();
 					formData.append('file', files[0]);
 
-					fetch('/admin/pages/works/upload.php', {
+					fetch((window.BLUE_ADMIN_BASE ?? '/admin') + '/pages/works/upload.php', {
 						method: 'POST',
 						body: formData
 					}).then(response => response.json())
@@ -230,7 +230,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 					onImageUpload: function(files) {
 						const formData = new FormData();
 						formData.append('file', files[0]);
-						fetch('/admin/pages/works/upload.php', {
+						fetch((window.BLUE_ADMIN_BASE ?? '/admin') + '/pages/works/upload.php', {
 							method: 'POST',
 							body: formData
 						}).then(response => response.json())

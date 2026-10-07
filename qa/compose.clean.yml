@@ -31,6 +31,7 @@ services:
       DB_ROOT_PASSWORD: qa-isolated-root
       PUBLIC_HOST: localhost
       GATE_HOST: gate.local
+      GATE_ROUTE_MODE: path
       GATE_ENFORCE: 'true'
       GATE_ALLOW_IPS: ''
       TRUSTED_PROXY_CIDRS: ''

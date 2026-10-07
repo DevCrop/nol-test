@@ -13,8 +13,10 @@ function crudRequest(string $path, array $data, bool $popupFile=false): array {
         foreach($data as $key=>$value)$content.="--$boundary\r\nContent-Disposition: form-data; name=\"$key\"\r\n\r\n$value\r\n";
         $content.="--$boundary\r\nContent-Disposition: form-data; name=\"p_img\"; filename=\"qa.png\"\r\nContent-Type: image/png\r\n\r\n".base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aN2QAAAAASUVORK5CYII=')."\r\n--$boundary--\r\n";
     }
-    $ctx=stream_context_create(['http'=>['method'=>'POST','header'=>"Host: gate.local\r\nCookie: ".session_name().'='.$GLOBALS['sid']."\r\nX-Requested-With: XMLHttpRequest\r\nContent-Type: $type\r\n",'content'=>$content,'ignore_errors'=>true,'follow_location'=>0,'timeout'=>10]]);
-    $body=file_get_contents('http://127.0.0.1'.$path,false,$ctx);preg_match('/\s(\d{3})\s/',$http_response_header[0]??'',$m);
+    $qaHost=(string)blue_env('GATE_HOST','gate.local');
+    $requestPath=blue_env('GATE_ROUTE_MODE','path')==='internal' ? substr($path,6) : $path;
+    $ctx=stream_context_create(['http'=>['method'=>'POST','header'=>"Host: ".$qaHost."\r\nCookie: ".session_name().'='.$GLOBALS['sid']."\r\nX-Requested-With: XMLHttpRequest\r\nContent-Type: $type\r\n",'content'=>$content,'ignore_errors'=>true,'follow_location'=>0,'timeout'=>10]]);
+    $body=file_get_contents('http://127.0.0.1'.$requestPath,false,$ctx);preg_match('/\s(\d{3})\s/',$http_response_header[0]??'',$m);
     return [(int)($m[1]??0),json_decode($body,true),(string)$body];
 }
 function crudOk(array $response): bool {return $response[0]===200 && (!empty($response[1]['success']) || ($response[1]['result']??'')==='success');}

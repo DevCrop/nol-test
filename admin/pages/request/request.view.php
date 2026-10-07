@@ -231,7 +231,7 @@ foreach ($fileFields as $field) {
 											<ul class="no-file-list privacy-download-list">
 												<?php foreach ($files as $file): ?>
 													<li>
-												<form method="post" action="/admin/pages/request/ajax/request.download.php" class="privacy-download">
+												<form method="post" action="<?=blue_admin_base()?>/pages/request/ajax/request.download.php" class="privacy-download">
 													<input type="hidden" name="no" value="<?= (int) $no ?>"><input type="hidden" name="field" value="<?=htmlspecialchars($file['field'], ENT_QUOTES, 'UTF-8')?>">
 													<span class="privacy-file-name"><i class="fa-solid fa-file"></i> <?= $plain($file['origin']) ?></span>
 													<label>다운로드 사유 <input name="reason" required minlength="5" maxlength="500" placeholder="업무 목적을 5자 이상 입력"></label>

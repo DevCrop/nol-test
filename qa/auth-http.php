@@ -8,7 +8,8 @@ function httpQa(string $path,string $sid,string $method='GET',array $data=[]): a
     $body=http_build_query($data);
     $qaHost=(string)blue_env('GATE_HOST','gate.local');
     $context=stream_context_create(['http'=>['method'=>$method,'header'=>"Host: ".$qaHost."\r\nCookie: ".session_name()."=".$sid."\r\nX-Requested-With: XMLHttpRequest\r\nContent-Type: application/x-www-form-urlencoded\r\n",'content'=>$body,'ignore_errors'=>true,'follow_location'=>0,'timeout'=>10]]);
-    $result=file_get_contents('http://127.0.0.1'.$path,false,$context);
+    $requestPath=blue_env('GATE_ROUTE_MODE','path')==='internal' ? substr($path,6) : $path;
+    $result=file_get_contents('http://127.0.0.1'.$requestPath,false,$context);
     preg_match('/\s(\d{3})\s/',$http_response_header[0]??'',$m);
     return [(int)($m[1]??0),json_decode($result,true),$http_response_header];
 }
@@ -41,7 +42,8 @@ try {
     qa_expect($status===403,'regular administrator cannot manage accounts');
     $pdo->prepare('UPDATE nb_admin SET password_must_change=1 WHERE no=?')->execute([$no]);
     [$status,$body]=httpQa('/admin/pages/board/board.list.php',$sid);
-    qa_expect($status===403 && ($body['redirect']??'')==='/admin/pages/account/password.php','DB password reset is enforced on existing session');
+    $expectedPassword=blue_env('GATE_ROUTE_MODE','path')==='internal' ? '/pages/account/password.php' : '/admin/pages/account/password.php';
+    qa_expect($status===403 && ($body['redirect']??'')===$expectedPassword,'DB password reset is enforced on existing session');
     [$status]=httpQa('/admin/pages/account/password.php',$sid);
     qa_expect($status===200,'forced password change page remains accessible');
     $pdo->prepare('UPDATE nb_admin SET password_must_change=0 WHERE no=?')->execute([$no]);

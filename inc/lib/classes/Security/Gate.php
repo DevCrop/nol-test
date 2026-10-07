@@ -7,10 +7,12 @@ final class Gate
     {
         $host = strtolower(preg_replace('/:\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? '')));
         $path = '/' . ltrim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), '/');
-        $admin = $path === '/admin' || strpos($path, '/admin/') === 0;
+        $internal = blue_env('GATE_ROUTE_MODE', 'path') === 'internal';
+        $script = (string) ($_SERVER['SCRIPT_NAME'] ?? '');
+        $admin = $path === '/admin' || strpos($path, '/admin/') === 0 || ($internal && strpos($script, '/admin/') === 0);
         $gate = GATE_HOST !== '' && hash_equals(strtolower(GATE_HOST), $host);
         if (GATE_ENFORCE && $admin && !$gate) self::deny(404);
-        if ($gate && ($path === '/' || $path === '/index.php')) {
+        if ($gate && !$internal && ($path === '/' || $path === '/index.php')) {
             if (!in_array($_SERVER['REQUEST_METHOD'] ?? 'GET', ['GET', 'HEAD'], true)) {
                 http_response_code(405); header('Allow: GET, HEAD'); exit;
             }

@@ -6,7 +6,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') { http_response_code(405); ex
 $return = static function (string $message, bool $error = false, string $path = '/admin/pages/account/index.php'): void {
     $_SESSION['account_flash'] = $message;
     $_SESSION['account_flash_error'] = $error;
-    header('Location: ' . $path); exit;
+    header('Location: ' . blue_admin_url($path)); exit;
 };
 
 $mode = (string) ($_POST['mode'] ?? '');

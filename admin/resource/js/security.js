@@ -30,8 +30,8 @@
 
   const timer = document.querySelector('[data-session-timer]');
   if (timer) {
-    timer.dataset.activityUrl = '/admin/lib/session/ping.php';
-    timer.dataset.logoutUrl = '/admin/index.php';
+    timer.dataset.activityUrl = (window.BLUE_ADMIN_BASE ?? '/admin') + '/lib/session/ping.php';
+    timer.dataset.logoutUrl = (window.BLUE_ADMIN_BASE ?? '/admin') + '/index.php';
     import('./SessionIdleTimer.js?v=20260921').then(({SessionIdleTimer}) => new SessionIdleTimer(timer).init());
   }
 

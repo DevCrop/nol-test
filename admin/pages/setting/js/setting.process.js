@@ -54,7 +54,7 @@ function doSave(){
 				alert(jsonData.msg);
 			}else if(jsonData.result == "success"){
 				alert(jsonData.msg);
-				location.href = '/admin/';
+				location.href = (window.BLUE_ADMIN_BASE ?? '/admin') + '/';
 			}
 
 		},

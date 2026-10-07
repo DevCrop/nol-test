@@ -11,7 +11,7 @@
 	include_once "../../inc/admin.css.php";
 	include_once "../../inc/admin.js.php";
 ?>
-<script type="text/javascript" src="<?= htmlspecialchars($NO_IS_SUBDIR) ?>/admin/resource/js/datepicker.onlymonth.js?v=<?= htmlspecialchars($STATIC_FRONT_JS_MODIFY_DATE) ?>"></script>
+<script type="text/javascript" src="<?= htmlspecialchars($NO_IS_SUBDIR) ?><?=blue_admin_base()?>/resource/js/datepicker.onlymonth.js?v=<?= htmlspecialchars($STATIC_FRONT_JS_MODIFY_DATE) ?>"></script>
 </head>
 
 <body>

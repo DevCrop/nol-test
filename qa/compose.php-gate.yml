@@ -3,4 +3,4 @@ services:
   web:
     environment:
       GATE_HOST: blue-gate.qa.local
-      GATE_ROUTE_MODE: path
+      GATE_ROUTE_MODE: internal

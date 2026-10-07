@@ -3,7 +3,7 @@ require_once '../../../../inc/lib/base.class.php';
 $current = (string) ($_POST['current_password'] ?? '');
 $new = (string) ($_POST['new_password'] ?? '');
 $confirm = (string) ($_POST['new_password_confirm'] ?? '');
-$fail = function (string $message): void { $_SESSION['password_message'] = $message; header('Location: /admin/pages/account/password.php'); exit; };
+$fail = function (string $message): void { $_SESSION['password_message'] = $message; header('Location: ' . blue_admin_url('/admin/pages/account/password.php')); exit; };
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') { http_response_code(405); exit; }
 try { \Security\AccountValidator::password($new, $confirm); } catch (RuntimeException $e) { $fail($e->getMessage()); }
 $row = \Security\AdminAccount::findByNo((int) $_SESSION['no_adm_login_no']);
@@ -15,4 +15,4 @@ $stmt->execute([password_hash($new, PASSWORD_DEFAULT), (int) $row['no']]);
 $_SESSION['no_adm_password_change_required'] = false;
 \Security\AdminAccount::establish(\Security\AdminAccount::findByNo((int) $row['no']));
 \Security\AuditLogger::record('update', 'account', (int) $row['no'], (string) $row['uid'], ['password_changed' => true]);
-header('Location: /admin/pages/board/board.list.php'); exit;
+header('Location: ' . blue_admin_url('/admin/pages/board/board.list.php')); exit;

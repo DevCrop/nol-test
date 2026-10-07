@@ -39,6 +39,19 @@ if (!function_exists('blue_load_env')) {
 
 blue_load_env(dirname(__DIR__, 2) . '/.env');
 
+if (!function_exists('blue_admin_base')) {
+    function blue_admin_base(): string
+    {
+        $host = strtolower(preg_replace('/:\\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? '')));
+        return blue_env('GATE_ROUTE_MODE', 'path') === 'internal'
+            && $host === strtolower((string) blue_env('GATE_HOST', '')) ? '' : '/admin';
+    }
+    function blue_admin_url(string $url): string
+    {
+        return strpos($url, '/admin/') === 0 ? blue_admin_base() . substr($url, 6) : $url;
+    }
+}
+
 if (!defined('APP_ENV')) define('APP_ENV', (string) blue_env('APP_ENV', 'production'));
 if (!defined('PUBLIC_HOST')) define('PUBLIC_HOST', (string) blue_env('PUBLIC_HOST', 'www.bluesquare.kr'));
 if (!defined('GATE_HOST')) define('GATE_HOST', (string) blue_env('GATE_HOST', ''));

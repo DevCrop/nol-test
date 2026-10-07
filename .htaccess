@@ -5,6 +5,10 @@ php_value upload_max_filesize 100M
 Options -Indexes
 
 RewriteEngine On
+    # Internal gate URLs use the same filesystem and DB; no directory redirect.
+    RewriteCond %{HTTP_HOST} ^(?:gate\.bluesquare\.kr|blue-gate\.qa\.local)(?::[0-9]+)?$ [NC]
+    RewriteCond %{THE_REQUEST} \s/+admin(?:[/\s?]) [NC]
+    RewriteRule ^ - [R=404,L]
 RewriteRule (^|/)\. - [F,L]
 RewriteRule \.(sql|log|md|bak|backup|old|test)$ - [F,L,NC]
 RewriteRule (^|/)composer\.(json|lock)$ - [F,L,NC]
@@ -13,6 +17,24 @@ RewriteRule (^|/)(vendor/.*/(examples?|tests?)|index\.test\.php|test\.js)$ - [R=
 RewriteRule ^resource/vendor/(?:fullPage\.js-2\.9\.7/(?:examples|tests)|tinymce/plugins/(?:example|jbimages))(?:/|$) - [R=404,L,NC]
 RewriteRule ^uploads/board/file_ - [F,L,NC]
 RewriteRule ^uploads/popup/.*(?:^|[_-])test(?:[_-]|\.) - [F,L,NC]
+
+RewriteCond %{HTTP_HOST} ^(?:gate\.bluesquare\.kr|blue-gate\.qa\.local)(?::[0-9]+)?$ [NC]
+RewriteRule ^(?:resource/(?:vendor|images)|uploads|inc/lib/captcha\.[^/]+\.php)(?:/|$) - [L,NC]
+RewriteCond %{HTTP_HOST} ^(?:gate\.bluesquare\.kr|blue-gate\.qa\.local)(?::[0-9]+)?$ [NC]
+RewriteRule ^admin(?:/|$) - [L,NC]
+RewriteCond %{HTTP_HOST} ^(?:gate\.bluesquare\.kr|blue-gate\.qa\.local)(?::[0-9]+)?$ [NC]
+RewriteRule ^(.*)$ admin/$1 [END]
+
+# Development gate.local keeps legacy QA compatibility unless internal is selected.
+RewriteCond %{HTTP_HOST} ^gate\.local(?::[0-9]+)?$ [NC]
+RewriteCond %{ENV:GATE_ROUTE_MODE} ^internal$ [NC]
+RewriteRule ^(?:resource/(?:vendor|images)|uploads|inc/lib/captcha\.[^/]+\.php)(?:/|$) - [L,NC]
+RewriteCond %{HTTP_HOST} ^gate\.local(?::[0-9]+)?$ [NC]
+RewriteCond %{ENV:GATE_ROUTE_MODE} ^internal$ [NC]
+RewriteRule ^admin(?:/|$) - [L,NC]
+RewriteCond %{HTTP_HOST} ^gate\.local(?::[0-9]+)?$ [NC]
+RewriteCond %{ENV:GATE_ROUTE_MODE} ^internal$ [NC]
+RewriteRule ^(.*)$ admin/$1 [END]
 
 <IfModule mod_headers.c>
     Header always set X-Content-Type-Options "nosniff"

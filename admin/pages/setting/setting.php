@@ -1,6 +1,6 @@
 <?php
 	include_once "../../../inc/lib/base.class.php";
-	header('Location: /admin/pages/account/password.php');
+	header('Location: ' . blue_admin_url('/admin/pages/account/password.php'));
 	exit;
 
 

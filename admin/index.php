@@ -7,6 +7,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>				
+<script>window.BLUE_ADMIN_BASE = <?=json_encode(blue_admin_base())?>;</script>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>사이트 관리 시스템</title>
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">

@@ -19,9 +19,9 @@ final class AuthSession
         if (self::passwordDue($row) && !in_array($path, ['/admin/pages/account/password.php', '/admin/pages/account/ajax/password.process.php', '/admin/lib/session/ping.php'], true)) {
             if (self::wantsJson()) {
                 http_response_code(403); header('Content-Type: application/json; charset=utf-8');
-                echo json_encode(['result'=>'fail', 'message'=>'비밀번호를 변경해야 합니다.', 'redirect'=>'/admin/pages/account/password.php']); exit;
+                echo json_encode(['result'=>'fail', 'message'=>'비밀번호를 변경해야 합니다.', 'redirect'=>blue_admin_url('/admin/pages/account/password.php')]); exit;
             }
-            header('Location: /admin/pages/account/password.php'); exit;
+            header('Location: ' . blue_admin_url('/admin/pages/account/password.php')); exit;
         }
     }
 
@@ -52,7 +52,7 @@ final class AuthSession
             http_response_code(401); header('Content-Type: application/json; charset=utf-8');
             echo json_encode(['result' => 'fail', 'message' => $message, 'msg' => $message]); exit;
         }
-        header('Location: /admin/index.php'); exit;
+        header('Location: ' . blue_admin_url('/admin/index.php')); exit;
     }
 
     public static function wantsJson(): bool
