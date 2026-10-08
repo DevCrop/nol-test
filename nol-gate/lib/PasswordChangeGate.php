@@ -69,13 +69,17 @@ class PasswordChangeGate
         return $reason === self::REASON_EXPIRED ? self::MSG_EXPIRED : self::MSG;
     }
 
-    public function assert(): void
+    public function assert(?array $verifiedAccount = null): void
     {
         $no = (int) ($_SESSION['no_adm_login_no'] ?? 0);
         if ($no < 1) {
             return;
         }
-        $state = $this->evaluate(AccountModel::passwordGateRow($no), $this->isAllowedSurface());
+        // A caller may pass only the account just verified for this request.
+        // No persistent caching: the next HTTP request rechecks the database.
+        $row = $verifiedAccount !== null && (int) ($verifiedAccount['no'] ?? 0) === $no
+            ? $verifiedAccount : AccountModel::passwordGateRow($no);
+        $state = $this->evaluate($row, $this->isAllowedSurface());
         $this->syncSession($state['reason']);
         if (!$state['force']) {
             return;

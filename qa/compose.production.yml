@@ -1,0 +1,8 @@
+# Isolated production-policy QA. No published ports or real SMTP credentials.
+services:
+  web:
+    environment:
+      APP_ENV: production
+      SESSION_SECURE: 'true'
+      GATE_ALLOW_IPS: '127.0.0.1'
+      TRUSTED_PROXY_CIDRS: ''

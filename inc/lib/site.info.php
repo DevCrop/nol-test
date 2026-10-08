@@ -79,7 +79,7 @@ if ($data_siteinfo) {
 }
 
 // 메타 태그 설정
-$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+$protocol = \Http\TransportSecurity::isSecure($_SERVER, (string) env('TRUSTED_PROXY_CIDRS', '')) ? 'https://' : 'http://';
 
 $NO_STATIC_TITLE = $SITEINFO_TITLE;
 $NO_META_KEYWORDS = $SITEINFO_META_KEYWORDS;

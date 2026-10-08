@@ -11,11 +11,7 @@ app()->share('siteinfo', $siteinfo);
 $LOCALE = $LOCALE ?? 'ko';
 
 // HTTPS 판별(프록시 고려)
-$isHttps = (
-    (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
-    (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') ||
-    (($_SERVER['SERVER_PORT'] ?? '') == 443)
-);
+$isHttps = \Http\TransportSecurity::isSecure($_SERVER, (string) env('TRUSTED_PROXY_CIDRS', ''));
 $scheme = $isHttps ? 'https' : 'http';
 $host   = $_SERVER['HTTP_HOST'] ?? ($_SERVER['SERVER_NAME'] ?? 'localhost');
 $uri    = $_SERVER['REQUEST_URI'] ?? '/';

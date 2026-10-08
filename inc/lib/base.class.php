@@ -90,12 +90,7 @@ if (!isset($isDevelopmentEnv)) {
 }
 
 if (!headers_sent()) {
-    $forwardedProto = strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''));
-    $isHttps = (
-        (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
-        ($forwardedProto === 'https') ||
-        (($_SERVER['SERVER_PORT'] ?? '') == 443)
-    );
+    $isHttps = \Http\TransportSecurity::isSecure($_SERVER, (string) env('TRUSTED_PROXY_CIDRS', ''));
 
     $targetScheme = $isDevelopmentEnv ? 'http' : 'https';
     $currentScheme = $isHttps ? 'https' : 'http';
@@ -334,8 +329,9 @@ if (!empty($_SESSION['no_adm_login_uid'])) {
     require_once $NO_ADMIN_PATH . '/lib/SessionIdleTimeout.php';
     require_once $NO_ADMIN_PATH . '/lib/PasswordChangeGate.php';
     (new SessionIdleTimeout(defined('SESSION_LIFETIME') ? (int) SESSION_LIFETIME : 1800))->enforce();
-    AuthSession::assertExclusive();
-    (new PasswordChangeGate())->assert();
+    $verifiedAdminAccount = AuthSession::assertExclusive();
+    (new PasswordChangeGate())->assert($verifiedAdminAccount);
+    unset($verifiedAdminAccount);
 }
 $role = new Role();
 if (!empty($_SESSION['no_adm_login_uid'])) $role->acl()->guard();

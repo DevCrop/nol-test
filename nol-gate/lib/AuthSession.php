@@ -82,14 +82,15 @@ class AuthSession
         self::establish($admin, $roleCode);
     }
 
-    public static function assertExclusive(): void
+    /** Return the verified request snapshot for subsequent policy checks. */
+    public static function assertExclusive(): ?array
     {
         if (self::isAuthSurface()) {
-            return;
+            return null;
         }
         $no = (int) ($_SESSION['no_adm_login_no'] ?? 0);
         if ($no < 1) {
-            return;
+            return null;
         }
         try { $row = AccountModel::authenticationRow($no); }
         catch (Throwable $e) { self::denyLogin('인증 정보를 확인할 수 없습니다. 다시 로그인하세요.'); }
@@ -100,7 +101,7 @@ class AuthSession
             && (string) ($row['sitekey'] ?? '') === (string) ($GLOBALS['NO_SITE_UNIQUE_KEY'] ?? '')
             && (int) $row['role_id'] === (int) ($_SESSION['no_adm_login_role_id'] ?? 0)
             && $dbToken !== '' && $mine !== '' && hash_equals($dbToken, $mine)) {
-            return;
+            return $row;
         }
         self::kick();
     }

@@ -1,11 +1,12 @@
 <?php include_once "../../../inc/lib/base.class.php";
 require_once dirname(__DIR__, 2) . "/Model/AccountModel.php";
 require_once dirname(__DIR__, 2) . '/lib/PiiMask.php';
+require_once dirname(__DIR__, 2) . '/lib/PrivacyAccessLogger.php';
 
 $role->redirectIfCannotView();
 
 $perpage = 10;
-$listCurPage = isset($_POST['page']) ? (int)$_POST['page'] : 1;
+$listCurPage = max(1, isset($_POST['page']) ? (int)$_POST['page'] : 1);
 $pageBlock = 2;
 $count = ($listCurPage - 1) * $perpage;
 
@@ -26,6 +27,9 @@ $sql = "SELECT a.no, a.uid, a.uname, a.email, a.phone, a.active_status, a.role_i
 $stmt = $db->prepare($sql);
 $stmt->execute();
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+foreach ($rows as $item) {
+    PrivacyAccessLogger::record('view', 'admin_account', (int) $item['no'], (string) $item['uname'], '관리자 계정 목록 열람');
+}
 $me = (int) ($_SESSION['no_adm_login_no'] ?? 0);
 $superTotal = AccountModel::countByRole(1);
 ?>

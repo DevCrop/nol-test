@@ -190,11 +190,8 @@ class Router
         // }
 
         if ($absolute) {
-            $isHttps = (
-                (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
-                (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') ||
-                (($_SERVER['SERVER_PORT'] ?? 80) == 443)
-            );
+            $isHttps = \Http\TransportSecurity::isSecure($_SERVER,
+                function_exists('env') ? (string) env('TRUSTED_PROXY_CIDRS', '') : '');
             $scheme = $isHttps ? 'https' : 'http';
             $host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
             $uri    = $scheme . '://' . $host . $uri;

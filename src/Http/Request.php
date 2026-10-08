@@ -123,10 +123,8 @@ class Request
 
     public function isSecure(): bool
     {
-        return (
-            (!empty($this->server['HTTPS']) && $this->server['HTTPS'] !== 'off')
-            || ($this->server['SERVER_PORT'] ?? 80) == 443
-        );
+        return TransportSecurity::isSecure($this->server,
+            function_exists('env') ? (string) env('TRUSTED_PROXY_CIDRS', '') : '');
     }
 
     public function getContent(): ?string

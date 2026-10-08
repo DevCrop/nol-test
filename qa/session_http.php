@@ -27,6 +27,16 @@ try {
     expectHttp($status===200 && ($data['remaining']??0)<=1680 && ($data['remaining']??0)>1660,'status polling does not extend NOL session');
     [$status,$data]=requestIdle($sid,'POST');
     expectHttp($status===200 && ($data['remaining']??0)>=1798,'activity extends NOL server deadline');
+    $countViews = static function () use ($pdo, $no): int {
+        $q = $pdo->prepare("SELECT COUNT(*) FROM nb_admin_privacy_access WHERE actor_no=? AND target_no=? AND entity='admin_account' AND task='관리자 계정 목록 열람'");
+        $q->execute([$no,$no]); return (int) $q->fetchColumn();
+    };
+    $beforeViews = $countViews();
+    [$listStatus,,$listHtml] = requestIdle($sid,'GET','/pages/account/index.php');
+    expectHttp($listStatus===200 && $countViews()===$beforeViews+1, 'NOL account list records displayed fixture once');
+    preg_match('#<tbody[^>]*>(.*?)</tbody>#s', $listHtml, $listTable);
+    expectHttp(isset($listTable[1]) && strpos($listTable[1],$uid)===false && strpos($listTable[1],'qa_')!==false, 'NOL account list table masks fixture identifier');
+    expectHttp(strpos($listHtml,'data-page="account"')!==false && strpos($listHtml,'/js/app.js')!==false, 'NOL account list retains existing copy-lock initialization hooks');
     if(in_array(env('GATE_ROUTE_MODE','root'),['path','internal'],true)) {
         [$pageStatus,,$pageBody]=requestIdle($sid,'GET','/pages/board/board.list.php');
         preg_match('/window\.NO_ADMIN_BASE\s*=\s*([^;]+);/', $pageBody, $baseMatch);

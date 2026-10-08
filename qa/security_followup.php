@@ -82,7 +82,7 @@ try {
         checkFollowup($status===($case==='valid'?200:401),'account index validates live session: '.$case);
         if($case==='valid') {
             [$detailStatus]=followupHttp('/pages/account/edit.php?no='.$no,$sid);
-            $audit=$db->prepare("SELECT COUNT(*) FROM nb_admin_privacy_access WHERE actor_no=? AND actor_uid=? AND target_no=? AND entity='admin_account' AND action='view'");
+            $audit=$db->prepare("SELECT COUNT(*) FROM nb_admin_privacy_access WHERE actor_no=? AND actor_uid=? AND target_no=? AND entity='admin_account' AND action='view' AND task='관리자 계정 상세 열람'");
             $audit->execute([$no,$uid,$no]);
             checkFollowup($detailStatus===200 && (int)$audit->fetchColumn()===1,'account detail disclosure has one privacy access record');
         }

@@ -1,6 +1,7 @@
 <?php
 include_once "../../../inc/lib/base.class.php";
 require_once dirname(__DIR__, 2) . "/lib/PiiMask.php";
+require_once dirname(__DIR__, 2) . "/lib/PrivacyAccessLogger.php";
 $db = DB::getInstance();
 
 /* =============================
@@ -73,6 +74,9 @@ $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
 $stmt->bindValue(':perpage', (int)$perpage, PDO::PARAM_INT);
 $stmt->execute();
 $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+foreach ($requests as $item) {
+    PrivacyAccessLogger::record('view', 'inquiry', (int) $item['no'], (string) ($item['name'] ?? ''), '대관신청 목록 열람');
+}
 ?>
 
 
