@@ -3,6 +3,14 @@ namespace Security;
 
 final class AuthSession
 {
+    private static $currentAccount = [];
+
+    /** Already validated state for rendering only; not a cross-request cache. */
+    public static function currentAccount(): array
+    {
+        return self::$currentAccount;
+    }
+
     public static function enforce(): void
     {
         if (self::authSurface()) return;
@@ -15,8 +23,10 @@ final class AuthSession
         if (!empty($row['idle_locked_at'])) self::deny('장기 미접속으로 잠긴 계정입니다.');
         $path = (string) ($_SERVER['SCRIPT_NAME'] ?? '');
         if ($path !== '/admin/lib/session/ping.php' || ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') $_SESSION['no_adm_last_activity'] = time();
-        $_SESSION['no_adm_password_change_required'] = self::passwordDue($row);
-        if (self::passwordDue($row) && !in_array($path, ['/admin/pages/account/password.php', '/admin/pages/account/ajax/password.process.php', '/admin/lib/session/ping.php'], true)) {
+        self::$currentAccount = $row;
+        $passwordDue = self::passwordDue($row);
+        $_SESSION['no_adm_password_change_required'] = $passwordDue;
+        if ($passwordDue && !in_array($path, ['/admin/pages/account/password.php', '/admin/pages/account/ajax/password.process.php', '/admin/lib/session/ping.php'], true)) {
             if (self::wantsJson()) {
                 http_response_code(403); header('Content-Type: application/json; charset=utf-8');
                 echo json_encode(['result'=>'fail', 'message'=>'비밀번호를 변경해야 합니다.', 'redirect'=>blue_admin_url('/admin/pages/account/password.php')]); exit;
@@ -27,6 +37,7 @@ final class AuthSession
 
     public static function logout(): void
     {
+        self::$currentAccount = [];
         $no = (int) ($_SESSION['no_adm_login_no'] ?? 0); $token = (string) ($_SESSION['no_adm_login_token'] ?? '');
         if ($no && $token !== '') {
             $stmt = \DB::getInstance()->prepare('UPDATE nb_admin SET login_token = NULL WHERE no = ? AND login_token = ?');
@@ -42,6 +53,7 @@ final class AuthSession
 
     public static function deny(string $message): void
     {
+        self::$currentAccount = [];
         $no = (int) ($_SESSION['no_adm_login_no'] ?? 0);
         $token = (string) ($_SESSION['no_adm_login_token'] ?? '');
         if ($no && $token !== '') \DB::getInstance()->prepare('UPDATE nb_admin SET login_token = NULL WHERE no = ? AND login_token = ?')->execute([$no, $token]);

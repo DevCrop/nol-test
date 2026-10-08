@@ -40,6 +40,15 @@ try {
     qa_expect($status===403,'activity requires CSRF');
     [$status]=httpQa('/admin/pages/account/index.php',$sid);
     qa_expect($status===403,'regular administrator cannot manage accounts');
+    $pdo->prepare("UPDATE nb_admin SET role_code='super' WHERE no=?")->execute([$no]);
+    $countViews = static function () use ($pdo, $no): int {
+        $q=$pdo->prepare("SELECT COUNT(*) FROM nb_admin_privacy_access WHERE actor_no=? AND target_no=? AND entity='admin_account' AND task='관리자 계정 목록 열람'");
+        $q->execute([$no,$no]); return (int) $q->fetchColumn();
+    };
+    $beforeViews=$countViews();
+    [$status]=httpQa('/admin/pages/account/index.php',$sid);
+    qa_expect($status===200 && $countViews()===$beforeViews+1,'super account list records displayed fixture exactly once');
+    $pdo->prepare("UPDATE nb_admin SET role_code='admin' WHERE no=?")->execute([$no]);
     $pdo->prepare('UPDATE nb_admin SET password_must_change=1 WHERE no=?')->execute([$no]);
     [$status,$body]=httpQa('/admin/pages/board/board.list.php',$sid);
     $expectedPassword=blue_env('GATE_ROUTE_MODE','path')==='internal' ? '/pages/account/password.php' : '/admin/pages/account/password.php';

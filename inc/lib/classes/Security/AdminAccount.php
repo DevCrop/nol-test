@@ -5,27 +5,25 @@ final class AdminAccount
 {
     private const SITE = 'BLUESQ';
 
+    // Compatibility facade for legacy static callers; bind infrastructure here.
+    private static function repository(): AccountRepository
+    {
+        return new PdoAccountRepository(\DB::getInstance(), self::SITE);
+    }
+
     public static function findByUid(string $uid): array
     {
-        $stmt = \DB::getInstance()->prepare('SELECT * FROM nb_admin WHERE uid = :uid AND sitekey = :sitekey LIMIT 1');
-        $stmt->execute(['uid' => $uid, 'sitekey' => self::SITE]);
-        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
-        return is_array($row) ? $row : [];
+        return self::repository()->findByUid($uid);
     }
 
     public static function findByNo(int $no): array
     {
-        $stmt = \DB::getInstance()->prepare('SELECT * FROM nb_admin WHERE no = ? AND sitekey = ? LIMIT 1');
-        $stmt->execute([$no, self::SITE]);
-        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
-        return is_array($row) ? $row : [];
+        return self::repository()->findByNo($no);
     }
 
     public static function all(): array
     {
-        $stmt = \DB::getInstance()->prepare('SELECT no, uid, uname, email, active_status, role_code, login_fail_count, login_locked_until, last_login_at, idle_locked_at, password_changed_at, password_must_change, created_at FROM nb_admin WHERE sitekey = ? ORDER BY no ASC');
-        $stmt->execute([self::SITE]);
-        return (array) $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        return self::repository()->all();
     }
 
     public static function requireSuper(): array

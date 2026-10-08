@@ -1,0 +1,8 @@
+# Publish only the isolated development QA web service for browser checks.
+# Database and SMTP settings remain those of compose.clean.yml.
+services:
+  web:
+    environment:
+      GATE_HOST: gate.local
+    ports:
+      - '127.0.0.1:8628:80'

@@ -100,6 +100,11 @@ try {
     }
     foreach(['board/board.role.php','admission/admission.list.php','member/member.list.php','member/member.level.php','calendar/calendar.list.php','employment/employment.list.php','admission/admission.view.php','member/member.view.php','member/member.level.view.php','calendar/calendar.view.php','employment/employment.view.php','works/edit.php','request/request.list.php','request/request.schedule.list.php','request/request.view.php','request/request.shedule.view.php'] as $relative) {
         $path='/admin/pages/'.$relative;
+        if(preg_match('#^(?:admission|member|employment|calendar|sms)/#',$relative)) {
+            [$status]=diagnosticRequest($path);
+            qa_expect(!is_file(dirname(__DIR__).$path) && $status===404,'source CASE.3 retired route absent: '.$relative);
+            continue;
+        }
         if(!is_file(dirname(__DIR__).$path)) { qa_expect(false,'diagnostic route inventory missing: '.$path); continue; }
         [$status]=diagnosticRequest($path);
         qa_expect($status===401,'source CASE.3 authenticates before '.$relative);

@@ -41,6 +41,9 @@
 		$stmt->bindValue(':limit', (int) $listRowCnt, PDO::PARAM_INT);
 		$stmt->execute();
 		$result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($result as $item) {
+            \Security\PrivacyLogger::record('view', 'request', (int) $item['no'], (string) ($item['manager_name'] ?? ''), '대관신청 목록 열람');
+        }
 
 		// Board List Query
 		$boardListQuery = "SELECT no, title, skin, sort_no FROM nb_board_manage WHERE sitekey = :sitekey ORDER BY no ASC";
@@ -213,7 +216,7 @@
                                                 </td>
 												<td>
 													<a href="./request.view.php?no=<?= htmlspecialchars($v['no']) ?>">
-                                                    <?= $v['performance_name'] ?>
+                                                    <?= htmlspecialchars((string) $v['performance_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8', false) ?>
 												</a>
                                                 </td>
 												<td>

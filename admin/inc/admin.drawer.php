@@ -169,7 +169,7 @@ switch ($depthnum) {
 				</li>
 <?php
 $accountMenu = require __DIR__ . '/../config/account-menu.php';
-$viewer = \Security\AdminAccount::findByNo((int) ($_SESSION['no_adm_login_no'] ?? 0));
+$viewer = \Security\AuthSession::currentAccount();
 $accountFile = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
 $accountSection = strpos((string) ($_SERVER['SCRIPT_NAME'] ?? ''), '/account/') !== false && $accountFile !== 'password.php';
 if (($viewer['role_code'] ?? '') === 'super'):

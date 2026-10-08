@@ -3,6 +3,9 @@ require_once '../../../inc/lib/base.class.php';
 \Security\AdminAccount::requireSuper();
 $depthnum = 8; $pagenum = 1;
 $accounts = \Security\AdminAccount::all();
+foreach ($accounts as $account) {
+    \Security\PrivacyLogger::record('view', 'admin_account', (int) $account['no'], (string) $account['uname'], '관리자 계정 목록 열람');
+}
 $flash = (string) ($_SESSION['account_flash'] ?? '');
 $flashError = !empty($_SESSION['account_flash_error']);
 unset($_SESSION['account_flash'], $_SESSION['account_flash_error']);

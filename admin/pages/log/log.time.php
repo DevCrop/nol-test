@@ -35,20 +35,16 @@
 
             $curYMD = "$Select_Year-$Select_Month-$Select_Day";
 
-            // Check for Duplicate Entries and Remove Extra
-            $stmt = $pdo->prepare("SELECT COUNT(*) AS cnt FROM nb_counter_data WHERE Year = :year AND Month = :month AND Day = :day");
-            $stmt->execute(['year' => $Select_Year, 'month' => $Select_Month, 'day' => $Select_Day]);
-            $isTwo = $stmt->fetchColumn();
-
-            if ($isTwo > 1) {
-                $stmt = $pdo->prepare("DELETE FROM nb_counter_data WHERE Year = :year AND Month = :month AND Day = :day LIMIT 1");
-                $stmt->execute(['year' => $Select_Year, 'month' => $Select_Month, 'day' => $Select_Day]);
+            // Reporting is read-only. Aggregate duplicate rows rather than deleting history.
+            $columns = ['SUM(Visit_Num) AS Visit_Num'];
+            for ($hour = 0; $hour < 24; $hour++) {
+                $column = 'Hour' . str_pad($hour, 2, '0', STR_PAD_LEFT);
+                $columns[] = "SUM($column) AS $column";
             }
-
-            // Total Visitors
-            $stmt = $pdo->prepare("SELECT SUM(Visit_Num) AS CDSV FROM nb_counter_data WHERE Year = :year AND Month = :month AND Day = :day LIMIT 1");
+            $stmt = $pdo->prepare('SELECT ' . implode(', ', $columns) . ' FROM nb_counter_data WHERE Year = :year AND Month = :month AND Day = :day');
             $stmt->execute(['year' => $Select_Year, 'month' => $Select_Month, 'day' => $Select_Day]);
-            $Total = $stmt->fetchColumn() ?? 0;
+            $Hour_Num_One = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+            $Total = (int) ($Hour_Num_One['Visit_Num'] ?? 0);
 
             // Start Year and Month
             $stmt = $pdo->query("SELECT MIN(Year) AS CDMY FROM nb_counter_data LIMIT 1");
@@ -134,10 +130,6 @@
                                         <tbody>
                                             <?php                       
                                                 // Maximum Visitors per Hour
-                                                $stmt = $pdo->prepare("SELECT * FROM nb_counter_data WHERE Year = :year AND Month = :month AND Day = :day LIMIT 1");
-                                                $stmt->execute(['year' => $Select_Year, 'month' => $Select_Month, 'day' => $Select_Day]);
-                                                $Hour_Num_One = $stmt->fetch(PDO::FETCH_ASSOC);
-
                                                 $max = 0;
                                                 for ($i = 0; $i <= 23; $i++) {
                                                     $hourIndex = str_pad($i, 2, '0', STR_PAD_LEFT);
@@ -147,9 +139,7 @@
 
                                                 for ($i = 0; $i <= 23; $i++) {
                                                     $hourIndex = str_pad($i, 2, '0', STR_PAD_LEFT);
-                                                    $stmt = $pdo->prepare("SELECT SUM(Hour$hourIndex) AS SH FROM nb_counter_data WHERE Year = :year AND Month = :month AND Day = :day LIMIT 1");
-                                                    $stmt->execute(['year' => $Select_Year, 'month' => $Select_Month, 'day' => $Select_Day]);
-                                                    $Month_Num = $stmt->fetchColumn() ?? 0;
+                                                    $Month_Num = (int) ($Hour_Num_One["Hour$hourIndex"] ?? 0);
 
                                                     $Percent = $Total ? round(100 * $Month_Num / $Total, 2) : 0;
                                                     $Percent1 = $max ? round(100 * $Month_Num / $max, 2) : 0;
