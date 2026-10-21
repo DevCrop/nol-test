@@ -19,5 +19,6 @@
 <link rel="stylesheet" href="<?=$NO_IS_SUBDIR?><?=blue_admin_base()?>/resource/css/security.css?c=<?=$STATIC_ADMIN_CSS_MODIFY_DATE?>"/>
 <!-- fontello -->
 <?php if (strpos((string) ($_SERVER['SCRIPT_NAME'] ?? ''), '/admin/pages/account/') === 0): ?>
+<link rel="stylesheet" href="<?=blue_admin_base()?>/resource/css/account-credentials.css?v=20261021">
 <link rel="stylesheet" href="<?=blue_admin_base()?>/resource/css/account.css?v=<?=filemtime(__DIR__ . '/../resource/css/account.css')?>">
 <?php endif; ?>

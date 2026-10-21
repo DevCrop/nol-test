@@ -10,7 +10,7 @@
 <script type="text/javascript" src="<?=$NO_IS_SUBDIR?><?=blue_admin_base()?>/resource/js/script.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>" defer></script>
 <script type="text/javascript" src="<?=$NO_IS_SUBDIR?><?=blue_admin_base()?>/resource/js/form.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>" defer></script>
 <script type="text/javascript" src="<?=$NO_IS_SUBDIR?><?=blue_admin_base()?>/resource/js/theme.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>" defer></script>
-<script type="text/javascript" src="<?=$NO_IS_SUBDIR?><?=blue_admin_base()?>/resource/js/security.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>" defer></script>
+<script type="text/javascript" src="<?=$NO_IS_SUBDIR?><?=blue_admin_base()?>/resource/js/security.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>&auth=20261021" defer></script>
 
 
 <!-- <script type="text/javascript" src="<?=$NO_IS_SUBDIR?>/resource/js/html5shiv.js?v=<?=$STATIC_FRONT_JS_MODIFY_DATE?>"></script>
@@ -38,3 +38,7 @@
 <!-- 네이버 스마트에디터2 -->
 <script type="text/javascript" src="<?=$NO_IS_SUBDIR?>/resource/vendor/smarteditor2/js/service/HuskyEZCreator.js" charset="utf-8"></script>
 <script type="text/javascript" src="<?=$NO_IS_SUBDIR?>/resource/vendor/smarteditor2/smarteditor2.js" charset="utf-8"></script>
+<script src="<?=blue_admin_base()?>/resource/js/private-page.js?v=20261021" defer></script>
+<?php if (strpos((string)($_SERVER['SCRIPT_NAME']??''),'/admin/pages/account/')===0): ?>
+<script type="module" src="<?=blue_admin_base()?>/resource/js/account-credentials.js?v=20261021"></script>
+<?php endif; ?>

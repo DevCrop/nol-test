@@ -1,4 +1,5 @@
 .env
+/deploy/candidates/
 .phpunit.result.cache
 qa/artifacts/*
 !qa/artifacts/.gitkeep

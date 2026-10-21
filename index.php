@@ -1,5 +1,13 @@
-
-<?php include_once $_SERVER['DOCUMENT_ROOT'] . '/inc/lib/base.class.php'; ?>
+<?php
+require_once __DIR__ . '/inc/lib/gate-http-entry.php';
+require_once __DIR__ . '/inc/lib/PhpGateRouter.php';
+$phpGateTarget = (new PhpGateRouter(__DIR__, 'admin'))->start();
+if ($phpGateTarget !== null) {
+    require_once __DIR__ . '/inc/lib/base.class.php';
+    require $phpGateTarget;
+    exit;
+}
+include_once $_SERVER['DOCUMENT_ROOT'] . '/inc/lib/base.class.php'; ?>
 
 
 <!-- dev -->

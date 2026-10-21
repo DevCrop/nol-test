@@ -7,11 +7,12 @@ $csrf = htmlspecialchars(\Security\Csrf::token(), ENT_QUOTES, 'UTF-8');
 ?>
 <!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>2단계 인증 | 사이트 관리 시스템</title>
+<script src="<?=blue_admin_base()?>/resource/js/private-page.js?v=20261021" defer></script>
 <link rel="stylesheet" href="/resource/vendor/boxicons/css/boxicons.min.css">
 <link rel="stylesheet" href="<?=blue_admin_base()?>/resource/css/style.css">
 <link rel="stylesheet" href="<?=blue_admin_base()?>/resource/css/security.css">
 <link rel="stylesheet" href="<?=blue_admin_base()?>/resource/css/auth-parity.css?v=<?=filemtime(__DIR__.'/resource/css/auth-parity.css')?>">
-<meta name="csrf-token" content="<?=$csrf?>"><script>window.BLUE_ADMIN_BASE = <?=json_encode(blue_admin_base())?>;</script><script src="<?=blue_admin_base()?>/resource/js/security.js" defer></script>
+<meta name="csrf-token" content="<?=$csrf?>"><script>window.BLUE_ADMIN_BASE = <?=json_encode(blue_admin_base())?>;</script><script src="<?=blue_admin_base()?>/resource/js/security.js?v=20261021" defer></script>
 </head><body class="no-sub-body"><div class="no-sub-wrap">
 <header class="no-login-header"><h1 class="no-login-logo"><img src="/resource/images/admin/logo.png" alt="나인원랩스"></h1></header>
 <main id="no-main"><div class="no-login-wrap"><div class="no-login-content">

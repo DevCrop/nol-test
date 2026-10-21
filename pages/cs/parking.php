@@ -286,6 +286,20 @@ $isAprilFirstUpdateActive = isUpdateActive('2026-04-01');
                             <li>
                                 <h3>
                                     <i class="fa-solid fa-check" aria-hidden="true"></i>
+                                    공연 종료와 다음 회차 입장이 겹치는 시간대에는 <br>
+                                    출차 차량이 집중되어 주차장 입차가 일시적으로 제한될 수 있습니다.
+                                </h3>
+                            </li>
+                            <li>
+                                <h3>
+                                    <i class="fa-solid fa-check" aria-hidden="true"></i>
+                                    교통난으로 인해 주변 도로에서는 차량 대기가 어려우며, <br>
+                                    주차장 운영 상황은 당일 공연 일정 및 차량 출차 상황에 따라 달라질 수 있습니다.
+                                </h3>
+                            </li>
+                            <li>
+                                <h3>
+                                    <i class="fa-solid fa-check" aria-hidden="true"></i>
                                     주차 및 교통난으로 인해 당일 관람이 불가하거나 관람을 포기한 경우 예매 취소 및 변경이 불가합니다.
                                 </h3>
                             </li>

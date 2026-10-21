@@ -54,8 +54,9 @@ final class AdminAccount
         if (self::taken('email', $data['email'], $no)) throw new \RuntimeException('이미 사용 중인 이메일입니다.');
         if ($actorNo === $no && ($data['active_status'] !== 'Y' || $data['role_code'] !== 'super')) throw new \RuntimeException('본인 계정은 비활성화하거나 관리자 권한을 낮출 수 없습니다.');
         if (($target['role_code'] ?? '') === 'super' && ($data['active_status'] !== 'Y' || $data['role_code'] !== 'super') && self::activeSuperCount($no) === 0) throw new \RuntimeException('마지막 최고 관리자는 비활성화하거나 권한을 낮출 수 없습니다.');
-        $stmt = \DB::getInstance()->prepare("UPDATE nb_admin SET uname = ?, email = ?, active_status = ?, role_code = ?, login_token = CASE WHEN ? = 'N' THEN NULL ELSE login_token END, updated_at = NOW() WHERE no = ? AND sitekey = ?");
-        $stmt->execute([$data['uname'], $data['email'], $data['active_status'], $data['role_code'], $data['active_status'], $no, self::SITE]);
+        $revoke = $target['email'] !== $data['email'] || $target['role_code'] !== $data['role_code'] || $target['active_status'] !== $data['active_status'];
+        $stmt = \DB::getInstance()->prepare("UPDATE nb_admin SET uname = ?, email = ?, active_status = ?, role_code = ?, login_token = CASE WHEN ? = 1 THEN NULL ELSE login_token END, updated_at = NOW() WHERE no = ? AND sitekey = ?");
+        $stmt->execute([$data['uname'], $data['email'], $data['active_status'], $data['role_code'], (int)$revoke, $no, self::SITE]);
         return $stmt->rowCount() === 1;
     }
 
@@ -92,6 +93,7 @@ final class AdminAccount
 
     public static function assertLoginAllowed(array $row): void
     {
+        TemporaryPassword::assertUsable($row);
         if (($row['active_status'] ?? 'N') !== 'Y') throw new \RuntimeException('사용이 중지된 계정입니다.');
         if (!empty($row['login_locked_until']) && strtotime($row['login_locked_until']) > time()) throw new \RuntimeException('로그인 실패 횟수를 초과했습니다. 잠시 후 다시 시도하세요.');
         if (!empty($row['idle_locked_at'])) {

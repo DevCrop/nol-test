@@ -2,6 +2,10 @@
 require_once '../../../inc/lib/base.class.php';
 $depthnum = 4; $pagenum = 1;
 $message = (string) ($_SESSION['password_message'] ?? ''); unset($_SESSION['password_message']);
+$account = \Security\AuthSession::currentAccount();
+if (\Security\AuthSession::passwordDue($account)) {
+    include __DIR__.'/../../inc/password.required.php'; exit;
+}
 include_once '../../inc/admin.title.php'; include_once '../../inc/admin.css.php'; include_once '../../inc/admin.js.php';
 ?>
 

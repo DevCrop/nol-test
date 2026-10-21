@@ -2,7 +2,7 @@
 ob_start();
 require __DIR__.'/bootstrap.php';
 require_once dirname(__DIR__).'/inc/lib/db.php';
-if (APP_ENV !== 'development' || !is_file('/.dockerenv')) exit(1);
+if (!is_file('/.dockerenv') || (APP_ENV !== 'development' && !(APP_ENV === 'production' && getenv('QA_PRODUCTION_HTTP') === '1' && getenv('GATE_ALLOW_HTTP') === 'true'))) exit(1);
 if (DB_USER !== 'qa_app') { echo "SKIP active CRUD requires isolated qa_app database\n"; exit; }
 $db=DB::getInstance(); $admin=0; $sid=''; $uid='qa_crud_'.bin2hex(random_bytes(3)); $cleanup=[]; $files=[];
 function crudRequest(string $path, array $data, bool $popupFile=false): array {
@@ -15,7 +15,10 @@ function crudRequest(string $path, array $data, bool $popupFile=false): array {
     }
     $qaHost=(string)blue_env('GATE_HOST','gate.local');
     $requestPath=blue_env('GATE_ROUTE_MODE','path')==='internal' ? substr($path,6) : $path;
-    $ctx=stream_context_create(['http'=>['method'=>'POST','header'=>"Host: ".$qaHost."\r\nCookie: ".session_name().'='.$GLOBALS['sid']."\r\nX-Requested-With: XMLHttpRequest\r\nContent-Type: $type\r\n",'content'=>$content,'ignore_errors'=>true,'follow_location'=>0,'timeout'=>10]]);
+    $legacy=getenv('QA_LEGACY_ADMIN')==='1';
+    if($legacy){$qaHost=(string)blue_env('PUBLIC_HOST');$requestPath=$path;}
+    elseif(blue_env('GATE_ROUTE_MODE','path')==='php')$requestPath='/index.php'.substr($path,6);
+    $ctx=stream_context_create(['http'=>['method'=>'POST','header'=>"Host: ".$qaHost."\r\n".($legacy?"X-QA-HTTPS: 1\r\n":'')."Cookie: ".session_name().'='.$GLOBALS['sid']."\r\nX-Requested-With: XMLHttpRequest\r\nContent-Type: $type\r\n",'content'=>$content,'ignore_errors'=>true,'follow_location'=>0,'timeout'=>10]]);
     $body=file_get_contents('http://127.0.0.1'.$requestPath,false,$ctx);preg_match('/\s(\d{3})\s/',$http_response_header[0]??'',$m);
     return [(int)($m[1]??0),json_decode($body,true),(string)$body];
 }
@@ -43,6 +46,12 @@ try {
         if($name==='popup') {
             $q=$db->prepare('SELECT p_img FROM nb_popup WHERE no=?');$q->execute([$id]);
             $files[]=dirname(__DIR__).'/uploads/popup/'.$q->fetchColumn();
+            if(blue_env('GATE_ROUTE_MODE','path')==='php') {
+                $legacy=getenv('QA_LEGACY_ADMIN')==='1';
+                $preview=stream_context_create(['http'=>['header'=>'Host: '.blue_env($legacy?'PUBLIC_HOST':'GATE_HOST').($legacy?"\r\nX-QA-HTTPS: 1":''),'ignore_errors'=>true]]);
+                $bytes=file_get_contents('http://127.0.0.1'.($legacy?'':'/index.php').'/uploads/popup/'.basename(end($files)),false,$preview);
+                qa_expect(strpos($http_response_header[0]??'','200')!==false && $bytes===file_get_contents(end($files)),'uploaded popup preview exact bytes through PHP router ('.($http_response_header[0]??'no status').', bytes '.strlen((string)$bytes).', prefix '.bin2hex(substr((string)$bytes,0,12)).', expected '.filesize(end($files)).')');
+            }
         }
         $response=crudRequest($path,$update+['id'=>$id,'no'=>$id]+$data);
         qa_expect(crudOk($response),$name.' same-value update');

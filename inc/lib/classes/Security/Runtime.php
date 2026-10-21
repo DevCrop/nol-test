@@ -11,11 +11,9 @@ final class Runtime
     private static function https(): void
     {
         if (APP_ENV !== 'production') return;
-        $https = strtolower((string) ($_SERVER['HTTPS'] ?? ''));
-        $forwarded = strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''));
-        $remote = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
-        $trustedProxy = ClientIp::allowed($remote, ClientIp::items(TRUSTED_PROXY_CIDRS));
-        if ($https === 'on' || $https === '1' || ($trustedProxy && $forwarded === 'https')) return;
+        if (TransportSecurity::isSecure($_SERVER, TRUSTED_PROXY_CIDRS)
+            || TransportSecurity::allowsTemporaryHttp($_SERVER, GATE_HOST,
+                (bool) blue_env('GATE_ALLOW_HTTP', false), TRUSTED_PROXY_CIDRS)) return;
         $host = (string) ($_SERVER['HTTP_HOST'] ?? '');
         if ($host !== '' && !headers_sent()) {
             header('Location: https://' . $host . ($_SERVER['REQUEST_URI'] ?? '/'), true, 302); exit;

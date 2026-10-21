@@ -1,7 +1,13 @@
 <?php
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
+// PHP PATH_INFO mode has an independent no-rewrite HTTP acceptance suite.
+if (getenv('GATE_ROUTE_MODE') === 'php') {
+    passthru(escapeshellarg(PHP_BINARY).' '.escapeshellarg(__DIR__.'/run-php-router.php'), $status);
+    exit($status);
+}
 $scripts = ['php-lint.php','security-unit.php','proxy-policy.php','security-regression.php','db-integration.php','http-smoke.php','auth-http.php','mfa-flow.php','mfa-mail-template.php','diagnostic-http.php','public-boundary.php','active-crud.php','main-banner.php','migration-release.php']; $failed = 0;
 $scripts[] = 'architecture.php';
+$scripts[] = 'php-router-http.php';
 $scripts[] = 'request-title-output.php';
 $scripts[] = 'privacy-list-http.php';
 $scripts[] = 'production-http.php';

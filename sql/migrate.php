@@ -12,6 +12,7 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS blue_schema_migrations (
     applied_at datetime NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+$temporaryVersion = '202610210001_temporary_password';
 $version = '202609210001_security';
 $check = $pdo->prepare('SELECT COUNT(*) FROM blue_schema_migrations WHERE version = ?');
 $check->execute([$version]);
@@ -103,3 +104,7 @@ if ((int) $check->fetchColumn() === 0) {
 } else {
     echo "already applied {$accountVersion}\n";
 }
+
+if (!blue_has_column($pdo,'nb_admin','temporary_password_expires_at')) $pdo->exec('ALTER TABLE nb_admin ADD COLUMN temporary_password_expires_at DATETIME NULL DEFAULT NULL');
+$pdo->prepare('INSERT IGNORE INTO blue_schema_migrations(version,applied_at) VALUES (?,NOW())')->execute([$temporaryVersion]);
+echo "ready {$temporaryVersion}\n";

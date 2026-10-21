@@ -29,7 +29,7 @@ final class PdoAccountRepository implements AccountRepository
 
     public function all(): array
     {
-        $stmt = $this->db->prepare('SELECT no, uid, uname, email, active_status, role_code, login_fail_count, login_locked_until, last_login_at, idle_locked_at, password_changed_at, password_must_change, created_at FROM nb_admin WHERE sitekey = ? ORDER BY no ASC');
+        $stmt = $this->db->prepare('SELECT no, uid, uname, email, active_status, role_code, login_fail_count, login_locked_until, last_login_at, idle_locked_at, password_changed_at, password_must_change, temporary_password_expires_at, created_at FROM nb_admin WHERE sitekey = ? ORDER BY no ASC');
         $stmt->execute([$this->site]);
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }

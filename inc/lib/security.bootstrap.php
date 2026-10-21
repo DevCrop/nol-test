@@ -42,6 +42,7 @@ blue_load_env(dirname(__DIR__, 2) . '/.env');
 if (!function_exists('blue_admin_base')) {
     function blue_admin_base(): string
     {
+        if (defined('PHP_GATE_ACTIVE') && PHP_GATE_ACTIVE) return '/index.php';
         $host = strtolower(preg_replace('/:\\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? '')));
         return blue_env('GATE_ROUTE_MODE', 'path') === 'internal'
             && $host === strtolower((string) blue_env('GATE_HOST', '')) ? '' : '/admin';
@@ -69,6 +70,9 @@ if (!defined('PASSWORD_MAX_DAYS')) define('PASSWORD_MAX_DAYS', max(1, (int) blue
 if (!defined('ACCOUNT_IDLE_DAYS')) define('ACCOUNT_IDLE_DAYS', max(1, (int) blue_env('ACCOUNT_IDLE_DAYS', 90)));
 
 $isProduction = APP_ENV === 'production';
+require_once __DIR__ . '/classes/Security/TransportSecurity.php';
+$temporaryGateHttp = \Security\TransportSecurity::allowsTemporaryHttp($_SERVER, GATE_HOST,
+    (bool) blue_env('GATE_ALLOW_HTTP', false), TRUSTED_PROXY_CIDRS);
 ini_set('display_errors', $isProduction ? '0' : '1');
 ini_set('display_startup_errors', $isProduction ? '0' : '1');
 error_reporting(E_ALL);
@@ -77,7 +81,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_name((string) blue_env('SESSION_NAME', 'BLUESQGATESESSID'));
     session_set_cookie_params([
         'lifetime' => 0, 'path' => '/', 'domain' => '',
-        'secure' => $isProduction || (bool) blue_env('SESSION_SECURE', false),
+        'secure' => !$temporaryGateHttp && ($isProduction || (bool) blue_env('SESSION_SECURE', false)),
         'httponly' => true, 'samesite' => (string) blue_env('SESSION_SAMESITE', 'Lax'),
     ]);
     ini_set('session.use_strict_mode', '1');

@@ -2,7 +2,8 @@
   let loading = 0;
   const beginLoading = () => { loading += 1; document.body.classList.add('is-loading'); document.body.setAttribute('aria-busy', 'true'); };
   const endLoading = () => { loading = Math.max(0, loading - 1); if (!loading) { document.body.classList.remove('is-loading'); document.body.removeAttribute('aria-busy'); } };
-  document.addEventListener('submit', beginLoading, true);
+  // AJAX forms prevent default later in dispatch. Count their fetch, not the canceled navigation.
+  document.addEventListener('submit', event => queueMicrotask(() => { if (!event.defaultPrevented) beginLoading(); }), true);
   const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
   document.querySelectorAll('form[method="post" i]').forEach((form) => {
     if (form.querySelector('input[name="_csrf"]')) return;

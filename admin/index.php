@@ -7,6 +7,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>				
+<script src="<?=blue_admin_base()?>/resource/js/private-page.js?v=20261021" defer></script>
 <script>window.BLUE_ADMIN_BASE = <?=json_encode(blue_admin_base())?>;</script>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>사이트 관리 시스템</title>
@@ -97,7 +98,7 @@
 
                   <div class="no-auth-captcha">
                     <div class="no-captcha-image">
-                      <img src="../inc/lib/captcha.admin.n.php" alt="captcha" style="height:32px;" />
+                      <img src="<?=defined('PHP_GATE_ACTIVE') ? '/index.php/inc/lib/captcha.admin.n.php' : '/inc/lib/captcha.admin.n.php'?>" alt="captcha" style="height:32px;" />
                     </div>
                     <div class="no-auth-input no-auth-input--captcha">
                     <input

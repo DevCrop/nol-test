@@ -1,0 +1,12 @@
+import fs from 'node:fs';import vm from 'node:vm';import assert from 'node:assert/strict';
+const source=fs.readFileSync(new URL('../admin/resource/js/security.js',import.meta.url),'utf8');
+const events={},microtasks=[],active=new Set();
+const body={classList:{add:k=>active.add(k),remove:k=>active.delete(k)},setAttribute(){},removeAttribute(){}};
+const context=vm.createContext({document:{body,addEventListener:(key,fn)=>events[key]=fn,querySelector:()=>null,querySelectorAll:()=>[]},window:{fetch:async()=>({})},queueMicrotask:fn=>microtasks.push(fn),URL,Headers,Request,location:{href:'http://gate.local:8628/index.php/pages/account/new.php',origin:'http://gate.local:8628'}});
+vm.runInContext(source,context);
+const event={defaultPrevented:false};events.submit(event);event.defaultPrevented=true;microtasks.shift()();
+assert.equal(active.has('is-loading'),false);console.log('PASS canceled AJAX submission does not retain navigation loading');
+await context.window.fetch('/index.php/pages/account/process.php',{method:'POST'});
+assert.equal(active.has('is-loading'),false);console.log('PASS fetch releases loading after response');
+events.submit({defaultPrevented:false});microtasks.shift()();assert.equal(active.has('is-loading'),true);console.log('PASS ordinary form navigation retains loading');
+console.log('pass=3 fail=0');

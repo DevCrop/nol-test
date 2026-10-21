@@ -20,7 +20,7 @@ try { (new \Security\MfaDelivery($broken))->send('fixture@example.com', '123456'
 qa_expect($failed, 'transport failure propagated rather than silently accepted');
 qa_expect(\Security\AuthSession::currentAccount() === [], 'no authenticated rendering state before enforcement');
 require_once dirname(__DIR__) . '/inc/lib/db.php';
-if (APP_ENV !== 'development' || !is_file('/.dockerenv') || blue_env('DB_USER') !== 'qa_app') {
+if ((APP_ENV !== 'development' && !(APP_ENV === 'production' && getenv('QA_PRODUCTION_HTTP') === '1')) || !is_file('/.dockerenv') || blue_env('DB_USER') !== 'qa_app') {
     throw new RuntimeException('isolated QA database required');
 }
 $db = \DB::getInstance();
