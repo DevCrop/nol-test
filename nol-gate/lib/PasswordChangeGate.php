@@ -10,7 +10,7 @@ class PasswordChangeGate
     public const REASON_EXPIRED = 'expired';
     public const SESSION_REASON = 'pwd_force_reason';
 
-    public const MSG = '관리자가 변경한 비밀번호입니다. 새 비밀번호로 바꾼 뒤 다시 로그인하세요.';
+    public const MSG = '임시 비밀번호로 로그인하셨습니다. 새 비밀번호로 변경한 뒤 다시 로그인하세요.';
     public const MSG_EXPIRED = '비밀번호 사용 기간이 지났습니다. 새 비밀번호로 바꾼 뒤 다시 로그인하세요.';
     public const MSG_SAME = '현재 비밀번호와 다른 비밀번호로 변경하세요.';
 

@@ -1,5 +1,6 @@
 # Secrets and original/customer data are local only.
 .env
+/deploy/candidates/
 .env.*
 !.env.example
 !.env.production.example

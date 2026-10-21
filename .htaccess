@@ -16,15 +16,6 @@ LimitRequestBody 115343360
     # Deny environment backups/prepared deployment files as well as .env itself.
     RewriteRule (^|/)\.env(?:\.[^/]*)?(?:/|$) - [R=404,L,NC]
 
-    # Shared-hosting gate: the provider must first send this host to this account.
-    # Keep the browser URL at /; do not expose the physical admin directory.
-    RewriteCond %{HTTP_HOST} ^gate\.noltheater-daehakro\.com(?::[0-9]+)?$ [NC]
-    RewriteCond %{THE_REQUEST} \s/+nol-gate(?:[/\s?]) [NC]
-    RewriteRule ^ - [R=404,L]
-
-    RewriteCond %{ENV:GATE_ENFORCE} ^(true|1|on)$ [NC]
-    RewriteCond %{HTTP_HOST} !^gate\.noltheater-daehakro\.com(?::[0-9]+)?$ [NC]
-    RewriteRule ^nol-gate(?:/|$) - [R=404,L,NC]
 
     RewriteRule ^(?:inc|src|config|bootstrap|routes|sql|qa|storage)(?:/|$) - [R=404,L,NC]
     RewriteRule ^resource/vendor/(?:fullPage\.js-2\.9\.7/(?:examples|tests)|tinymce/plugins/example)(?:/|$) - [R=404,L,NC]
@@ -35,15 +26,8 @@ LimitRequestBody 115343360
     RewriteRule ^uploads/request(?:/|$) - [R=403,L,NC]
     RewriteRule ^uploads/.*\.(?:php[0-9]?|phtml|phar)(?:/|$) - [R=403,L,NC]
 
-    # These resources live outside nol-gate, just like the dedicated vhost aliases.
-    RewriteCond %{HTTP_HOST} ^gate\.noltheater-daehakro\.com(?::[0-9]+)?$ [NC]
-    RewriteRule ^(?:resource/(?:vendor|images)|captcha|uploads)(?:/|$) - [L,NC]
-
-    RewriteCond %{HTTP_HOST} ^gate\.noltheater-daehakro\.com(?::[0-9]+)?$ [NC]
-    RewriteRule ^nol-gate(?:/|$) - [L,NC]
-
-    RewriteCond %{HTTP_HOST} ^gate\.noltheater-daehakro\.com(?::[0-9]+)?$ [NC]
-    RewriteRule ^(.*)$ nol-gate/$1 [END]
+    # PHP PATH_INFO is handled by index.php itself, without gate rewriting.
+    RewriteRule ^index\.php(?:/|$) - [L]
 
     RewriteCond %{REQUEST_FILENAME} -f [OR]
     RewriteCond %{REQUEST_FILENAME} -d

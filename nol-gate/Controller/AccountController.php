@@ -9,6 +9,7 @@ require_once "../lib/AuthSession.php";
 require_once "../lib/AccountIdleLock.php";
 require_once "../lib/PasswordChangeGate.php";
 require_once "../lib/AuditLogger.php";
+require_once "../lib/AccountCredentialService.php";
 
 $role->requireLogin();
 if (!$role->isSuper()) {
@@ -53,6 +54,9 @@ try {
     $mode = $input['mode'] ?? '';
 
     if ($mode === 'save') {
+        if (!empty($input['upwd']) || !empty($input['upwd_confirm'])) throw new RuntimeException('비밀번호는 시스템에서 자동 발급합니다.');
+        $temporary = TemporaryPassword::generate();
+        $input['upwd'] = $input['upwd_confirm'] = $temporary;
         $validator = AccountValidator::create($input);
         if ($validator->fails()) {
             echo json_encode([
@@ -86,16 +90,9 @@ try {
             exit;
         }
 
-        $input['created_at'] = date('Y-m-d H:i:s');
-        $input['upwd'] = password_hash($input['upwd'], PASSWORD_DEFAULT);
-        unset($input['upwd_confirm']);
-
-        $id = AccountModel::insert($input);
-        if ((int) $roleId !== 1) {
-            AclModel::replaceAll((int) $id, $grants);
-        } else {
-            AclModel::deleteByAdmin((int) $id);
-        }
+        unset($input['upwd'], $input['upwd_confirm']);
+        $credential = (new AccountCredentialService())->create($input, $grants, $temporary);
+        $id = $credential['id'];
         AuditLogger::ifOk($id, 'create', 'account', $id, (string) $input['uid'], [
             'role_id' => $roleId,
             'uname' => $input['uname'],
@@ -105,7 +102,8 @@ try {
         echo json_encode([
             'success' => true,
             'message' => '계정을 등록했습니다.',
-            'id' => $id
+            'id' => $id,
+            'credential' => $credential
         ]);
         exit;
     }
@@ -139,7 +137,15 @@ try {
         exit;
     }
 
+    if ($mode === 'reissue_temporary') {
+        $credential = (new AccountCredentialService())->reissue((int) ($input['id'] ?? 0), $currentAdminNo);
+        AuditLogger::record('update', 'account', $credential['id'], $credential['uid'], ['temporary_password_reissued' => true]);
+        echo json_encode(['success' => true, 'message' => '임시 비밀번호를 재발급했습니다.', 'credential' => $credential]);
+        exit;
+    }
+
     if ($mode === 'update') {
+        if (!empty($input['upwd']) || !empty($input['upwd_confirm'])) throw new RuntimeException('임시 비밀번호 재발급 기능을 이용하세요.');
         $id = $input['no'] ?? null;
 
         if (!$id) {

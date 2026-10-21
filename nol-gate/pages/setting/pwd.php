@@ -4,13 +4,18 @@ require_once dirname(__DIR__, 2) . "/lib/PasswordChangeGate.php";
 require_once dirname(__DIR__, 2) . "/Model/AccountModel.php";
 
 $pwdGate = new PasswordChangeGate();
+$pwdAccount = AccountModel::findByNo((int) ($_SESSION['no_adm_login_no'] ?? 0));
 $pwdState = $pwdGate->evaluate(
-    AccountModel::findByNo((int) ($_SESSION['no_adm_login_no'] ?? 0)),
+    $pwdAccount,
     true
 );
 $pwdForced = $pwdState['reason'] !== null;
 $pwdHint = $pwdForced ? $pwdGate->message($pwdState['reason']) : '';
 $hideAdminNav = $pwdForced;
+if ($pwdForced) {
+    include dirname(__DIR__, 2) . '/inc/password.required.php';
+    exit;
+}
 
 include_once "../../inc/admin.title.php";
 include_once "../../inc/admin.css.php";
@@ -120,7 +125,7 @@ include_once "../../inc/admin.js.php";
 
 
         <!-- Footer -->
-        <script type="text/javascript" src="./js/setting.process.js?c=<?= $STATIC_ADMIN_JS_MODIFY_DATE ?>"></script>
+        <script type="text/javascript" src="./js/setting.process.js?c=<?= $STATIC_ADMIN_JS_MODIFY_DATE ?>&auth=20261021"></script>
         <?php
         include_once "../../inc/admin.footer.php";
         ?>

@@ -1,4 +1,5 @@
 <?php
+require_once dirname(__DIR__) . '/lib/GroupedOrder.php';
 
 class PopupModel
 {
@@ -18,8 +19,10 @@ class PopupModel
                 NOW(), NOW()
             )
         ";
+        $order = new GroupedOrder($db, 'nb_popups');
+        return $order->locked(function () use ($db, $sql, $data, $order) {
         $stmt = $db->prepare($sql);
-        return $stmt->execute([
+        $result = $stmt->execute([
             ':title'        => $data['title'],
             ':popup_type'   => $data['popup_type'] ?? 1,
             ':popup_path'   => $data['popup_path'],
@@ -34,24 +37,15 @@ class PopupModel
             ':is_unlimited' => $data['is_unlimited'],
             ':is_target'    => $data['is_target'],
         ]);
+        if ($result) $order->head(['popup_path'=>$data['popup_path']], (int)$db->lastInsertId());
+        return $result;
+        });
     }
 
     public static function bumpSortNosOnInsert(?string $popup_path = null): void
     {
-        $db = DB::getInstance();
-        $where = [];
-        $params = [];
-
-        if ($popup_path !== null && $popup_path !== '') {
-            $where[] = 'popup_path = :popup_path';
-            $params[':popup_path'] = $popup_path;
-        }
-
-        $sql = 'UPDATE nb_popups SET sort_no = sort_no + 1'
-            . (count($where) ? ' WHERE ' . implode(' AND ', $where) : '');
-
-        $stmt = $db->prepare($sql);
-        $stmt->execute($params);
+        if ($popup_path === null) throw new InvalidArgumentException('Popup path is required');
+        (new GroupedOrder(DB::getInstance(), 'nb_popups'))->head(['popup_path'=>$popup_path]);
     }
 
     public static function update($id, $data)
@@ -94,74 +88,23 @@ class PopupModel
         }
         $params[':id'] = $id;
 
-        return $stmt->execute($params);
+        $order = new GroupedOrder($db, 'nb_popups');
+        return $order->locked(function () use ($id, $data, $params, $stmt, $order) {
+            $current = self::find($id);
+            if (!$current) return false;
+            $params[':sort_no'] = $order->move($current, ['popup_path'=>$data['popup_path']], (int)$data['sort_no']);
+            return $stmt->execute($params);
+        });
     }
 
     public static function delete($id)
     {
-        $db = DB::getInstance();
-
-        $stmt = $db->prepare("SELECT sort_no FROM nb_popups WHERE id = :id");
-        $stmt->execute([':id' => $id]);
-        $sortNo = $stmt->fetchColumn();
-
-        if ($sortNo === false) return false;
-
-        $stmt = $db->prepare("DELETE FROM nb_popups WHERE id = :id");
-        $result = $stmt->execute([':id' => $id]);
-
-        if ($result) {
-            $stmt = $db->prepare("
-                UPDATE nb_popups 
-                SET sort_no = sort_no - 1 
-                WHERE sort_no > :sortNo
-            ");
-            $stmt->execute([':sortNo' => $sortNo]);
-        }
-
-        return $result;
+        return (new GroupedOrder(DB::getInstance(), 'nb_popups'))->remove([(int)$id]);
     }
 
     public static function deleteMultiple(array $ids)
     {
-        if (empty($ids)) return false;
-
-        $db = DB::getInstance();
-
-        $placeholders = [];
-        $params = [];
-        foreach ($ids as $index => $id) {
-            $key = ":id$index";
-            $placeholders[] = $key;
-            $params[$key] = (int)$id;
-        }
-
-        $stmt = $db->prepare("SELECT sort_no FROM nb_popups WHERE id IN (" . implode(', ', $placeholders) . ")");
-        $stmt->execute($params);
-        $sortNos = $stmt->fetchAll(PDO::FETCH_COLUMN);
-
-        if (empty($sortNos)) return false;
-
-        $minSortNo = min($sortNos);
-        $deletedCount = count($sortNos);
-
-        $sql = "DELETE FROM nb_popups WHERE id IN (" . implode(', ', $placeholders) . ")";
-        $stmt = $db->prepare($sql);
-        $result = $stmt->execute($params);
-
-        if ($result) {
-            $stmt = $db->prepare("
-                UPDATE nb_popups 
-                SET sort_no = sort_no - :deletedCount 
-                WHERE sort_no > :minSortNo
-            ");
-            $stmt->execute([
-                ':deletedCount' => $deletedCount,
-                ':minSortNo'    => $minSortNo
-            ]);
-        }
-
-        return $result;
+        return (new GroupedOrder(DB::getInstance(), 'nb_popups'))->remove($ids);
     }
 
     public static function find($id)
@@ -172,39 +115,24 @@ class PopupModel
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public static function getMaxSortNo(): int
+    public static function getMaxSortNo(string $path): int
     {
-        $db = DB::getInstance();
-        $stmt = $db->query("SELECT MAX(sort_no) FROM nb_popups");
-        return (int) $stmt->fetchColumn();
+        return (new GroupedOrder(DB::getInstance(), 'nb_popups'))->maximum(['popup_path'=>$path]);
     }
 
+    // Compatibility entry: selected-row updates now own the entire grouped move.
     public static function shiftSortNosForUpdate(int $oldNo, int $newNo, int $id): void
     {
-        $db = DB::getInstance();
-
-        if ($newNo === $oldNo) return;
-
-        if ($newNo < $oldNo) {
-            $sql = "UPDATE nb_popups SET sort_no = sort_no + 1 
-                    WHERE sort_no >= :newNo AND sort_no < :oldNo AND id != :id";
-        } else {
-            $sql = "UPDATE nb_popups SET sort_no = sort_no - 1 
-                    WHERE sort_no > :oldNo AND sort_no <= :newNo AND id != :id";
-        }
-
-        $stmt = $db->prepare($sql);
-        $stmt->execute([
-            ':newNo' => $newNo,
-            ':oldNo' => $oldNo,
-            ':id'    => $id,
-        ]);
+        $row = self::find($id);
+        if (!$row) return;
+        $row['sort_no'] = $newNo;
+        self::update($id, $row);
     }
 
-    public static function getMinSortNo(): int
+    public static function getMinSortNo(string $path): int
     {
-        $db = DB::getInstance();
-        $stmt = $db->query("SELECT MIN(sort_no) FROM nb_popups");
-        return (int)$stmt->fetchColumn();
+        $s = DB::getInstance()->prepare('SELECT COALESCE(MIN(sort_no),1) FROM nb_popups WHERE popup_path <=> ?');
+        $s->execute([$path]); return (int)$s->fetchColumn();
     }
+
 }

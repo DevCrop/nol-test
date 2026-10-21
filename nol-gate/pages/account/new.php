@@ -2,6 +2,7 @@
 include_once "../../../inc/lib/base.class.php";
 require_once dirname(__DIR__, 2) . "/Model/AccountModel.php";
 $role->redirectIfCannotView();
+$adminCredentialStyles = true;
 
 try {
     $db = DB::getInstance();
@@ -24,7 +25,7 @@ include_once "../../inc/admin.js.php";
         <main class="no-app no-container">
             <?php include_once "../../inc/admin.drawer.php"; ?>
 
-            <form id="frm" method="post" enctype="multipart/form-data">
+            <form id="frm" method="post" enctype="multipart/form-data" data-temporary-credentials>
                 <input type="hidden" name="mode" value="save">
 
                 <section class="no-content">
@@ -90,18 +91,9 @@ include_once "../../inc/admin.js.php";
                                 <div class="no-admin-block">
                                     <h3 class="no-admin-title"><label for="upwd">비밀번호</label></h3>
                                     <div class="no-admin-content">
-                                        <input type="password" name="upwd" id="upwd" class="no-input--detail"
-                                            placeholder="비밀번호를 입력하세요" required minlength="8" maxlength="30"
-                                            title="비밀번호 정책에 맞게 입력해주세요.">
-                                    </div>
-                                </div>
-
-                                <div class="no-admin-block">
-                                    <h3 class="no-admin-title"><label for="upwd_confirm">비밀번호 확인</label></h3>
-                                    <div class="no-admin-content">
-                                        <input type="password" name="upwd_confirm" id="upwd_confirm" class="no-input--detail"
-                                            placeholder="비밀번호를 다시 입력하세요" required minlength="8" maxlength="30"
-                                            title="비밀번호와 동일하게 입력해주세요.">
+                                        <input type="text" id="upwd" class="no-input--detail" disabled
+                                            placeholder="계정 등록 시 임시 비밀번호가 자동 발급됩니다."
+                                            aria-label="비밀번호: 계정 등록 시 임시 비밀번호 자동 발급 예정">
                                     </div>
                                 </div>
 
@@ -166,6 +158,7 @@ include_once "../../inc/admin.js.php";
                 </section>
             </form>
         </main>
+        <?php include __DIR__ . '/../../inc/account.credentials.php'; ?>
         <?php include_once "../../inc/admin.footer.php"; ?>
     </div>
 

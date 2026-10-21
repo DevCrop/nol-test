@@ -1,0 +1,12 @@
+# Interactive local preview only. Credentials are interpolated from the existing
+# project .env, never stored here. Reuse the existing QA database/volume unchanged.
+services:
+  web:
+    environment:
+      MFA_ENABLED: ${MFA_ENABLED:-true}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-daehakro@nol-theater.com}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-놀씨어터}

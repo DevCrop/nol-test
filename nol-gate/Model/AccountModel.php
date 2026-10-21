@@ -261,7 +261,7 @@ class AccountModel {
         try {
             $stmt = DB::getInstance()->prepare(
                 'SELECT no, uid, uname, email, role_id, active_status, created_at,
-                        last_login_at, idle_locked_at, must_change_password, password_changed_at
+                        last_login_at, idle_locked_at, must_change_password, password_changed_at, temporary_password_expires_at
                  FROM nb_admin WHERE no = :no'
             );
             $stmt->execute(['no' => $id]);

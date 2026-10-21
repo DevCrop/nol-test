@@ -1,6 +1,6 @@
-import { AccountController } from "./Controller/AccountController.js";
-import { AuditController } from "./Controller/AuditController.js";
-import { PrivacyAccessController } from "./Controller/PrivacyAccessController.js";
+import { AccountController } from "./Controller/AccountController.js?v=20261021";
+import { AuditController } from "./Controller/AuditController.js?v=20261020";
+import { PrivacyAccessController } from "./Controller/PrivacyAccessController.js?v=20261020";
 import { PrivacyCopyLock } from "./utils/PrivacyCopyLock.js";
 import { InquiryDownloadReason } from "./utils/InquiryDownloadReason.js";
 import { SettingController } from "./Controller/SettingController.js";

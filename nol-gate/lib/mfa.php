@@ -60,7 +60,7 @@ class Mfa
             self::clear();
             throw new RuntimeException('계정 정보가 변경되었습니다. 다시 로그인하세요.');
         }
-        try { (new AccountIdleLock())->guard($row); }
+        try { TemporaryPassword::assertUsable($row); (new AccountIdleLock())->guard($row); }
         catch (RuntimeException $e) { self::clear(); throw $e; }
         return $row;
     }

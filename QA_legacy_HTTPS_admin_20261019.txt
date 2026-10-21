@@ -1,0 +1,26 @@
+놀씨어터 기존 HTTPS 관리자 임시 접근 패치
+
+사용자 요청: gate SSL 설치 대기 중 기존 https://noltheater-daehakro.com/nol-gate/ 에서 실제 CRUD 확인.
+변경: inc/lib/Gate.php. .env.example은 기본 비활성 설정 안내만 추가.
+기본 동작은 종전과 동일하며 GATE_ALLOW_LEGACY_ADMIN=true를 명시해야 예외 활성.
+예외는 PUBLIC_HOST 정확 일치 + /nol-gate 경로 + 실제 HTTPS(또는 신뢰 프록시 TLS)에만 적용.
+HTTP/타 호스트/gate의 물리 디렉터리는 종전 차단 유지. IP/로그인/MFA/ACL/CSRF/세션은 생략하지 않음.
+gate PHP 루트 라우팅 및 기존 공개 홈페이지 정책 유지.
+
+Docker 검증: 제공 261019.sql의 격리 사본 + 기존 승인 최종 SQL 사용. 운영 서버 및 실제 .env 수정 없음.
+- 정책 분기 7 PASS / 0 FAIL.
+- HTTPS /nol-gate CRUD·첨부·권한·CSRF·감사 89 PASS / 0 FAIL.
+- HTTPS /nol-gate 기존 화면·계정 CRUD 39 PASS / 0 FAIL.
+- HTTPS /nol-gate 로그인·MFA 검증·세션 회전·Secure 쿠키·미등록 IP·로그아웃·공개 홈페이지 11 PASS / 0 FAIL.
+- 기존 gate 루트 인증·세션·라우팅 회귀 67 PASS / 0 FAIL.
+- 합계 213 PASS / 0 FAIL 및 Gate.php 문법 검사 통과.
+- MFA는 임시 QA 계정과 QA challenge로 검증, 실제 메일 발송 없음. TLS는 QA Apache 서버변수 재현이며 실제 인증서 검사 아님.
+- 최초 로그인 QA의 정리 쿼리 컬럼 오타(actor_no/admin_no)는 테스트 코드만 수정 후 재실행 통과.
+
+서버 적용: 별도 nol-legacy-https-admin-20261019.zip 안 inc/lib/Gate.php를 /www_root/inc/lib/Gate.php에 덮어쓰기.
+운영 루트 .env에 GATE_ALLOW_LEGACY_ADMIN=true 추가. 다른 설정과 SQL은 변경하지 않음.
+GATE_ENFORCE=true 및 SESSION_SECURE=true 유지. GATE_ROUTE_MODE=php 유지.
+허용된 관리자 IP로 기존 HTTPS /nol-gate/ 로그인부터 다시 수행.
+gate와 기존 호스트의 쿠키는 독립적이므로 각각 로그인 필요. 동일 계정 동시 로그인 시 종전 세션 종료 정책 유지.
+gate SSL 완료 후 GATE_ALLOW_LEGACY_ADMIN=false로 원복하여 공개 호스트 관리자 경로를 다시 차단.
+이 패치는 기존 v2 ZIP에 추가로 적용하는 후속 패치이며, 기존 v2 ZIP 자체는 변경하지 않음.

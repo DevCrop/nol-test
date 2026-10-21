@@ -44,7 +44,7 @@ function doSave() {
     contentType: false,
     cache: false,
     success: function (data) {
-      var jsonData = $.parseJSON(data);
+      var jsonData = typeof data === 'string' ? $.parseJSON(data) : data;
 
       if (jsonData.result == "fail") {
         alert(jsonData.msg);
@@ -53,7 +53,9 @@ function doSave() {
         location.href = window.NO_ADMIN_BASE || "/";
       }
     },
-    error: function (e) {},
+    error: function (e) {
+      alert(e.responseJSON?.msg || e.responseJSON?.message || '요청에 실패했습니다. 다시 시도하세요.');
+    },
     complete: function () {},
   });
 }

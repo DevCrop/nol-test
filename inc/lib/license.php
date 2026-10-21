@@ -36,4 +36,5 @@ Lisence::add('b31ae8deb216d906cb641faede58fca14366077ef9c1db2d21746acb275573f3')
 Lisence::add('5bad4d9c3534e6220ee416f6368cbb1959e5ed8944e3c632b988b1cc7abe7c80'); // 127.0.0.1:8618
 Lisence::add('c47d0ed9321bb8f33511dca030c8bc1e3756e071c8e9d39877e7a4dddac989e7'); // gate.local:8618
 Lisence::add('9b2f8db4b7a42e6c647104968af577673a587739c16083459f52510151e99863'); // gate.local
+Lisence::add(hash('sha256', 'gate.noltheater-daehakro.comNOLTHE')); // production gate
 

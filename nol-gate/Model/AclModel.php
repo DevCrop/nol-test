@@ -37,7 +37,8 @@ class AclModel
             return;
         }
         $db = DB::getInstance();
-        $db->beginTransaction();
+        $ownsTransaction = !$db->inTransaction();
+        if ($ownsTransaction) $db->beginTransaction();
         try {
             $del = $db->prepare('DELETE FROM nb_admin_acl WHERE admin_no = :no');
             $del->execute([':no' => $adminNo]);
@@ -62,9 +63,9 @@ class AclModel
                     ':can_delete' => $delete ? 1 : 0,
                 ]);
             }
-            $db->commit();
+            if ($ownsTransaction) $db->commit();
         } catch (Throwable $e) {
-            $db->rollBack();
+            if ($ownsTransaction && $db->inTransaction()) $db->rollBack();
             throw $e;
         }
     }

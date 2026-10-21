@@ -1,0 +1,30 @@
+놀씨어터 HTTP gate -> 기존 HTTPS 관리자 분기 후속 패치
+
+사용자 요청: SSL 사용 시 gate, 그 전에는 기존 /nol-gate/ 관리자에서 CRUD 확인.
+구현된 정확한 동작:
+- http://gate.noltheater-daehakro.com/ GET/HEAD -> 302 https://noltheater-daehakro.com/nol-gate/
+- https://gate.noltheater-daehakro.com/ -> 기존 PHP gate 루트 관리자.
+- HTTP gate POST 등 상태 변경은 405. 자격증명/업로드/CRUD 요청을 다른 호스트로 재전송하지 않음.
+- TLS 인증서 오류는 PHP 실행 이전이므로 코드의 자동 인증서 유효성 감지/우회 기능이 아님.
+- gate SSL 설치 전에는 HTTP gate 주소 또는 기존 공개 호스트의 HTTPS /nol-gate/ 사용.
+- gate SSL이 설치되어도 HTTP gate는 위 기존 관리자 URL로 이동. HTTPS gate 사용 시 gate 루트 유지.
+- IP/MFA/로그인/세션/ACL/CSRF 보안 유지. 쿠키 Secure=true 유지.
+
+서버에 올릴 것: nol-gate-https-fallback-20261019.zip 내부 3파일만 기존 /www_root/에 덮어쓰기.
+- .env (사용자 제공 운영 DB/SMTP/IP 값 유지, UTF-8 BOM 없음)
+- inc/lib/Gate.php
+- inc/lib/PhpGateRouter.php
+기존 v2 배포 위에 적용하는 후속 패치. SQL 재실행/전체 FTP 삭제 불필요.
+기존 1파일 패치와 환경설정 ZIP 대신 이 통합 패치 사용.
+실제 .env/비밀번호 포함하므로 ZIP 자체를 공개 서버나 GitHub에 업로드하지 말 것.
+
+Docker 검증 (제공 실제 DB 백업의 격리 사본 + 승인 SQL):
+- HTTPS/HTTP 분기·POST 거부·Secure 쿠키·기존 홈페이지 7 PASS / 0 FAIL.
+- 기존 HTTPS 관리자 로그인·MFA·세션·IP·로그아웃 11 PASS / 0 FAIL.
+- 기존 HTTPS 관리자 CRUD·첨부·권한·감사 89 PASS / 0 FAIL.
+- 기존 데이터 화면 및 계정 CRUD 39 PASS / 0 FAIL.
+- 합계 146 PASS / 0 FAIL. 수정 PHP 라우터 문법 검사 통과.
+- 실제 메일 발송 및 실제 가비아 SSL 인증서 검사는 하지 않음. HTTPS는 QA Apache 환경변수로 재현.
+- 초기 MySQL 준비 대기 조건을 실제 SELECT 성공으로 보완한 뒤 덤프 복원 완료.
+- 기존 QA의 하드코딩된 gate HTTP GET 6건을 실제 legacy HTTPS 대상으로 수정 후 재검사 통과(애플리케이션 수정 불필요).
+- 원본 DB 덤프/실서버/블루스퀘어 변경 없음.

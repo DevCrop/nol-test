@@ -51,7 +51,6 @@ try {
             exit;
         }
 
-        PopupModel::bumpSortNosOnInsert($data['popup_path']);
         $data['sort_no'] = 1;
         $result = PopupModel::insert($data);
         AuditLogger::ifOk($result, 'create', 'popup', AuditLogger::lastId(), (string) $data['title']);
@@ -91,11 +90,6 @@ try {
         if (!$existing) {
             echo json_encode(['success' => false, 'message' => '데이터를 찾을 수 없습니다.']);
             exit;
-        }
-
-        $oldSortNo = (int)$existing['sort_no'];
-        if ($newSortNo !== $oldSortNo && $newSortNo > 0) {
-            PopupModel::shiftSortNosForUpdate($oldSortNo, $newSortNo, $id);
         }
 
         // 텍스트 팝업(popup_type = 2)이 아닐 때만 이미지 검증
@@ -219,8 +213,8 @@ try {
             exit;
         }
 
-        $minSortNo = PopupModel::getMinSortNo();
-        $maxSortNo = PopupModel::getMaxSortNo();
+        $minSortNo = PopupModel::getMinSortNo((string)$currentData['popup_path']);
+        $maxSortNo = PopupModel::getMaxSortNo((string)$currentData['popup_path']);
 
         if ($newNo > $maxSortNo) {
             echo json_encode(['success' => false, 'message' => '제일 높은 순서의 게시물입니다.']);
@@ -231,8 +225,6 @@ try {
             echo json_encode(['success' => false, 'message' => '제일 낮은 순서의 게시물입니다.']);
             exit;
         }
-
-        PopupModel::shiftSortNosForUpdate($oldNo, $newNo, $id);
 
         $dataToUpdate = [
             'title'        => $currentData['title'],

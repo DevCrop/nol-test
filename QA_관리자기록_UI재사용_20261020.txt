@@ -1,0 +1,32 @@
+놀씨어터 작업이력 / 개인정보 접속기록 — 기존 관리자 UI 재사용
+
+적용 범위: 놀유니버셜/260918. 블루스퀘어, 운영 서버, 기존 배포 ZIP 변경 없음.
+
+확인한 기존 컴포넌트
+- resource/css/style.css 및 pages/design/banner.list.php 검색/목록 마크업.
+- 검색: no-card, no-admin-column, no-admin-block, no-admin-title, no-admin-content,
+  no-search-wrap, no-search-input, no-search-btn.
+- 버튼: no-btn, no-btn--main, no-btn--normal, no-btn--search.
+- 테이블: no-table-responsive, no-table, no-td-title.
+- 총건수: no-table-option. 배지: no-badge.
+- 페이지: no-pagination, no-page-list, no-page-item, no-page-link.active.
+- 셀렉트: 기존 jQuery UI selectmenu 및 style.css 테마.
+
+변경
+- inc/log.filters.php로 두 화면의 검색 마크업 공통화.
+- 별도 필터 그리드, 인풋/버튼 스킨, 테이블 헤더/셀 배경·폰트·간격 덮어쓰기 제거.
+- 페이지 번호/활성/화살표는 기존 페이지 컴포넌트 사용. 링크 대신 button으로 비활성/키보드 동작 보존.
+- 배지는 기존 no-badge 크기/형태 사용. 작업 종류별 색상만 추가.
+- audit-ui.css는 보조 텍스트, 긴 내용 줄바꿈, 상태색, 페이지 버튼 비활성 등 차이만 유지.
+- selectmenu change 검색 연결 및 초기화 시 refresh 처리.
+- 검색 API, DB 쿼리, 개인정보 마스킹/로그 저장/접근권한은 이번 수정에서 변경하지 않음.
+
+검사
+- node qa/audit-ui.test.mjs: 26 PASS / 0 FAIL.
+  기존 20개 + 컴포넌트/셀렉트/초기화/공통 검색폼/중복 스킨 제거 6개.
+- PHP 문법: inc/log.filters.php, pages/account/audit.php, pages/account/access.php.
+- 실브라우저 시각 검수는 도구 연결 오류로 미확인. DOM stub 검사는 실제 렌더링 검수가 아님.
+
+확인 주소 (Chrome Ctrl+Shift+R)
+http://gate.local:8618/index.php/pages/account/audit.php
+http://gate.local:8618/index.php/pages/account/access.php

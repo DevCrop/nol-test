@@ -7,6 +7,7 @@ export async function fetcher(url, data = {}, method = "POST") {
   const config = {
     method,
     credentials: "include",
+    cache: "no-store",
     headers: {},
   };
 

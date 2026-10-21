@@ -97,7 +97,7 @@ if (($attemptState['blocked_until'] ?? 0) > time()) {
 
 $sql = "
     SELECT a.no, a.uid, a.upwd, a.uname, a.active_status, a.role_id, a.email,
-           a.created_at, a.last_login_at, a.idle_locked_at
+           a.created_at, a.last_login_at, a.idle_locked_at, a.must_change_password, a.temporary_password_expires_at
     FROM nb_admin a
     WHERE a.uid = :uid AND a.sitekey = :sitekey
 ";
@@ -128,6 +128,9 @@ try {
 }
 
 $clearLoginAttempt($attemptFile);
+require_once dirname(__DIR__) . "/TemporaryPassword.php";
+try { TemporaryPassword::assertUsable($data); }
+catch (RuntimeException $e) { $sendLoginError($e->getMessage()); }
 
 if (Mfa::enabled()) {
     try { Mfa::begin($data); }

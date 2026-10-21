@@ -1,0 +1,30 @@
+/* Preserve hidden state against the existing .no-toolbar-container display:flex. */
+body[data-page="temp-account-preview"] [hidden] {
+    display: none !important;
+}
+/* Native dialog geometry only; its contents use existing admin components. */
+dialog[data-temporary-ui-dialog] {
+    width: min(56rem, calc(100% - 3.2rem));
+    max-height: calc(100% - 3.2rem);
+    margin: auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--body-color);
+    overflow-y: auto;
+}
+dialog[data-temporary-ui-dialog]::backdrop { background: rgb(0 0 0 / 40%); }
+dialog[data-temporary-ui-dialog] .no-card-header { align-items: center; }
+dialog[data-temporary-ui-dialog] .no-admin-column--detail .no-admin-title { width: 12rem; }
+dialog[data-temporary-ui-dialog] [hidden] { display: none !important; }
+dialog[data-temporary-ui-dialog] [data-temporary-ui-copy-buffer] {
+    position: fixed;
+    left: -9999px;
+    top: 0;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+@media (max-width: 768px) {
+    dialog[data-temporary-ui-dialog] .no-admin-column--detail .no-admin-title { width: 100%; }
+}

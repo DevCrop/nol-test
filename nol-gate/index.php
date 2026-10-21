@@ -27,6 +27,7 @@ AuthSession::forgetMfa();
   <!-- admin only -->
   <script type="text/javascript" src="./resource/js/auth-ui.js?v=<?= filemtime(__DIR__ . '/resource/js/auth-ui.js') ?>" defer></script>
   <script type="text/javascript" src="./resource/js/login.js?v=<?= filemtime(__DIR__ . '/resource/js/login.js') ?>" defer></script>
+  <script src="./resource/js/private-page.js?v=20261021" defer></script>
 </head>
 
 <body class="no-sub-body">

@@ -5,7 +5,7 @@ ob_start();
 $root = dirname(__DIR__);
 require $root.'/config/env.php';
 require $root.'/inc/lib/session.boot.php';
-if (env('APP_ENV') !== 'development') exit(1);
+if (env('DB_USER') !== 'qa_app' || (env('APP_ENV') !== 'development' && !(env('APP_ENV') === 'production' && getenv('QA_PRODUCTION_HTTP') === '1' && getenv('GATE_ALLOW_HTTP') === 'true'))) exit(1);
 require $root.'/src/Database/DB.php';
 require $root.'/inc/lib/db.php';
 foreach (['HOST','NAME','USER','PASS','PORT'] as $key) if (!defined('DB_'.$key)) define('DB_'.$key, env('DB_'.$key));
@@ -22,7 +22,10 @@ function boundaryHttp($path, $sid, array $data, ?array $file=null, ?string $csrf
     if($file) $body.="--$boundary\r\nContent-Disposition: form-data; name=\"".($file[2]??'file')."\"; filename=\"".$file[0]."\"\r\nContent-Type: image/png\r\n\r\n".$file[1]."\r\n";
     $body.="--$boundary--\r\n";
     $qaHost=(string)env('GATE_HOST','gate.local');
-    $ctx=stream_context_create(['http'=>['method'=>'POST','header'=>"Host: ".$qaHost."\r\nCookie: ".session_name()."=$sid\r\nX-Requested-With: XMLHttpRequest\r\nContent-Type: multipart/form-data; boundary=$boundary\r\n",'content'=>$body,'ignore_errors'=>true,'follow_location'=>0,'timeout'=>10]]);
+    $legacy = getenv('QA_LEGACY_ADMIN') === '1';
+    if ($legacy) { $qaHost = (string) env('PUBLIC_HOST'); $path='/nol-gate'.$path; }
+    elseif(env('GATE_ROUTE_MODE','root')==='php')$path='/index.php'.$path;
+    $ctx=stream_context_create(['http'=>['method'=>'POST','header'=>"Host: ".$qaHost."\r\n".($legacy?"X-QA-HTTPS: 1\r\n":'')."Cookie: ".session_name()."=$sid\r\nX-Requested-With: XMLHttpRequest\r\nContent-Type: multipart/form-data; boundary=$boundary\r\n",'content'=>$body,'ignore_errors'=>true,'follow_location'=>0,'timeout'=>10]]);
     $response=file_get_contents('http://127.0.0.1'.$path,false,$ctx); preg_match('/\s(\d{3})\s/',$http_response_header[0]??'',$m);
     return [(int)($m[1]??0),json_decode($response,true),(string)$response];
 }
@@ -67,6 +70,11 @@ try {
         $stored=$json['filename']??'';
         boundaryCheck($status===200 && !empty($json['success']) && $stored!=='',$menu.' update-only valid image upload');
         if($stored) $files[]=$root.'/'.ltrim($stored,'/');
+        if($stored && env('GATE_ROUTE_MODE','root')==='php' && getenv('QA_LEGACY_ADMIN')!=='1') {
+            $preview=stream_context_create(['http'=>['header'=>'Host: '.env('GATE_HOST'),'ignore_errors'=>true]]);
+            $bytes=file_get_contents('http://127.0.0.1/index.php/'.ltrim($stored,'/'),false,$preview);
+            boundaryCheck(strpos($http_response_header[0]??'','200')!==false && $bytes===$png,$menu.' uploaded preview exact bytes through PHP router');
+        }
         $sibling=$root.'/uploads/'.$menu.'-'.$uid; mkdir($sibling,0777); $dirs[]=$sibling;
         $victim=$sibling.'/fixture.txt'; file_put_contents($victim,'synthetic'); $files[]=$victim;
         AclModel::replaceAll($admin,[$menu=>['delete'=>true]]);
@@ -141,15 +149,19 @@ try {
             boundaryCheck((int)$q->fetchColumn()===0,'board actual HTTP delete');
         }
         foreach(['login.process.php','mfa.email.php','mfa.process.php','mfa.resend.php','logout.php'] as $endpoint) {
-            $ctx=stream_context_create(['http'=>['header'=>'Host: gate.local','ignore_errors'=>true,'follow_location'=>0]]);
-            file_get_contents('http://127.0.0.1/lib/login/'.$endpoint,false,$ctx);
+            $legacy=getenv('QA_LEGACY_ADMIN')==='1';
+            $ctx=stream_context_create(['http'=>['header'=>'Host: '.env($legacy?'PUBLIC_HOST':'GATE_HOST','gate.local').($legacy?"\r\nX-QA-HTTPS: 1":''),'ignore_errors'=>true,'follow_location'=>0]]);
+            $qaFront=$legacy?'/nol-gate':(env('GATE_ROUTE_MODE','root')==='php'?'/index.php':'');
+            file_get_contents('http://127.0.0.1'.$qaFront.'/lib/login/'.$endpoint,false,$ctx);
             boundaryCheck(strpos($http_response_header[0]??'','405')!==false,'GET cannot mutate '.$endpoint);
         }
         $db->prepare("INSERT INTO nb_request(sitekey,name,email,phone,performance_name,file_1,org_file_1,is_confirmed) VALUES('NOLTHE',?,?,?,?,?,?,0)")->execute(['검증담당자',$uid.'@example.com','01012345678',$uid,$uid.'.txt','qa.txt']);
         $request=(int)$db->lastInsertId();
         $private=$root.'/uploads/request/'.$uid.'.txt';file_put_contents($private,'QA synthetic private attachment');$files[]=$private;
-        $ctx=stream_context_create(['http'=>['header'=>"Host: gate.local\r\nX-Requested-With: XMLHttpRequest",'ignore_errors'=>true,'follow_location'=>0]]);
-        file_get_contents('http://127.0.0.1/pages/inquiry/view.php?no='.$request,false,$ctx);
+        $legacy=getenv('QA_LEGACY_ADMIN')==='1';
+        $ctx=stream_context_create(['http'=>['header'=>'Host: '.env($legacy?'PUBLIC_HOST':'GATE_HOST','gate.local').($legacy?"\r\nX-QA-HTTPS: 1":'')."\r\nX-Requested-With: XMLHttpRequest",'ignore_errors'=>true,'follow_location'=>0]]);
+        $qaFront=$legacy?'/nol-gate':(env('GATE_ROUTE_MODE','root')==='php'?'/index.php':'');
+        file_get_contents('http://127.0.0.1'.$qaFront.'/pages/inquiry/view.php?no='.$request,false,$ctx);
         $q=$db->prepare("SELECT COUNT(*) FROM nb_admin_privacy_access WHERE target_no=? AND entity='inquiry' AND actor_no=0");$q->execute([$request]);
         boundaryCheck(strpos($http_response_header[0]??'','401')!==false && (int)$q->fetchColumn()===0,'anonymous inquiry denied before subject query and privacy audit');
         $response=boundaryHttp('/pages/inquiry/download.php',$sid,['no'=>$request,'slot'=>1,'reason'=>'QA verification']);

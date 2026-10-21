@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../Model/AccountModel.php';
 require_once __DIR__ . '/AccountIdleLock.php';
+require_once __DIR__ . '/TemporaryPassword.php';
 
 class AuthSession
 {
@@ -63,6 +64,7 @@ class AuthSession
             || (isset($admin['role_id']) && (int) $current['role_id'] !== (int) $admin['role_id'])) {
             throw new RuntimeException('계정 정보가 변경되었습니다. 다시 로그인하세요.');
         }
+        TemporaryPassword::assertUsable($current);
         $token = bin2hex(random_bytes(32));
         $stmt = DB::getInstance()->prepare("UPDATE nb_admin SET login_token=:token, last_login_at=NOW()
             WHERE no=:no AND sitekey=:site AND upwd=:password AND role_id=:role AND email=:email
@@ -101,6 +103,8 @@ class AuthSession
             && (string) ($row['sitekey'] ?? '') === (string) ($GLOBALS['NO_SITE_UNIQUE_KEY'] ?? '')
             && (int) $row['role_id'] === (int) ($_SESSION['no_adm_login_role_id'] ?? 0)
             && $dbToken !== '' && $mine !== '' && hash_equals($dbToken, $mine)) {
+            try { TemporaryPassword::assertUsable($row); }
+            catch (RuntimeException $e) { self::denyLogin($e->getMessage()); }
             return $row;
         }
         self::kick();

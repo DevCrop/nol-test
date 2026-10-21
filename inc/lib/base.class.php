@@ -92,7 +92,9 @@ if (!isset($isDevelopmentEnv)) {
 if (!headers_sent()) {
     $isHttps = \Http\TransportSecurity::isSecure($_SERVER, (string) env('TRUSTED_PROXY_CIDRS', ''));
 
-    $targetScheme = $isDevelopmentEnv ? 'http' : 'https';
+    $temporaryGateHttp = \Http\TransportSecurity::allowsTemporaryHttp($_SERVER, (string) env('GATE_HOST', ''),
+        (bool) env('GATE_ALLOW_HTTP', false), (string) env('TRUSTED_PROXY_CIDRS', ''));
+    $targetScheme = ($isDevelopmentEnv || $temporaryGateHttp) && !$isHttps ? 'http' : 'https';
     $currentScheme = $isHttps ? 'https' : 'http';
 
     if ($currentScheme !== $targetScheme) {
@@ -138,11 +140,23 @@ if (class_exists('Gate') && Gate::isCurrent() && !Gate::usesSharedRoot()) {
     $NO_ADMIN_BASE = '';
 }
 $NO_ADMIN_PAGES_BASE = $NO_ADMIN_BASE . "/pages";
+if (defined('PHP_GATE_ACTIVE') && PHP_GATE_ACTIVE) {
+    $NO_ADMIN_BASE = '/index.php';
+    $NO_ADMIN_PAGES_BASE = $NO_ADMIN_BASE . '/pages';
+}
 $NO_ADMIN_RESOURCE_BASE = $NO_ADMIN_BASE . "/resource";
 $NO_SITE_UNIQUE_KEY = "NOLTHE";
 
 require_once __DIR__ . '/session.boot.php';
 require_once $NO_ADMIN_PATH . '/lib/Csrf.php';
+if (PHP_SAPI !== 'cli' && !headers_sent()) {
+    $requestFile = str_replace('\\', '/', (string) ($_SERVER['SCRIPT_FILENAME'] ?? ''));
+    if (strpos($requestFile, $NO_ADMIN_PATH . '/') === 0) {
+        header('Cache-Control: no-store, private, max-age=0');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+    }
+}
 Csrf::guard($NO_ADMIN_PATH);
 require_once $NO_ADMIN_PATH . '/lib/AdminRequest.php';
 AdminRequest::requireAuthentication($NO_ADMIN_PATH);

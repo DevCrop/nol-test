@@ -3,6 +3,7 @@ include_once "../../../inc/lib/base.class.php";
 require_once dirname(__DIR__, 2) . "/Model/AccountModel.php";
 require_once dirname(__DIR__, 2) . '/lib/PrivacyAccessLogger.php';
 $role->redirectIfCannotView();
+$adminCredentialStyles = true;
 
 try {
     $db = DB::getInstance(); 
@@ -124,27 +125,18 @@ include_once "../../inc/admin.js.php";
                                     </div>
                                 </div>
 
-                                <!-- 비밀번호 -->
                                 <div class="no-admin-block">
                                     <h3 class="no-admin-title"><label for="upwd">비밀번호</label></h3>
                                     <div class="no-admin-content">
-                                        <input type="password" name="upwd" id="upwd" class="no-input--detail"
-                                            placeholder="수정할 경우 새 비밀번호 입력" <?= $id ? '' : 'required' ?> minlength="8"
-                                            maxlength="30" title="비밀번호 정책에 맞게 입력해주세요.">
+                                        <input type="text" id="upwd" class="no-input--detail" disabled
+                                            placeholder="<?= !empty($account['must_change_password']) ? '임시 비밀번호가 발급된 상태입니다. 본인이 직접 변경해야 합니다.' : '비밀번호는 직접 수정할 수 없습니다.' ?>">
+                                        <?php if (!$isSelf): ?>
+                                        <button type="button" class="no-btn no-btn--sm no-btn--delete-outline" data-reissue-temporary="<?= $id ?>">임시 비밀번호 재발급</button>
+                                        <?php else: ?>
+                                        <a class="no-btn no-btn--sm" href="<?= htmlspecialchars($NO_ADMIN_PAGES_BASE, ENT_QUOTES, 'UTF-8') ?>/setting/pwd.php">본인 비밀번호 변경</a>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
-
-                                <!-- 비밀번호 확인 -->
-                                <div class="no-admin-block">
-                                    <h3 class="no-admin-title"><label for="upwd_confirm">비밀번호 확인</label></h3>
-                                    <div class="no-admin-content">
-                                        <input type="password" name="upwd_confirm" id="upwd_confirm"
-                                            class="no-input--detail" placeholder="비밀번호를 다시 입력해주세요"
-                                            <?= $id ? '' : 'required' ?> minlength="8" maxlength="30"
-                                            title="비밀번호를 동일하게 입력해주세요.">
-                                    </div>
-                                </div>
-
 
                                 <!-- 이름 -->
                                 <div class="no-admin-block">
@@ -232,6 +224,7 @@ include_once "../../inc/admin.js.php";
                 </section>
             </form>
         </main>
+        <?php include __DIR__ . '/../../inc/account.credentials.php'; ?>
         <?php include_once "../../inc/admin.footer.php"; ?>
     </div>
 

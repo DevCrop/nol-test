@@ -11,69 +11,24 @@ $pdo = DB::getInstance();
 $mode = $_POST['mode'];
 
 if ($mode == "pwd.change") {
-
-    $pwd_old = $_POST['pwd_old'];
-    $pwd_new = $_POST['pwd_new'];
-    $pwd_new_confirm = $_POST['pwd_new_confirm'];
-
-    // 세션에서 현재 로그인한 관리자 번호 가져오기
-    $admin_no = $_SESSION['no_adm_login_no'] ?? null;
-
-    if (!$admin_no) {
-        AuthSession::denyLogin();
+    header('Content-Type: application/json; charset=utf-8');
+    require_once dirname(__DIR__, 3) . "/lib/AccountCredentialService.php";
+    $adminNo = (int) ($_SESSION['no_adm_login_no'] ?? 0);
+    if ($adminNo < 1) AuthSession::denyLogin();
+    try {
+        (new AccountCredentialService())->change($adminNo, (string) ($_SESSION['no_adm_login_token'] ?? ''),
+            (string) ($_POST['pwd_old'] ?? ''), (string) ($_POST['pwd_new'] ?? ''), (string) ($_POST['pwd_new_confirm'] ?? ''));
+        AuditLogger::record('update', 'account', $adminNo, (string) ($_SESSION['no_adm_login_uid'] ?? ''), ['password_changed' => true]);
+        AuthSession::destroy();
+        echo json_encode(['result' => 'success', 'msg' => '비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인하세요.']);
+    } catch (RuntimeException $e) {
+        echo json_encode(['result' => 'fail', 'msg' => $e->getMessage()]);
+    } catch (Throwable $e) {
+        http_response_code(500);
+        echo json_encode(['result' => 'fail', 'msg' => '비밀번호 변경에 실패했습니다. 다시 시도하세요.']);
     }
-
-    $stmt = $pdo->prepare("SELECT a.no, a.uid, a.upwd, a.uname, a.active_status 
-                           FROM nb_admin a 
-                           WHERE a.no = :no AND a.sitekey = :sitekey");
-    $stmt->execute(['no' => $admin_no, 'sitekey' => $NO_SITE_UNIQUE_KEY]);
-    $data = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$data) {
-        echo json_encode(["result" => "fail", "msg" => "비정상적인 접근입니다."]);
-        exit;
-    } else {
-        $db_no = $data['no'];
-        $db_pwd = $data['upwd'];
-
-        // password_verify로 현재 비밀번호 검증
-        if (!password_verify($pwd_old, $db_pwd)) {
-            echo json_encode(["result" => "fail", "msg" => "현재 비밀번호가 일치하지 않습니다. 다시 입력해주세요"]);
-            exit;
-        }
-
-        if ($pwd_new !== $pwd_new_confirm) {
-            echo json_encode(["result" => "fail", "msg" => "변경하시려는 신규 비밀번호와 비밀번호 확인이 서로 일치하지 않습니다."]);
-            exit;
-        }
-
-        if (password_verify($pwd_new, $db_pwd)) {
-            echo json_encode(["result" => "fail", "msg" => PasswordChangeGate::MSG_SAME]);
-            exit;
-        }
-
-        $policy = new Validator();
-        $policy->passwordPolicy('upwd', $pwd_new, '비밀번호');
-        if ($policy->fails()) {
-            echo json_encode(["result" => "fail", "msg" => implode("\n", $policy->getErrors())]);
-            exit;
-        }
-
-        $new_hashed = password_hash($pwd_new, PASSWORD_DEFAULT);
-
-        $stmt = $pdo->prepare("UPDATE nb_admin SET upwd = :new_pwd WHERE no = :no");
-        $result = $stmt->execute(['new_pwd' => $new_hashed, 'no' => $db_no]);
-
-        if ($result) {
-            (new PasswordChangeGate())->complete((int) $db_no);
-            AuthSession::destroy();
-            echo json_encode(["result" => "success", "msg" => "정상적으로 수정 되었습니다. 변경된 비밀번호로 새로 로그인해주세요."]);
-        } else {
-            echo json_encode(["result" => "fail", "msg" => "비밀번호 변경에 실패했습니다. 다시 시도해주세요."]);
-        }
-    }
+    exit;
 }
-
 
 if ($mode == "setting.config.save") {
     $role->requireLogin();

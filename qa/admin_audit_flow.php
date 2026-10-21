@@ -93,6 +93,16 @@ expect(!$threw && AuditModel::count('QATEST') === $after, 'ifOk false is no-op')
 AuditLogger::ifOk(true, 'update', 'board', 3, '글제목');
 expect(AuditModel::count('QATEST') === $after + 1, 'ifOk true records');
 expect(AuditModel::count('QATEST', 'board') === 1, 'entity filter count');
+expect(AuditModel::count('QATEST', '', ['action' => 'create']) === 1, 'action filter count');
+expect(AuditModel::count('QATEST', 'board', ['action' => 'update', 'keyword' => '글제목']) === 1, 'combined filters');
+expect(AuditModel::count('QATEST', 'board', ['action' => 'delete']) === 0, 'nonmatching action excluded');
+expect(AuditModel::count('QATEST', '', ['keyword' => '203.0.113.10']) === 2, 'ip search');
+expect(AuditModel::count('QATEST', '', ['keyword' => 'qa_actor']) === 2, 'actor search');
+expect(AuditModel::count('QATEST', '', ['keyword' => "' OR 1=1 --"]) === 0, 'SQL payload is literal');
+expect(AuditModel::count('QATEST', '', ['keyword' => '%']) === 0, 'wildcard is literal');
+expect(count(AuditModel::list('QATEST', 0, 10, 'board', ['action' => 'update', 'keyword' => '글제목'])) === 1, 'filtered list matches count');
+expect(count(AuditModel::list('QATEST', 1, 1)) === 1, 'second page offset');
+expect(AuditModel::count('MISSING_SITE', '', ['keyword' => 'qa_actor']) === 0, 'site scope retained with search');
 
 $acl = file_get_contents($root . '/nol-gate/lib/Acl.php');
 expect(strpos($acl, "'Audit' => 'account'") !== false, 'Acl maps AuditController to account');

@@ -3,6 +3,7 @@
 include_once "../../../../inc/lib/base.class.php";
 include_once "../../../lib/admin.check.ajax.php";
 require_once dirname(__DIR__, 3) . "/lib/AuditLogger.php";
+require_once dirname(__DIR__, 3) . "/lib/GroupedOrder.php";
 $role->requireLogin();
 $role->requireCanModify();
 
@@ -52,10 +53,6 @@ if ($mode == "save") {
     try {
         $db = DB::getInstance();
         $db->exec("LOCK TABLES nb_board WRITE");
-
-        // sort_no 맨 위로 밀기
-        $shift = $db->prepare("UPDATE nb_board SET sort_no = sort_no + 1 WHERE sitekey = :sitekey");
-        $shift->execute([':sitekey' => $NO_SITE_UNIQUE_KEY]);
 
         // INSERT
         $sql = "
@@ -109,9 +106,11 @@ if ($mode == "save") {
         }
 
         $ins->execute($params);
+        $createdNo = (int)$db->lastInsertId();
+        (new GroupedOrder($db, 'nb_board'))->head(['sitekey'=>$NO_SITE_UNIQUE_KEY, 'board_no'=>$board_no], $createdNo);
 
         $db->exec("UNLOCK TABLES");
-        AuditLogger::record('create', 'board', AuditLogger::lastId(), (string) $title);
+        AuditLogger::record('create', 'board', $createdNo, (string) $title);
         echo json_encode(["result" => "success", "msg" => "정상적으로 등록되었습니다."]);
     } catch (PDOException $e) {
         $db->exec("UNLOCK TABLES");
@@ -165,8 +164,8 @@ else if ($mode == "edit") {
         $db = DB::getInstance();
 
         // 기존 파일 조회
-        $stmt = $db->prepare("SELECT thumb_image, file_attach_1, file_attach_2, file_attach_3, file_attach_4, file_attach_5 FROM nb_board WHERE no = :no");
-        $stmt->execute(['no' => $no]);
+        $stmt = $db->prepare("SELECT sitekey, board_no, sort_no, thumb_image, file_attach_1, file_attach_2, file_attach_3, file_attach_4, file_attach_5 FROM nb_board WHERE no = :no AND sitekey = :sitekey");
+        $stmt->execute(['no' => $no, 'sitekey'=>$NO_SITE_UNIQUE_KEY]);
         $oldFiles = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$oldFiles) {
@@ -209,6 +208,7 @@ else if ($mode == "edit") {
         // 업데이트 필드 구성
         $updateFields = [
             'board_no'               => $board_no,
+            'sort_no'                => (int)$oldFiles['sort_no'],
             'title'                  => $title,
             'write_name'             => $write_name,
             'contents'               => $contents,
@@ -239,12 +239,20 @@ else if ($mode == "edit") {
         // 동적 UPDATE 쿼리
         $query = "UPDATE nb_board SET ";
         $query .= implode(", ", array_map(fn($field) => "$field = :$field", array_keys($updateFields)));
-        $query .= " WHERE no = :no";
+        $query .= " WHERE no = :no AND sitekey = :guard_sitekey";
 
         $updateFields['no'] = $no;
+        $updateFields['guard_sitekey'] = $NO_SITE_UNIQUE_KEY;
 
-        $stmt = $db->prepare($query);
-        $result = $stmt->execute($updateFields);
+        $order = new GroupedOrder($db, 'nb_board');
+        $result = $order->locked(function () use ($db, $query, $updateFields, $no, $board_no, $NO_SITE_UNIQUE_KEY, $order) {
+            $q=$db->prepare('SELECT no,sitekey,board_no,sort_no FROM nb_board WHERE no=? AND sitekey=?');
+            $q->execute([$no,$NO_SITE_UNIQUE_KEY]); $current=$q->fetch(PDO::FETCH_ASSOC);
+            if (!$current) return false;
+            $rank=(int)$current['board_no']===$board_no ? (int)$current['sort_no'] : 1;
+            $updateFields['sort_no']=$order->move($current,['sitekey'=>$NO_SITE_UNIQUE_KEY,'board_no'=>$board_no],$rank);
+            return $db->prepare($query)->execute($updateFields);
+        });
         AuditLogger::ifOk($result, 'update', 'board', $no, (string) $title);
 
         echo $result
@@ -266,12 +274,10 @@ else if ($mode == "delete") {
         $db = DB::getInstance();
 
         // 1. 삭제 전 sort_no 가져오기
-        $stmt = $db->prepare("SELECT sort_no FROM nb_board WHERE no = :no");
-        $stmt->execute([':no' => $no]);
+        $stmt = $db->prepare("SELECT sort_no FROM nb_board WHERE no = :no AND sitekey = :sitekey");
+        $stmt->execute([':no' => $no, ':sitekey'=>$NO_SITE_UNIQUE_KEY]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$row) throw new Exception('삭제 대상이 존재하지 않습니다.');
-        $deletedSortNo = $row['sort_no'] ?? null;
-
         // 2. 파일 삭제
         $stmt = $db->prepare("SELECT thumb_image, file_attach_1, file_attach_2, file_attach_3, file_attach_4, file_attach_5
                               FROM nb_board WHERE no = :no");
@@ -285,14 +291,7 @@ else if ($mode == "delete") {
         }
 
         // 3. 글 삭제
-        $stmt = $db->prepare("DELETE FROM nb_board WHERE no = :no");
-        $stmt->execute([':no' => $no]);
-
-        // 4. 연속 sort_no 재정렬
-        $stmt = $db->prepare("UPDATE nb_board 
-                              SET sort_no = sort_no - 1 
-                              WHERE sort_no > :deletedSortNo");
-        $stmt->execute([':deletedSortNo' => $deletedSortNo]);
+        (new GroupedOrder($db, 'nb_board'))->remove([(int)$no], $NO_SITE_UNIQUE_KEY);
 
         // 5. 댓글 삭제
         $stmt = $db->prepare("DELETE FROM nb_board_comment WHERE parent_no = :parent_no");
@@ -324,16 +323,21 @@ else if ($mode == "delete") {
             $params[$key] = (int)$no;
         }
 
-        $stmt = $db->prepare("SELECT sort_no FROM nb_board WHERE no IN (" . implode(',', $placeholders) . ")");
+        $stmt = $db->prepare("SELECT no, sort_no FROM nb_board WHERE sitekey = :sitekey AND no IN (" . implode(',', $placeholders) . ")");
+        $params[':sitekey'] = $NO_SITE_UNIQUE_KEY;
         $stmt->execute($params);
-        $sortNos = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $targetRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $sortNos = array_column($targetRows, 'sort_no');
 
         if (empty($sortNos)) {
             throw new Exception("삭제 대상이 존재하지 않습니다.");
         }
 
-        $minSortNo = min($sortNos);
-        $deletedCount = count($sortNos);
+        // Use only the selected site's actual rows, including for file cleanup and audit.
+        $params = []; $placeholders = [];
+        foreach ($targetRows as $index=>$row) {
+            $key=':no'.$index; $placeholders[]=$key; $params[$key]=(int)$row['no'];
+        }
 
         // 2. 삭제 대상의 파일 삭제
         $stmt = $db->prepare("SELECT thumb_image, file_attach_1, file_attach_2, file_attach_3, file_attach_4, file_attach_5
@@ -348,19 +352,7 @@ else if ($mode == "delete") {
         }
 
         // 3. 레코드 삭제
-        $stmt = $db->prepare("DELETE FROM nb_board WHERE no IN (" . implode(',', $placeholders) . ")");
-        $stmt->execute($params);
-
-        // 4. sort_no 재조정
-        $stmt = $db->prepare("
-            UPDATE nb_board 
-            SET sort_no = sort_no - :deletedCount 
-            WHERE sort_no > :minSortNo
-        ");
-        $stmt->execute([
-            ':deletedCount' => $deletedCount,
-            ':minSortNo' => $minSortNo
-        ]);
+        (new GroupedOrder($db, 'nb_board'))->remove(array_values($params), $NO_SITE_UNIQUE_KEY);
 
         // 5. 댓글 삭제
         $stmt = $db->prepare("DELETE FROM nb_board_comment WHERE parent_no IN (" . implode(',', $placeholders) . ")");
@@ -475,6 +467,11 @@ return $updatedHtmlContent;
 $no = $_REQUEST['no'];
 
 try {
+$db = DB::getInstance();
+$sourceQuery = $db->prepare('SELECT sitekey, board_no FROM nb_board WHERE no=? AND sitekey=?');
+$sourceQuery->execute([(int)$no, $NO_SITE_UNIQUE_KEY]);
+$sourceGroup = $sourceQuery->fetch(PDO::FETCH_ASSOC);
+if (!$sourceGroup) throw new Exception('정보를 찾을 수 없습니다.');
 $sql = "SELECT thumb_image, file_attach_1, file_attach_2, file_attach_3, file_attach_4, file_attach_5, contents FROM
 nb_board WHERE no = :no";
 $stmt = DB::getInstance()->prepare($sql);
@@ -501,6 +498,7 @@ $newData[$k] = '';
 
 $query = "INSERT INTO nb_board (
 sitekey,
+sort_no,
 board_no,
 user_no,
 category_no,
@@ -539,6 +537,7 @@ extra15
 )
 SELECT
 sitekey,
+1,
 board_no,
 user_no,
 category_no,
@@ -574,9 +573,11 @@ extra12,
 extra13,
 extra14,
 extra15
-FROM nb_board WHERE no = :no";
+FROM nb_board AS order_source WHERE no = :no";
 
-$stmt = DB::getInstance()->prepare($query);
+$copyOrder = new GroupedOrder($db, 'nb_board');
+$copyId = $copyOrder->locked(function () use ($db, $query, $newData, $no, $sourceGroup, $copyOrder) {
+$stmt = $db->prepare($query);
 $stmt->execute([
 ':contents' => $newData['contents'],
 ':thumb_image' => $newData['thumb_image'],
@@ -587,8 +588,12 @@ $stmt->execute([
 ':file_attach_5' => $newData['file_attach_5'],
 ':no' => $no
 ]);
+$newId = (int)$db->lastInsertId();
+$copyOrder->head($sourceGroup, $newId);
+return $newId;
+}, true);
 
-if ($stmt->rowCount() > 0) AuditLogger::record('create', 'board', AuditLogger::lastId(), '게시물 복사');
+if ($copyId > 0) AuditLogger::record('create', 'board', $copyId, '게시물 복사');
 echo json_encode(["result" => "success", "msg" => "정상적으로 복사 되었습니다."]);
 } catch (PDOException $e) {
 echo json_encode(["result" => "fail", "msg" => ClientFault::message($e)]);

@@ -3,6 +3,7 @@ import { attachPhoneAutoHyphen } from "../core/formatter.js";
 import { API } from "../core/apiRoutes.js";
 import { initCheckboxManager } from "../utils/initCheckboxManager.js";
 import { AclForm } from "../utils/aclForm.js";
+import { AccountCredentialDialog } from "../utils/AccountCredentialDialog.js?v=20261021";
 
 const ADMIN_PAGES_BASE = window.NO_ADMIN_PAGES_BASE || "/pages";
 
@@ -18,6 +19,8 @@ export class AccountController {
     this.updateBtn = document.querySelector(updateBtnSelector);
     this.deleteButtons = document.querySelectorAll(deleteBtnSelector);
     this.aclForm = new AclForm();
+    this.credentials = new AccountCredentialDialog();
+    this.requestPending = false;
   }
 
   init() {
@@ -34,6 +37,7 @@ export class AccountController {
 
     this.attachDeleteEvents();
     this.attachUnlockIdle();
+    this.attachReissue();
 
     initCheckboxManager(async (selectedIds) => {
       const locked = new Set(
@@ -77,7 +81,7 @@ export class AccountController {
     const formData = new FormData(this.form);
     formData.set("mode", "save");
 
-    if (!this.validatePasswordConfirmation(formData, true)) {
+    if (!this.form?.hasAttribute('data-temporary-credentials') && !this.validatePasswordConfirmation(formData, true)) {
       return;
     }
     if (!this.aclForm.validate()) {
@@ -147,8 +151,15 @@ export class AccountController {
   }
 
   async sendRequest(formData, successMessage) {
+    if (this.requestPending) return;
+    this.requestPending = true;
     try {
       const res = await fetcher(API.ACCOUNT, formData);
+      if (res.credential) {
+        const shown = this.credentials.show(res.credential, () => { location.href = `${ADMIN_PAGES_BASE}/account/index.php`; });
+        if (!shown) alert('발급은 완료되었으나 정보를 표시할 수 없습니다. 목록에서 재발급해 주세요.');
+        return;
+      }
       alert(res.message || successMessage);
 
       const mode = formData.get("mode");
@@ -161,6 +172,15 @@ export class AccountController {
       }
     } catch (err) {
       alert(err.message || "처리 중 오류가 발생했습니다.");
+    } finally {
+      this.requestPending = false;
     }
+  }
+  attachReissue() {
+    document.querySelectorAll('[data-reissue-temporary]').forEach(button => button.addEventListener('click', () => {
+      if (!confirm('기존 비밀번호와 로그인 세션이 무효화됩니다. 임시 비밀번호를 재발급할까요?')) return;
+      const data = new FormData(); data.set('mode', 'reissue_temporary'); data.set('id', button.dataset.reissueTemporary);
+      this.sendRequest(data, '임시 비밀번호를 재발급했습니다.');
+    }));
   }
 }

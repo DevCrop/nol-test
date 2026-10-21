@@ -9,6 +9,7 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-development}
       GATE_HOST: ${GATE_HOST:-gate.local}
+      GATE_ROUTE_MODE: ${GATE_ROUTE_MODE:-php}
       GATE_ENFORCE: ${GATE_ENFORCE:-true}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8618,http://gate.local:8618}
       SESSION_NAME: ${SESSION_NAME:-NOLGATESESSID}

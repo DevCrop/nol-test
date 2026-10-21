@@ -18,7 +18,7 @@ $totalCount = (int)$totalStmt->fetchColumn();
 $Page = ceil($totalCount / $perpage);
 
 // 실제 데이터 조회
-$sql = "SELECT a.no, a.uid, a.uname, a.email, a.phone, a.active_status, a.role_id, r.role_name, a.created_at, a.last_login_at, a.idle_locked_at
+$sql = "SELECT a.no, a.uid, a.uname, a.email, a.phone, a.active_status, a.role_id, r.role_name, a.created_at, a.last_login_at, a.idle_locked_at, a.must_change_password, a.temporary_password_expires_at
         FROM nb_admin a
         LEFT JOIN nb_roles r ON a.role_id = r.role_id
         ORDER BY a.no DESC
@@ -32,6 +32,7 @@ foreach ($rows as $item) {
 }
 $me = (int) ($_SESSION['no_adm_login_no'] ?? 0);
 $superTotal = AccountModel::countByRole(1);
+$adminCredentialStyles = true;
 ?>
 
 
@@ -126,6 +127,9 @@ $superTotal = AccountModel::countByRole(1);
                                             if ($idleLocked) {
                                                 $statusLabel = '미접속잠금';
                                                 $statusClass = 'no-btn--delete-outline';
+                                            } elseif (($row['active_status'] ?? '') === 'Y' && !empty($row['must_change_password'])) {
+                                                $statusLabel = '임시';
+                                                $statusClass = 'no-btn--normal';
                                             } elseif (($row['active_status'] ?? '') === 'Y') {
                                                 $statusLabel = '활성';
                                                 $statusClass = 'no-btn--notice';
@@ -158,6 +162,9 @@ $superTotal = AccountModel::countByRole(1);
 
                                                 </td>
                                                 <td>
+                                                    <?php if (!$isSelf && !empty($row['must_change_password'])): ?>
+                                                    <button type="button" class="no-btn no-btn--sm no-btn--notice" data-reissue-temporary="<?= $rowNo ?>" title="기존 임시 비밀번호는 다시 조회할 수 없습니다.">재발급</button>
+                                                    <?php endif; ?>
                                                     <div class="no-table-role">
                                                         <span class="no-role-btn"><i
                                                                 class="bx bx-dots-vertical-rounded"></i></span>
@@ -201,4 +208,5 @@ $superTotal = AccountModel::countByRole(1);
             </form>
         </main>
     </div>
+    <?php include __DIR__ . '/../../inc/account.credentials.php'; ?>
     <?php include_once "../../inc/admin.footer.php"; ?>

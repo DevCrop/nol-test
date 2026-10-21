@@ -1,0 +1,11 @@
+# PHP front-controller QA: shared root, .htaccess disabled, no real SMTP.
+services:
+  web:
+    ports:
+      - '127.0.0.1:8618:80'
+    volumes:
+      - ../:/var/www/html
+      - ./apache.php-router.conf:/etc/apache2/sites-available/000-default.conf:ro
+    environment:
+      GATE_HOST: gate.local
+      GATE_ROUTE_MODE: php

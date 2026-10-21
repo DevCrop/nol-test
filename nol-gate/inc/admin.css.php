@@ -16,4 +16,13 @@
 <link rel="stylesheet" href="<?=$NO_IS_SUBDIR?>/resource/vendor/filter-multi-select/filter-multi-select.css"> -->
 
 <link rel="stylesheet" href="<?=$NO_ADMIN_RESOURCE_BASE?>/css/style.css?c=<?=$STATIC_ADMIN_CSS_MODIFY_DATE?>"/>
+<?php if (!empty($adminAuditStyles)): ?>
+<link rel="stylesheet" href="<?=$NO_ADMIN_RESOURCE_BASE?>/css/audit-ui.css?v=20261020"/>
+<?php endif; ?>
+<?php if (!empty($adminAccountPreviewStyles)): ?>
+<link rel="stylesheet" href="<?=$NO_ADMIN_RESOURCE_BASE?>/css/account-preview.css?v=20261020-copy-alert"/>
+<?php endif; ?>
 <!-- fontello -->
+<?php if (!empty($adminCredentialStyles)): ?>
+<link rel="stylesheet" href="<?=$NO_ADMIN_RESOURCE_BASE?>/css/account-credentials.css?v=20261021"/>
+<?php endif; ?>

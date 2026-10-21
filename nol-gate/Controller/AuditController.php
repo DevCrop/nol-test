@@ -27,13 +27,19 @@ $entity = trim((string) ($_POST['entity'] ?? ''));
 if ($entity !== '' && !isset(AuditLogger::ENTITIES[$entity])) {
     $entity = '';
 }
-$total = AuditModel::count((string) $NO_SITE_UNIQUE_KEY, $entity);
+$action = trim((string) ($_POST['action'] ?? ''));
+$keyword = trim((string) ($_POST['keyword'] ?? ''));
+$filters = [
+    'action' => in_array($action, AuditLogger::ACTIONS, true) ? $action : '',
+    'keyword' => function_exists('mb_substr') ? mb_substr($keyword, 0, 100) : substr($keyword, 0, 100),
+];
+$total = AuditModel::count((string) $NO_SITE_UNIQUE_KEY, $entity, $filters);
 $pages = max(1, (int) ceil($total / $perpage));
 if ($page > $pages) {
     $page = $pages;
 }
 $offset = ($page - 1) * $perpage;
-$rows = AuditModel::list((string) $NO_SITE_UNIQUE_KEY, $offset, $perpage, $entity);
+$rows = AuditModel::list((string) $NO_SITE_UNIQUE_KEY, $offset, $perpage, $entity, $filters);
 $out = [];
 foreach ($rows as $row) {
     $action = (string) ($row['action'] ?? '');
@@ -58,6 +64,7 @@ echo json_encode([
     'page' => $page,
     'pages' => $pages,
     'total' => $total,
+    'perpage' => $perpage,
     'rows' => $out,
     'entities' => AuditLogger::ENTITIES,
 ]);

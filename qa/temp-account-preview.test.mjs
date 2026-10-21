@@ -1,0 +1,46 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+const php = fs.readFileSync(new URL('../nol-gate/pages/account/temp-account-preview.php', import.meta.url), 'utf8');
+const script = fs.readFileSync(new URL('../nol-gate/resource/js/temp-account-preview.js', import.meta.url), 'utf8');
+let passed = 0;
+function check(name, fn) { fn(); passed++; console.log('PASS ' + name); }
+check('authentication retained', () => assert.ok(php.includes('$role->redirectIfCannotView();')));
+check('existing admin components reused', () => { for (const name of ['admin.head.php', 'admin.header.php', 'admin.drawer.php', 'admin.acl.php', 'no-admin-column--detail', 'no-input--detail']) assert.ok(php.includes(name)); });
+check('no actual account controller or form', () => assert.doesNotMatch(php, /data-page="account"|<form\b|type="submit"|AccountModel|\$_POST/));
+check('password fields retained and disabled', () => { const inputs = php.match(/<input type="password"[^>]*(?:\?>[^>]*)?>/g) || []; assert.equal(inputs.length, 2); for (const input of inputs) { assert.ok(input.includes('disabled')); assert.ok(input.includes('placeholder=')); assert.ok(!input.includes(' value=')); } });
+check('password fields follow original account ordering', () => assert.ok(php.indexOf('id="preview-password"') > php.indexOf('id="preview-uid"') && php.indexOf('id="preview-password-confirm"') < php.indexOf('id="preview-name"')));
+check('new and edited state hints differ', () => { for (const hint of ['계정 등록 시 임시 비밀번호가 자동 발급됩니다.', '임시 비밀번호가 발급된 상태입니다.', '비밀번호는 직접 수정할 수 없습니다.']) assert.ok(php.includes(hint)); });
+check('no mutation or credential generation', () => assert.doesNotMatch(script, /\b(fetch|XMLHttpRequest|localStorage|sessionStorage|clipboard|randomBytes|getRandomValues)\s*[.(]/));
+check('synthetic password explicitly marked', () => { assert.ok(php.includes('DEMO-ONLY!482')); assert.ok(php.includes('실제 사용이 불가능한 고정 예시')); });
+check('server selects issued stage and separate title', () => { assert.ok(php.includes("$issuedPreview = ($_GET['stage'] ?? '') === 'issued';")); assert.ok(php.includes("$previewTitle = $issuedPreview ?")); assert.ok(php.includes("$issuedPreview ? ' hidden' : ''")); assert.ok(php.includes("$issuedPreview ? '' : ' hidden'")); });
+check('hidden panels override existing flex style', () => {
+  const css = fs.readFileSync(new URL('../nol-gate/resource/css/account-preview.css', import.meta.url), 'utf8');
+  const includes = fs.readFileSync(new URL('../nol-gate/inc/admin.css.php', import.meta.url), 'utf8');
+  assert.match(css, /body\[data-page="temp-account-preview"\] \[hidden\]\s*\{\s*display:\s*none\s*!important/);
+  assert.ok(php.includes('$adminAccountPreviewStyles = true;'));
+  assert.ok(includes.includes('if (!empty($adminAccountPreviewStyles))'));
+  assert.ok(includes.includes('/css/account-preview.css'));
+});
+const nodes = new Map();
+function node() { return { hidden: true, value: '', textContent: '', events: {}, focused: false, addEventListener(event, fn) { this.events[event] = fn; }, querySelector() { return { focus() {} }; }, focus() { this.focused = true; }, scrollIntoView() {} }; }
+for (const id of ['preview-account-fields', 'preview-confirm', 'preview-issued', 'preview-reset-password', 'preview-create-account', 'preview-issued-uid', 'preview-uid', 'preview-cancel', 'preview-confirm-reset', 'preview-close-issued', 'acl-block']) nodes.set('#' + id, node());
+const radios = [Object.assign(node(), { value: 'super' }), Object.assign(node(), { value: 'general' })];
+let navigation = '';
+vm.runInNewContext(script, { window: { location: { assign: url => { navigation = url; } } }, document: { querySelector: selector => nodes.get(selector), querySelectorAll: () => radios } });
+nodes.get('#preview-uid').value = '<img src=x>';
+nodes.get('#preview-create-account').events.click();
+check('registration opens synthetic handoff list', () => { assert.equal(navigation, './temp-account-list-preview.php?created=1'); assert.ok(!navigation.includes('<img')); });
+nodes.get('#preview-reset-password').events.click();
+check('reset requires confirmation screen', () => { assert.equal(nodes.get('#preview-confirm').hidden, false); assert.equal(nodes.get('#preview-issued').hidden, true); });
+nodes.get('#preview-cancel').events.click();
+check('cancel preserves preview state', () => { assert.equal(nodes.get('#preview-confirm').hidden, true); assert.equal(nodes.get('#preview-reset-password').focused, true); });
+nodes.get('#preview-confirm-reset').events.click();
+check('confirmation reveals fixed result', () => assert.equal(nodes.get('#preview-issued').hidden, false));
+nodes.get('#preview-close-issued').events.click();
+check('result closes', () => { assert.equal(nodes.get('#preview-issued').hidden, true); assert.equal(nodes.get('#preview-account-fields').hidden, false); });
+radios[0].events.change();
+check('super role hides ACL UI', () => assert.equal(nodes.get('#acl-block').hidden, true));
+radios[1].events.change();
+check('general role shows ACL UI', () => assert.equal(nodes.get('#acl-block').hidden, false));
+console.log(`pass=${passed} fail=0`);
