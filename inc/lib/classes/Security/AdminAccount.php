@@ -1,5 +1,6 @@
 <?php
 namespace Security;
+require_once dirname(__DIR__, 2) . '/AccountAccessPolicy.php';
 
 final class AdminAccount
 {
@@ -41,8 +42,9 @@ final class AdminAccount
     {
         $data = self::validated($input, true);
         if (self::taken('uid', $data['uid']) || self::taken('email', $data['email'])) throw new \RuntimeException('이미 사용 중인 아이디 또는 이메일입니다.');
-        $stmt = \DB::getInstance()->prepare('INSERT INTO nb_admin (sitekey, uid, upwd, uname, email, active_status, role_code, login_fail_count, password_changed_at, password_must_change, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0, NOW(), 1, NOW(), NOW())');
-        $stmt->execute([self::SITE, $data['uid'], password_hash($data['password'], PASSWORD_DEFAULT), $data['uname'], $data['email'], $data['active_status'], $data['role_code']]);
+        $period=\AccountAccessPolicy::period($input);
+        $stmt = \DB::getInstance()->prepare('INSERT INTO nb_admin (sitekey, uid, upwd, uname, email, active_status, role_code, login_fail_count, password_changed_at, password_must_change, created_at, updated_at, authority_valid_from, authority_valid_until) VALUES (?, ?, ?, ?, ?, ?, ?, 0, NOW(), 1, NOW(), NOW(), ?, ?)');
+        $stmt->execute([self::SITE, $data['uid'], password_hash($data['password'], PASSWORD_DEFAULT), $data['uname'], $data['email'], $data['active_status'], $data['role_code'], $period['authority_valid_from'], $period['authority_valid_until']]);
         return (int) \DB::getInstance()->lastInsertId();
     }
 
@@ -54,9 +56,11 @@ final class AdminAccount
         if (self::taken('email', $data['email'], $no)) throw new \RuntimeException('이미 사용 중인 이메일입니다.');
         if ($actorNo === $no && ($data['active_status'] !== 'Y' || $data['role_code'] !== 'super')) throw new \RuntimeException('본인 계정은 비활성화하거나 관리자 권한을 낮출 수 없습니다.');
         if (($target['role_code'] ?? '') === 'super' && ($data['active_status'] !== 'Y' || $data['role_code'] !== 'super') && self::activeSuperCount($no) === 0) throw new \RuntimeException('마지막 최고 관리자는 비활성화하거나 권한을 낮출 수 없습니다.');
-        $revoke = $target['email'] !== $data['email'] || $target['role_code'] !== $data['role_code'] || $target['active_status'] !== $data['active_status'];
-        $stmt = \DB::getInstance()->prepare("UPDATE nb_admin SET uname = ?, email = ?, active_status = ?, role_code = ?, login_token = CASE WHEN ? = 1 THEN NULL ELSE login_token END, updated_at = NOW() WHERE no = ? AND sitekey = ?");
-        $stmt->execute([$data['uname'], $data['email'], $data['active_status'], $data['role_code'], (int)$revoke, $no, self::SITE]);
+        $period=\AccountAccessPolicy::period($input,$target);
+        if($actorNo===$no)\AccountAccessPolicy::assertAllowed($period);
+        $revoke = $target['email'] !== $data['email'] || $target['role_code'] !== $data['role_code'] || $target['active_status'] !== $data['active_status'] || ($target['authority_valid_from']??null)!==$period['authority_valid_from'] || ($target['authority_valid_until']??null)!==$period['authority_valid_until'];
+        $stmt = \DB::getInstance()->prepare("UPDATE nb_admin SET uname = ?, email = ?, active_status = ?, role_code = ?, authority_valid_from=?, authority_valid_until=?, login_token = CASE WHEN ? = 1 THEN NULL ELSE login_token END, updated_at = NOW() WHERE no = ? AND sitekey = ?");
+        $stmt->execute([$data['uname'], $data['email'], $data['active_status'], $data['role_code'], $period['authority_valid_from'], $period['authority_valid_until'], (int)$revoke, $no, self::SITE]);
         return $stmt->rowCount() === 1;
     }
 
@@ -93,6 +97,7 @@ final class AdminAccount
 
     public static function assertLoginAllowed(array $row): void
     {
+        \AccountAccessPolicy::assertAllowed($row);
         TemporaryPassword::assertUsable($row);
         if (($row['active_status'] ?? 'N') !== 'Y') throw new \RuntimeException('사용이 중지된 계정입니다.');
         if (!empty($row['login_locked_until']) && strtotime($row['login_locked_until']) > time()) throw new \RuntimeException('로그인 실패 횟수를 초과했습니다. 잠시 후 다시 시도하세요.');
@@ -134,8 +139,9 @@ final class AdminAccount
     {
         self::assertLoginAllowed($row);
         $token = bin2hex(random_bytes(32));
-        $stmt = \DB::getInstance()->prepare("UPDATE nb_admin SET login_fail_count = 0, login_locked_until = NULL, last_login_at = NOW(), idle_locked_at = NULL, login_token = ? WHERE no = ? AND sitekey = ? AND upwd = ? AND active_status = 'Y' AND idle_locked_at IS NULL AND (login_locked_until IS NULL OR login_locked_until <= NOW())");
-        $stmt->execute([$token, (int) $row['no'], self::SITE, (string) $row['upwd']]);
+        $stmt = \DB::getInstance()->prepare("UPDATE nb_admin SET login_fail_count = 0, login_locked_until = NULL, last_login_at = NOW(), idle_locked_at = NULL, login_token = ? WHERE no = ? AND sitekey = ? AND upwd = ? AND role_code=? AND email=? AND authority_valid_from <=> ? AND authority_valid_until <=> ? AND (authority_valid_from IS NULL OR authority_valid_from<=?) AND (authority_valid_until IS NULL OR authority_valid_until>?) AND active_status = 'Y' AND idle_locked_at IS NULL AND (login_locked_until IS NULL OR login_locked_until <= NOW())");
+        $at=\AccountAccessPolicy::now();
+        $stmt->execute([$token, (int) $row['no'], self::SITE, (string) $row['upwd'],(string)$row['role_code'],(string)$row['email'],$row['authority_valid_from']??null,$row['authority_valid_until']??null,$at,$at]);
         if ($stmt->rowCount() !== 1) throw new \RuntimeException('계정 정보가 변경되었습니다. 다시 로그인하세요.');
         if (session_status() === PHP_SESSION_ACTIVE && !headers_sent()) session_regenerate_id(true);
         $_SESSION['no_adm_login_no'] = (int) $row['no'];

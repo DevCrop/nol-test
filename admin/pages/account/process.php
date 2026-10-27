@@ -4,6 +4,7 @@ $actor = \Security\AdminAccount::requireSuper();
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') { http_response_code(405); exit('Method Not Allowed'); }
 
 $return = static function (string $message, bool $error = false, string $path = '/admin/pages/account/index.php'): void {
+    if(!$error && \DB::getInstance()->inTransaction())\DB::getInstance()->commit();
     $_SESSION['account_flash'] = $message;
     $_SESSION['account_flash_error'] = $error;
     header('Location: ' . blue_admin_url($path)); exit;
@@ -16,10 +17,16 @@ if ($credentialMode && strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? 
     http_response_code(400); exit('계정 화면에서 다시 요청하세요.');
 }
 try {
+    $reason=\AccountAccessPolicy::reason($_POST);
+    $db=\DB::getInstance();$db->beginTransaction();
+    $db->query("SELECT no FROM nb_admin WHERE sitekey='BLUESQ' AND role_code='super' ORDER BY no FOR UPDATE")->fetchAll();
+    $before=$targetNo>0?\Security\AdminAccount::findByNo($targetNo):[];
+    \AccountAccessPolicy::beginAudit($reason,$before?[$targetNo=>$before]:[]);
     if ($mode === 'create') {
         $credential = (new \Security\TemporaryAccountService())->create($_POST);
         $targetNo = $credential['id'];
         \Security\AuditLogger::record('create', 'account', $targetNo, (string) $_POST['uid'], ['role_code' => (string) ($_POST['role_code'] ?? 'admin')]);
+        $db->commit();
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(['success'=>true,'credential'=>$credential]); exit;
     }
@@ -34,6 +41,7 @@ try {
         if (!empty($_POST['password']) || !empty($_POST['password_confirm'])) throw new RuntimeException('비밀번호는 시스템에서 자동 발급합니다.');
         $credential = (new \Security\TemporaryAccountService())->reissue($targetNo, (int)$actor['no']);
         \Security\AuditLogger::record('update', 'account', $targetNo, (string) ($target['uid'] ?? ''), ['password_reset' => true]);
+        $db->commit();
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(['success'=>true,'credential'=>$credential]); exit;
     }
@@ -49,6 +57,7 @@ try {
     }
     throw new RuntimeException('지원하지 않는 작업입니다.');
 } catch (Throwable $e) {
+    if(isset($db) && $db->inTransaction())$db->rollBack();
     if ($credentialMode) {
         http_response_code($e instanceof PDOException ? 500 : 400);
         header('Content-Type: application/json; charset=utf-8');

@@ -15,6 +15,15 @@ async function issue(data,url) {
 document.querySelector('[data-credential-create]')?.addEventListener('submit',event=>{event.preventDefault();issue(new FormData(event.currentTarget),event.currentTarget.action);});
 document.querySelectorAll('[data-reissue-temporary]').forEach(button=>button.addEventListener('click',()=>{
   if(!confirm('기존 비밀번호와 로그인 세션이 무효화됩니다. 임시 비밀번호를 재발급할까요?'))return;
+  const reason=prompt('변경 사유를 입력하세요. (2~300자)');if(reason===null)return;
   const data=new FormData();data.set('mode','reissue_temporary');data.set('no',button.dataset.reissueTemporary);
+  data.set('change_reason',reason);
   issue(data,(window.BLUE_ADMIN_BASE || '/admin')+'/pages/account/process.php');
+}));
+document.querySelectorAll('form.account-inline').forEach(form=>form.addEventListener('submit',event=>{
+  const reason=prompt('변경 사유를 입력하세요. (2~300자)');
+  if(reason===null || reason.trim().length<2){event.preventDefault();return;}
+  let input=form.querySelector('input[name="change_reason"]');
+  if(!input){input=document.createElement('input');input.type='hidden';input.name='change_reason';form.append(input);}
+  input.value=reason;
 }));

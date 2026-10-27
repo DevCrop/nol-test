@@ -29,5 +29,5 @@ try {
     \Security\AdminAccount::establish($row);
     header('Location: ' . blue_admin_url('/admin/pages/board/board.list.php')); exit;
 } catch (Throwable $e) {
-    blue_login_fail($e instanceof RuntimeException ? $e->getMessage() : '로그인을 처리할 수 없습니다.');
+    blue_login_fail($e instanceof RuntimeException && !($e instanceof PDOException) ? $e->getMessage() : '로그인을 처리할 수 없습니다.');
 }

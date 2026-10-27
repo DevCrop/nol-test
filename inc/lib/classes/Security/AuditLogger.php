@@ -20,9 +20,17 @@ final class AuditLogger
         $detail = self::scrub($detail);
         if ($entity === 'account' && $targetNo > 0) $label = PiiMask::identifier($label);
         try {
+            if ($entity === 'account' && $targetNo > 0) {
+                $detail = array_merge($detail, \AccountAccessPolicy::audit($targetNo, AdminAccount::findByNo($targetNo)));
+            }
+            $encodedDetail=$detail?json_encode($detail,JSON_UNESCAPED_UNICODE):null;
+            if($entity==='account' && $detail && (!is_string($encodedDetail)||strlen($encodedDetail)>8000))throw new \RuntimeException('계정 변경 이력을 저장하지 못했습니다.');
             $stmt = \DB::getInstance()->prepare('INSERT INTO nb_admin_audit (sitekey, actor_no, actor_uid, actor_ip, action, entity, target_no, target_label, detail_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())');
-            $stmt->execute(['BLUESQ', (int) ($_SESSION['no_adm_login_no'] ?? 0), (string) ($_SESSION['no_adm_login_uid'] ?? ''), ClientIp::get(), $action, substr($entity, 0, 64), $targetNo, mb_substr($label, 0, 255), $detail ? json_encode($detail, JSON_UNESCAPED_UNICODE) : null]);
-        } catch (\Throwable $e) { error_log('[audit] write failed'); }
+            $stmt->execute(['BLUESQ', (int) ($_SESSION['no_adm_login_no'] ?? 0), (string) ($_SESSION['no_adm_login_uid'] ?? ''), ClientIp::get(), $action, substr($entity, 0, 64), $targetNo, mb_substr($label, 0, 255), $encodedDetail]);
+        } catch (\Throwable $e) {
+            if ($entity === 'account') throw new \RuntimeException('계정 변경 이력을 저장하지 못했습니다.', 0, $e);
+            error_log('[audit] write failed');
+        }
     }
 
     private static function scrub(array $detail): array

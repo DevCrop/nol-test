@@ -15,6 +15,7 @@ final class Mfa
             'admin_no' => (int) $row['no'], 'code_hash' => '',
             'expires' => time() + MFA_TTL_SECONDS, 'attempts' => 0, 'sent_at' => 0, 'email' => $email,
             'credential_version' => hash('sha256', (string) $row['upwd']),
+            'authority_version' => \AccountAccessPolicy::version($row),
         ];
         $_SESSION['mfa_pending'] = $pending;
     }
@@ -39,7 +40,7 @@ final class Mfa
         if (!is_array($p) || (int) $p['expires'] <= time()) { unset($_SESSION['mfa_pending']); throw new \RuntimeException('인증번호가 만료되었습니다. 다시 로그인하세요.'); }
         if (time() - (int) $p['sent_at'] < MFA_RESEND_SECONDS) throw new \RuntimeException('잠시 후 다시 요청하세요.');
         $row = AdminAccount::findByNo((int) $p['admin_no']);
-        if (!$row || !hash_equals((string) ($p['credential_version'] ?? ''), hash('sha256', (string) $row['upwd'])) || $p['email'] !== $row['email']) { unset($_SESSION['mfa_pending']); throw new \RuntimeException('계정 정보가 변경되었습니다. 다시 로그인하세요.'); }
+        if (!$row || !hash_equals((string) ($p['credential_version'] ?? ''), hash('sha256', (string) $row['upwd'])) || !hash_equals((string)($p['authority_version']??''),\AccountAccessPolicy::version($row)) || $p['email'] !== $row['email']) { unset($_SESSION['mfa_pending']); throw new \RuntimeException('계정 정보가 변경되었습니다. 다시 로그인하세요.'); }
         AdminAccount::assertLoginAllowed($row);
         $code = (string) random_int(100000, 999999);
         self::deliver((string) $row['email'], $code);
@@ -60,7 +61,7 @@ final class Mfa
         $row = AdminAccount::findByNo((int) $p['admin_no']); unset($_SESSION['mfa_pending']);
         if (!$row) throw new \RuntimeException('계정을 찾을 수 없습니다.');
         AdminAccount::assertLoginAllowed($row);
-        if (!hash_equals((string) ($p['credential_version'] ?? ''), hash('sha256', (string) $row['upwd'])) || $p['email'] !== $row['email']) throw new \RuntimeException('계정 정보가 변경되었습니다. 다시 로그인하세요.');
+        if (!hash_equals((string) ($p['credential_version'] ?? ''), hash('sha256', (string) $row['upwd'])) || !hash_equals((string)($p['authority_version']??''),\AccountAccessPolicy::version($row)) || $p['email'] !== $row['email']) throw new \RuntimeException('계정 정보가 변경되었습니다. 다시 로그인하세요.');
         return $row;
     }
 

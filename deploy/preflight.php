@@ -133,6 +133,28 @@ final class DeploymentPreflight
                 if ($phase !== 'compat') {
                     $spec = json_decode((string) file_get_contents($root . '/sql/release/target-schema.json'), true);
                     $complete = true;
+                    $st = $pdo->query("SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='nb_admin'");
+                    $transactional = strcasecmp((string) $st->fetchColumn(), 'InnoDB') === 0;
+                    $check($transactional, 'nb_admin transactional engine InnoDB');
+                    $complete = $complete && $transactional;
+                    {
+                        foreach ($blue?['nb_admin_audit']:['nb_admin_acl', 'nb_roles', 'nb_admin_audit'] as $dependency) {
+                            $st = $pdo->prepare('SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?');
+                            $st->execute([$dependency]);
+                            $ok = strcasecmp((string) $st->fetchColumn(), 'InnoDB') === 0;
+                            $check($ok, 'transaction dependency engine ' . $dependency);
+                            $complete = $complete && $ok;
+                        }
+                    }
+                    $st = $pdo->query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='nb_admin' AND COLUMN_NAME='temporary_password_expires_at' AND DATA_TYPE='datetime' AND IS_NULLABLE='YES'");
+                    $temporarySchema = (int) $st->fetchColumn() === 1;
+                    $check($temporarySchema, 'temporary password expiry schema');
+                    $complete = $complete && $temporarySchema;
+                    foreach(['authority_valid_from','authority_valid_until'] as $policyColumn){
+                        $st=$pdo->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='nb_admin' AND COLUMN_NAME=? AND DATA_TYPE='datetime' AND IS_NULLABLE='YES'");
+                        $st->execute([$policyColumn]);$ok=(int)$st->fetchColumn()===1;
+                        $check($ok,'account authority period schema '.$policyColumn);$complete=$complete&&$ok;
+                    }
                     foreach ($spec as $table => $tableSpec) {
                         $st = $pdo->prepare('SELECT COLUMN_NAME,COLUMN_TYPE,IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?');
                         $st->execute([$table]); $actual = [];

@@ -21,7 +21,7 @@ final class AuthSession
         $mine = (string) ($_SESSION['no_adm_login_token'] ?? '');
         if (!$row || ($row['active_status'] ?? 'N') !== 'Y' || $mine === '' || !hash_equals((string) ($row['login_token'] ?? ''), $mine)) self::deny('다른 곳에서 로그인되어 종료되었습니다.');
         if (!empty($row['idle_locked_at'])) self::deny('장기 미접속으로 잠긴 계정입니다.');
-        try { TemporaryPassword::assertUsable($row); } catch (\RuntimeException $e) { self::deny($e->getMessage()); }
+        try { TemporaryPassword::assertUsable($row); \AccountAccessPolicy::assertAllowed($row); } catch (\RuntimeException $e) { self::deny($e->getMessage()); }
         $path = (string) ($_SERVER['SCRIPT_NAME'] ?? '');
         if ($path !== '/admin/lib/session/ping.php' || ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') $_SESSION['no_adm_last_activity'] = time();
         self::$currentAccount = $row;

@@ -40,5 +40,5 @@
 <script type="text/javascript" src="<?=$NO_IS_SUBDIR?>/resource/vendor/smarteditor2/smarteditor2.js" charset="utf-8"></script>
 <script src="<?=blue_admin_base()?>/resource/js/private-page.js?v=20261021" defer></script>
 <?php if (strpos((string)($_SERVER['SCRIPT_NAME']??''),'/admin/pages/account/')===0): ?>
-<script type="module" src="<?=blue_admin_base()?>/resource/js/account-credentials.js?v=20261021"></script>
+<script type="module" src="<?=blue_admin_base()?>/resource/js/account-credentials.js?v=20261027"></script>
 <?php endif; ?>
