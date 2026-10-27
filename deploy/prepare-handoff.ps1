@@ -7,6 +7,10 @@ $root=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $candidate=Join-Path $PSScriptRoot ('candidates/'+$CandidateId)
 $m=Get-Content -Raw -LiteralPath (Join-Path $candidate 'operations/manifest.json') | ConvertFrom-Json
 if($m.project -notin @('bluesquare','noltheater')){throw 'Unknown project'}
+if(!$m.incremental_sql -or @($m.incremental_sql.PSObject.Properties).Count -ne 3){throw 'Latest incremental SQL manifest required'}
+foreach($entry in $m.incremental_sql.PSObject.Properties){
+ if((Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $candidate ('operations/sql/manual/'+$entry.Name))).Hash.ToLowerInvariant() -ne $entry.Value){throw 'Incremental SQL integrity failure'}
+}
 foreach($entry in $m.files.PSObject.Properties){
  $path=Join-Path $candidate ('web-files/'+$entry.Name)
  if(!(Test-Path -LiteralPath $path) -or (Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash.ToLowerInvariant() -ne $entry.Value){throw 'Candidate integrity failure'}
@@ -23,13 +27,14 @@ $ops=Join-Path $output 'DO_NOT_UPLOAD_sql_and_guide'
 $null=New-Item -ItemType Directory -Path $ops
 Copy-Item -LiteralPath (Join-Path $candidate 'operations/sql') -Destination (Join-Path $ops 'sql') -Recurse
 Copy-Item -LiteralPath (Join-Path $candidate 'operations/deploy') -Destination (Join-Path $ops 'deploy') -Recurse
-Copy-Item -LiteralPath (Join-Path $root '서버업로드_SQL순서_20261019.txt') -Destination (Join-Path $ops '서버업로드_SQL순서.txt')
-Copy-Item -LiteralPath (Join-Path $root 'QA_배포준비_20261019.txt') -Destination (Join-Path $ops 'QA_배포준비.txt')
+Copy-Item -LiteralPath (Join-Path $candidate 'operations/UPGRADE-20261027.md') -Destination (Join-Path $ops 'UPGRADE-20261027.md')
+Copy-Item -LiteralPath (Join-Path $candidate 'operations/UPGRADE-20261027.md') -Destination (Join-Path $ops '서버업로드_SQL순서.md')
+Copy-Item -LiteralPath (Join-Path $root '최종검토_계정준비_20261027.md') -Destination (Join-Path $ops 'QA_계정준비_20261027.md')
 Copy-Item -LiteralPath (Join-Path $root '운영배포.md') -Destination (Join-Path $ops '운영배포.md')
 if($m.project -eq 'noltheater') {
  $null=New-Item -ItemType Directory -Path (Join-Path $ops 'sql/manual') -Force
- foreach($file in @('nol-production-final-20261019.sql','nol-super-mfa-email-20261019.sql')) {
-  Copy-Item -LiteralPath (Join-Path $root ('sql/manual/'+$file)) -Destination (Join-Path $ops ('sql/manual/'+$file))
+ foreach($file in @('nol-temporary-password-20261021.sql','admin-transactions-20261027.sql','account-authority-20261027.sql')) {
+  Copy-Item -LiteralPath (Join-Path $candidate ('operations/sql/manual/'+$file)) -Destination (Join-Path $ops ('sql/manual/'+$file))
  }
  $latestQa=Join-Path $root 'QA_SORTFIX_V2_20261019.txt'
  if(Test-Path -LiteralPath $latestQa){Copy-Item -LiteralPath $latestQa -Destination (Join-Path $ops 'QA_SORTFIX_V2_20261019.txt')}

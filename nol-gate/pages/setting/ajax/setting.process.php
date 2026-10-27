@@ -16,14 +16,19 @@ if ($mode == "pwd.change") {
     $adminNo = (int) ($_SESSION['no_adm_login_no'] ?? 0);
     if ($adminNo < 1) AuthSession::denyLogin();
     try {
+        $pdo->beginTransaction();
+        AccountAccessPolicy::beginAudit('본인 비밀번호 변경',[$adminNo=>AccountModel::authenticationRow($adminNo)]);
         (new AccountCredentialService())->change($adminNo, (string) ($_SESSION['no_adm_login_token'] ?? ''),
             (string) ($_POST['pwd_old'] ?? ''), (string) ($_POST['pwd_new'] ?? ''), (string) ($_POST['pwd_new_confirm'] ?? ''));
         AuditLogger::record('update', 'account', $adminNo, (string) ($_SESSION['no_adm_login_uid'] ?? ''), ['password_changed' => true]);
+        $pdo->commit();
         AuthSession::destroy();
         echo json_encode(['result' => 'success', 'msg' => '비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인하세요.']);
     } catch (RuntimeException $e) {
-        echo json_encode(['result' => 'fail', 'msg' => $e->getMessage()]);
+        if($pdo->inTransaction())$pdo->rollBack();
+        echo json_encode(['result' => 'fail', 'msg' => $e instanceof PDOException ? '비밀번호 변경에 실패했습니다. 다시 시도하세요.' : $e->getMessage()]);
     } catch (Throwable $e) {
+        if($pdo->inTransaction())$pdo->rollBack();
         http_response_code(500);
         echo json_encode(['result' => 'fail', 'msg' => '비밀번호 변경에 실패했습니다. 다시 시도하세요.']);
     }

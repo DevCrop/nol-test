@@ -60,16 +60,22 @@ class AuthSession
         if (!$current || ($current['active_status'] ?? '') !== 'Y' || !empty($current['idle_locked_at'])
             || (string) $current['sitekey'] !== (string) ($GLOBALS['NO_SITE_UNIQUE_KEY'] ?? '')
             || (isset($admin['upwd']) && !hash_equals((string) $current['upwd'], (string) $admin['upwd']))
+            || (isset($admin['upwd']) && !hash_equals(AccountAccessPolicy::version($current),AccountAccessPolicy::version($admin)))
             || (isset($admin['email']) && (string) $current['email'] !== (string) $admin['email'])
             || (isset($admin['role_id']) && (int) $current['role_id'] !== (int) $admin['role_id'])) {
             throw new RuntimeException('계정 정보가 변경되었습니다. 다시 로그인하세요.');
         }
         TemporaryPassword::assertUsable($current);
+        AccountAccessPolicy::assertAllowed($current);
         $token = bin2hex(random_bytes(32));
         $stmt = DB::getInstance()->prepare("UPDATE nb_admin SET login_token=:token, last_login_at=NOW()
             WHERE no=:no AND sitekey=:site AND upwd=:password AND role_id=:role AND email=:email
-              AND active_status='Y' AND idle_locked_at IS NULL");
-        $stmt->execute(['token'=>$token,'no'=>$no,'site'=>$current['sitekey'],'password'=>$current['upwd'],'role'=>$current['role_id'],'email'=>$current['email']]);
+              AND active_status='Y' AND idle_locked_at IS NULL
+              AND authority_valid_from <=> :valid_from AND authority_valid_until <=> :valid_until
+              AND (authority_valid_from IS NULL OR authority_valid_from<=:policy_now_start)
+              AND (authority_valid_until IS NULL OR authority_valid_until>:policy_now_end)");
+        $at=AccountAccessPolicy::now();
+        $stmt->execute(['token'=>$token,'no'=>$no,'site'=>$current['sitekey'],'password'=>$current['upwd'],'role'=>$current['role_id'],'email'=>$current['email'],'valid_from'=>$current['authority_valid_from']??null,'valid_until'=>$current['authority_valid_until']??null,'policy_now_start'=>$at,'policy_now_end'=>$at]);
         if ($stmt->rowCount() !== 1) throw new RuntimeException('계정 정보가 변경되었습니다. 다시 로그인하세요.');
         self::rotate();
         global $admin_roles;
@@ -103,7 +109,7 @@ class AuthSession
             && (string) ($row['sitekey'] ?? '') === (string) ($GLOBALS['NO_SITE_UNIQUE_KEY'] ?? '')
             && (int) $row['role_id'] === (int) ($_SESSION['no_adm_login_role_id'] ?? 0)
             && $dbToken !== '' && $mine !== '' && hash_equals($dbToken, $mine)) {
-            try { TemporaryPassword::assertUsable($row); }
+            try { TemporaryPassword::assertUsable($row); AccountAccessPolicy::assertAllowed($row); }
             catch (RuntimeException $e) { self::denyLogin($e->getMessage()); }
             return $row;
         }

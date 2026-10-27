@@ -209,6 +209,7 @@ include_once "../../inc/admin.js.php";
                                 </div>
 
                                 <?php
+                                include dirname(__DIR__, 2) . '/inc/account.authority.php';
                                 $aclGrants = $role->acl()->grantsFor((int) ($account['no'] ?? 0));
                                 include dirname(__DIR__, 2) . '/inc/admin.acl.php';
                                 ?>

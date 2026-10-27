@@ -41,6 +41,7 @@ function sessionTemp(array $row): array {
     return [$sid,$csrf];
 }
 function httpTemp(array $session, string $path, ?array $data=null): array {
+    if($data!==null && !array_key_exists('change_reason',$data))$data['change_reason']='QA 계정 관리 회귀 확인';
     $headers='Host: '.env('GATE_HOST','gate.local')."\r\nCookie: ".session_name().'='.$session[0]."\r\n";
     if($data!==null) {$headers.="Content-Type: application/x-www-form-urlencoded\r\nX-Requested-With: XMLHttpRequest\r\nX-CSRF-Token: ".$session[1]."\r\n";}
     $context=stream_context_create(['http'=>['method'=>$data===null?'GET':'POST','header'=>$headers,'content'=>$data===null?'':http_build_query($data),'ignore_errors'=>true,'follow_location'=>0,'timeout'=>15]]);
@@ -49,6 +50,15 @@ function httpTemp(array $session, string $path, ?array $data=null): array {
     return [(int)($m[1]??0),(string)$body,json_decode((string)$body,true),implode("\n",$http_response_header)];
 }
 try {
+    $highestInput=['uid'=>$uid.'_h','uname'=>'최고 QA','email'=>$uid.'_h@gmail.com','phone'=>'','active_status'=>'Y','role_id'=>1];
+    $highestBefore=AccountModel::countByRole(1);
+    if($highestBefore<Role::getRoleLimit(1)){
+        $highest=$service->create($highestInput,[],TemporaryPassword::generate());$highestId=(int)$highest['id'];
+        checkTemp((int)rowTemp($highestId)['role_id']===1,'highest administrator credential can be created within configured limit');
+        $db->prepare('DELETE FROM nb_admin WHERE no=? AND uid=?')->execute([$highestId,$highestInput['uid']]);
+    }else{
+        checkTemp(rejectsTemp(function()use($service,$highestInput){$service->create($highestInput,[],TemporaryPassword::generate());}),'configured highest administrator limit enforced');
+    }
     $superUid=$uid.'_s';
     $db->prepare("INSERT INTO nb_admin(uid,upwd,uname,email,active_status,role_id,sitekey,created_at,last_login_at,password_changed_at) VALUES(?,?,?,?,'Y',1,'NOLTHE',NOW(),NOW(),NOW())")->execute([$superUid,password_hash(TemporaryPassword::generate(),PASSWORD_DEFAULT),'테스트 관리자',$superUid.'@gmail.com']);
     $superId=(int)$db->lastInsertId();$superSession=sessionTemp(rowTemp($superId));
@@ -72,6 +82,12 @@ try {
     $validator=new Validator();$validator->passwordPolicy('upwd',$password,'password');
     checkTemp(!$validator->fails() && strlen($password)>=20,'generated credential satisfies password policy');
     $input=['uid'=>$uid,'uname'=>'임시 QA','email'=>$uid.'@gmail.com','phone'=>'010-7999-9911','active_status'=>'Y','role_id'=>2];
+    $failedInput=$input;$failedInput['uid']=$uid.'_f';$failedInput['email']=$uid.'_f@gmail.com';
+    $failed=false;
+    try{$service->create($failedInput,[str_repeat('x',300)=>['view'=>true]],TemporaryPassword::generate());}
+    catch(PDOException $e){$failed=true;}
+    $st=$db->prepare('SELECT COUNT(*) FROM nb_admin WHERE uid=? AND sitekey=?');$st->execute([$failedInput['uid'],'NOLTHE']);
+    checkTemp($failed && (int)$st->fetchColumn()===0,'ACL storage failure rolls back account creation through real service');
     $created=$service->create($input,[], $password);$id=(int)$created['id'];$ids[]=$id;$row=rowTemp($id);
     checkTemp(password_verify($password,$row['upwd'])&&$row['upwd']!==$password,'only password hash persisted');
     checkTemp((int)$row['must_change_password']===1 && strtotime($row['temporary_password_expires_at'])>time(),'temporary flag and expiry persisted');
@@ -121,16 +137,61 @@ try {
     [$status]=httpTemp($session,'/ajax/session.activity.php',[]);
     checkTemp(in_array($status,[401,403],true),'old session rejected after completed change (authentication or stale CSRF)');
     $normalSession=sessionTemp(rowTemp($id));
+    [$status,$passwordPage]=httpTemp($normalSession,'/pages/setting/pwd.php');
+    checkTemp($status===200 && strpos($passwordPage,'title="본인 비밀번호 변경"')!==false,'account without CRUD grants has own-password page and common menu link');
     [$status,,$json]=httpTemp($normalSession,'/pages/setting/ajax/setting.process.php',['mode'=>'pwd.change','pwd_old'=>'WrongOld9!','pwd_new'=>'SecondPassword9!','pwd_new_confirm'=>'SecondPassword9!']);
     checkTemp(($json['result']??'')==='fail' && password_verify('NewPassword9!',rowTemp($id)['upwd']),'ordinary change still requires current password');
     [$status,,$json]=httpTemp($normalSession,'/pages/setting/ajax/setting.process.php',['mode'=>'pwd.change','pwd_old'=>'NewPassword9!','pwd_new'=>'SecondPassword9!','pwd_new_confirm'=>'SecondPassword9!']);
     checkTemp(($json['result']??'')==='success' && password_verify('SecondPassword9!',rowTemp($id)['upwd']),'ordinary password change regression succeeds');
+    $policyInput=$input;$policyInput['mode']='update';$policyInput['no']=$id;$policyInput['acl']=['board'=>['view'=>1]];
+    $policyInput['authority_valid_from']=date('Y-m-d\TH:i',time()-86400);$policyInput['authority_valid_until']=date('Y-m-d\TH:i',time()+86400);
+    $policyInput['change_reason']='권한 기간 갱신 QA';
+    $beforePolicy=rowTemp($id);
+    [$reasonStatus,,$reasonJson]=httpTemp($superSession,'/Controller/AccountController.php',array_merge($policyInput,['change_reason'=>'']));
+    checkTemp(empty($reasonJson['success']) && rowTemp($id)===$beforePolicy,'missing governance reason rejects account update without mutation');
+    $policySession=sessionTemp(rowTemp($id));
+    [$periodStatus,,$periodJson]=httpTemp($superSession,'/Controller/AccountController.php',$policyInput);
+    $periodRow=rowTemp($id);
+    checkTemp(!empty($periodJson['success']) && $periodRow['authority_valid_until']!==null && empty($periodRow['login_token']),'HTTP authority period update persists and revokes existing session');
+    if(session_status()!==PHP_SESSION_ACTIVE){session_id('');session_start();}
+    QaTemporaryMfa::begin($periodRow);QaTemporaryMfa::bindEmail($periodRow['email']);
+    $db->prepare('UPDATE nb_admin SET authority_valid_until=DATE_ADD(NOW(),INTERVAL 2 DAY) WHERE no=?')->execute([$id]);
+    checkTemp(rejectsTemp(function(){QaTemporaryMfa::verify(QaTemporaryMfa::$code);}), 'authority change invalidates pending MFA even while new period is valid');
+    $db->prepare('UPDATE nb_admin SET authority_valid_until=? WHERE no=?')->execute([$periodRow['authority_valid_until'],$id]);
+    $sessions[]=session_id();session_write_close();
+    $audit=$db->prepare("SELECT detail_json FROM nb_admin_audit WHERE actor_no=? AND target_no=? AND entity='account' ORDER BY no DESC LIMIT 1");$audit->execute([$superId,$id]);$detail=json_decode((string)$audit->fetchColumn(),true);
+    checkTemp(($detail['change_reason']??'')===$policyInput['change_reason'] && ($detail['authority_before']['account_identifier']??'')===$uid && ($detail['authority_after']['owner_display_name']??'')===$input['uname'] && isset($detail['authority_after']['permissions']) && ($detail['authority_after']['authority_valid_until']??null)===$periodRow['authority_valid_until'],'authority audit preserves reason owner identity permissions and before-after period');
+    $badPeriod=array_merge($policyInput,['authority_valid_from'=>'2026-02-30T10:00']);
+    $beforeBad=rowTemp($id);
+    [,,$badResult]=httpTemp($superSession,'/Controller/AccountController.php',$badPeriod);
+    checkTemp(empty($badResult['success']) && rowTemp($id)===$beforeBad,'invalid calendar date rejected without changing account');
+    $faultName=$uid.'_audit';$faultReason='QA_AUDIT_FAIL_'.$uid;$faultCreated=false;$beforeFault=rowTemp($id);
+    try{
+        $db->exec("ALTER TABLE nb_admin_audit ADD CONSTRAINT ".$faultName." CHECK (LOCATE(".$db->quote($faultReason).",IFNULL(detail_json,''))=0)");$faultCreated=true;
+        [,,$faultResult]=httpTemp($superSession,'/Controller/AccountController.php',array_merge($policyInput,['uname'=>'변경 QA','change_reason'=>$faultReason]));
+        checkTemp(empty($faultResult['success']) && rowTemp($id)===$beforeFault,'failed mandatory authority audit rolls back profile and permissions');
+        $faultCreate=$apiInput;$faultCreate['uid']=$uid.'_fc';$faultCreate['email']=$uid.'_fc@gmail.com';$faultCreate['change_reason']=$faultReason;
+        [,,$faultCreateResult]=httpTemp($superSession,'/Controller/AccountController.php',$faultCreate);
+        $st=$db->prepare("SELECT COUNT(*) FROM nb_admin WHERE uid=? AND sitekey='NOLTHE'");$st->execute([$faultCreate['uid']]);
+        checkTemp(empty($faultCreateResult['success']) && empty($faultCreateResult['credential']) && (int)$st->fetchColumn()===0,'failed mandatory audit rolls back HTTP creation without issuing credential');
+    }finally{if($faultCreated)$db->exec('ALTER TABLE nb_admin_audit DROP CHECK '.$faultName);}
+    $periodSession=sessionTemp(rowTemp($id));
+    $db->prepare('UPDATE nb_admin SET authority_valid_until=DATE_SUB(NOW(),INTERVAL 1 SECOND) WHERE no=?')->execute([$id]);
+    [$expiredStatus]=httpTemp($periodSession,'/pages/setting/pwd.php');
+    checkTemp($expiredStatus!==200 && rejectsTemp(function()use($id){AuthSession::establish(rowTemp($id),'admin');}),'expiry blocks existing HTTP session and new authentication');
+    $db->prepare('UPDATE nb_admin SET authority_valid_from=NULL,authority_valid_until=NULL WHERE no=?')->execute([$id]);
     $service->reissue($id,0);
     $db->prepare('UPDATE nb_admin SET temporary_password_expires_at=DATE_SUB(NOW(),INTERVAL 1 SECOND) WHERE no=?')->execute([$id]);
     checkTemp(rejectsTemp(function()use($id){TemporaryPassword::assertUsable(rowTemp($id));}),'expired temporary credential rejected');
     checkTemp(rejectsTemp(function()use($id){AuthSession::establish(rowTemp($id),'admin');}),'expired credential cannot establish authenticated session');
 } catch(Throwable $e) {checkTemp(false,'exception: '.$e->getMessage());}
 finally {
+    if(isset($faultCreate)){
+        $cleanup=$db->prepare("SELECT no FROM nb_admin WHERE uid=? AND sitekey='NOLTHE'");$cleanup->execute([$faultCreate['uid']]);
+        foreach($cleanup->fetchAll(PDO::FETCH_COLUMN) as $cleanupId){$db->prepare('DELETE FROM nb_admin_acl WHERE admin_no=?')->execute([$cleanupId]);$db->prepare('DELETE FROM nb_admin WHERE no=? AND uid=?')->execute([$cleanupId,$faultCreate['uid']]);}
+    }
+    if(isset($highestId)){$db->prepare('DELETE FROM nb_admin WHERE no=? AND uid=?')->execute([$highestId,$highestInput['uid']]);}
+    if(isset($failedInput)){$db->prepare('DELETE FROM nb_admin WHERE uid=? AND sitekey=?')->execute([$failedInput['uid'],'NOLTHE']);}
     foreach([[$apiId??0,$apiUid??''],[$superId??0,$superUid??'']] as [$cleanId,$cleanUid]) {
         if($cleanId){$db->prepare('DELETE FROM nb_admin_audit WHERE actor_no=?')->execute([$cleanId]);$db->prepare('DELETE FROM nb_admin_privacy_access WHERE actor_no=?')->execute([$cleanId]);$db->prepare('DELETE FROM nb_admin_acl WHERE admin_no=?')->execute([$cleanId]);$db->prepare('DELETE FROM nb_admin WHERE no=? AND uid=?')->execute([$cleanId,$cleanUid]);}
     }

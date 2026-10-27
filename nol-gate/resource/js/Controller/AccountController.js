@@ -152,6 +152,11 @@ export class AccountController {
 
   async sendRequest(formData, successMessage) {
     if (this.requestPending) return;
+    if (!String(formData.get('change_reason') || '').trim()) {
+      const reason = prompt('변경 사유를 입력하세요. (2~300자)');
+      if (reason === null) return;
+      formData.set('change_reason', reason);
+    }
     this.requestPending = true;
     try {
       const res = await fetcher(API.ACCOUNT, formData);

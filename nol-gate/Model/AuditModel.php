@@ -55,7 +55,7 @@ class AuditModel
     {
         try {
             [$where, $params] = self::criteria($sitekey, $entity, $filters);
-            $sql = 'SELECT no, actor_no, actor_uid, actor_ip, action, entity, target_no, target_label, summary, created_at FROM nb_admin_audit' . $where;
+            $sql = 'SELECT no, actor_no, actor_uid, actor_ip, action, entity, target_no, target_label, summary, detail_json, created_at FROM nb_admin_audit' . $where;
             $sql .= ' ORDER BY no DESC LIMIT :off, :lim';
             $stmt = DB::getInstance()->prepare($sql);
             foreach ($params as $key => $value) {

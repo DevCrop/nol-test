@@ -56,6 +56,7 @@ foreach ($rows as $row) {
         'target_no' => (int) ($row['target_no'] ?? 0),
         'target_label' => (string) ($row['target_label'] ?? ''),
         'summary' => (string) ($row['summary'] ?? ''),
+        'authority_lines' => $ent==='account'?AccountAccessPolicy::auditLines(json_decode((string)($row['detail_json']??''),true)?:[],[PiiMask::class,'identifier'],[PiiMask::class,'name']):[],
     ];
 }
 

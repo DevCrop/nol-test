@@ -1,0 +1,7 @@
+<?php
+$authorityAccount=$account??[];
+$authorityEscape=static function($value):string{return htmlspecialchars((string)$value,ENT_QUOTES,'UTF-8');};
+?>
+<div class="no-admin-block"><h3 class="no-admin-title"><label for="authority_valid_from">권한 시작일</label></h3><div class="no-admin-content"><input class="no-input--detail" type="datetime-local" name="authority_valid_from" id="authority_valid_from" value="<?= $authorityEscape(substr(str_replace(' ','T',(string)($authorityAccount['authority_valid_from']??'')),0,16)) ?>"><p class="no-admin-acl__hint">비워두면 시작 제한이 없습니다. 한국 시간 기준입니다.</p></div></div>
+<div class="no-admin-block"><h3 class="no-admin-title"><label for="authority_valid_until">권한 종료일</label></h3><div class="no-admin-content"><input class="no-input--detail" type="datetime-local" name="authority_valid_until" id="authority_valid_until" value="<?= $authorityEscape(substr(str_replace(' ','T',(string)($authorityAccount['authority_valid_until']??'')),0,16)) ?>"><p class="no-admin-acl__hint">비워두면 종료 제한이 없습니다. 종료 시각부터 접속이 차단됩니다.</p></div></div>
+<div class="no-admin-block"><h3 class="no-admin-title"><label for="change_reason">변경 사유</label></h3><div class="no-admin-content"><textarea class="no-input--detail" id="change_reason" name="change_reason" required minlength="2" maxlength="300" rows="3" placeholder="계정 등록 또는 권한 변경 사유"></textarea><p class="no-admin-acl__hint">비밀번호·인증번호·연락처 등은 입력하지 마세요.</p></div></div>

@@ -51,6 +51,12 @@ if ($role->isReadOnly()) {
                         <?php endif; ?>
                         <?php if (!empty($_SESSION['no_adm_login_uid'])): ?>
                         <li class="no-header-actions__item">
+                            <a href="<?= $NO_ADMIN_BASE ?>/pages/setting/pwd.php" class="no-header-actions__link" title="본인 비밀번호 변경">
+                                <i class="bx bx-lock-alt" aria-hidden="true"></i>
+                                <span class="no-header-actions__text">비밀번호 변경</span>
+                            </a>
+                        </li>
+                        <li class="no-header-actions__item">
                             <a href="<?= $NO_ADMIN_BASE ?>/lib/login/logout.php" data-admin-post class="no-header-actions__link no-header-actions__link--logout" title="로그아웃">
                                 <i class="bx bx-log-out" aria-hidden="true"></i>
                                 <span class="no-header-actions__text">로그아웃</span>

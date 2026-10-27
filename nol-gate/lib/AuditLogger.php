@@ -1,6 +1,8 @@
 <?php
 
 require_once dirname(__DIR__) . '/Model/AuditModel.php';
+require_once dirname(__DIR__) . '/Model/AccountModel.php';
+require_once dirname(__DIR__) . '/Model/AclModel.php';
 require_once __DIR__ . '/AdminClock.php';
 require_once __DIR__ . '/PiiMask.php';
 require_once __DIR__ . '/MutationTargets.php';
@@ -34,12 +36,19 @@ class AuditLogger
                 return;
             }
             global $NO_SITE_UNIQUE_KEY;
+            if ($entity === 'account' && (int)$targetNo > 0) {
+                $after=AccountModel::authenticationRow((int)$targetNo);
+                if($after)$after['_grants']=AclModel::fetch((int)$targetNo);
+                $detail = array_merge($detail, AccountAccessPolicy::audit((int)$targetNo, $after));
+            }
             $label = self::clip($entity === 'account' && (int) $targetNo > 0 ? PiiMask::identifier($label) : $label, 255);
             $summary = self::actionLabel($action) . ' · ' . self::entityLabel($entity);
             if ($label !== '') {
                 $summary = self::clip($summary . ' · ' . $label, 255);
             }
-            AuditModel::insert([
+            $encodedDetail=self::encodeDetail($detail);
+            if($entity==='account' && $detail!==[] && $encodedDetail===null)throw new RuntimeException('계정 변경 이력을 저장하지 못했습니다.');
+            $saved = AuditModel::insert([
                 'sitekey' => (string) $NO_SITE_UNIQUE_KEY,
                 'actor_no' => (int) ($_SESSION['no_adm_login_no'] ?? 0),
                 'actor_uid' => (string) ($_SESSION['no_adm_login_uid'] ?? ''),
@@ -49,10 +58,12 @@ class AuditLogger
                 'target_no' => (int) $targetNo,
                 'target_label' => $label,
                 'summary' => $summary,
-                'detail_json' => self::encodeDetail($detail),
+                'detail_json' => $encodedDetail,
                 'created_at' => (new AdminClock())->stamp(),
             ]);
+            if ($entity === 'account' && !$saved) throw new RuntimeException('계정 변경 이력을 저장하지 못했습니다.');
         } catch (Throwable $e) {
+            if ($entity === 'account') throw new RuntimeException('계정 변경 이력을 저장하지 못했습니다.', 0, $e);
             error_log('[audit] ' . $e->getMessage());
         }
     }

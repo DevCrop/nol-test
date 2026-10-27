@@ -45,5 +45,5 @@ window.NO_ADMIN_RESOURCE_BASE = <?= json_encode($NO_ADMIN_RESOURCE_BASE) ?>;
 <!-- add custom -->
 <!-- <script type="text/javascript" src="<?=$NO_IS_SUBDIR?>/resource/js/datepicker.custom.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>"></script> -->
 <script src="<?=$NO_ADMIN_RESOURCE_BASE?>/js/private-page.js?v=20261021" defer></script>
-<script type="module" src="<?=$NO_ADMIN_RESOURCE_BASE?>/js/app.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>&auth=20261021" defer>
+<script type="module" src="<?=$NO_ADMIN_RESOURCE_BASE?>/js/app.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>&auth=20261027" defer>
 </script>

@@ -1,4 +1,5 @@
 <?php
+require_once dirname(__DIR__, 2) . '/inc/lib/AccountAccessPolicy.php';
 
 class AccountModel {
     
@@ -7,11 +8,12 @@ class AccountModel {
         global $NO_SITE_UNIQUE_KEY;
 
         $sql = "
-            INSERT INTO nb_admin (uid, upwd, uname, email, phone, active_status, role_id, sitekey, created_at, last_login_at, password_changed_at)
-            VALUES (:uid, :upwd, :uname, :email, :phone, :active_status, :role_id, :sitekey, :created_at, :last_login_at, :password_changed_at)
+            INSERT INTO nb_admin (uid, upwd, uname, email, phone, active_status, role_id, sitekey, created_at, last_login_at, password_changed_at, authority_valid_from, authority_valid_until)
+            VALUES (:uid, :upwd, :uname, :email, :phone, :active_status, :role_id, :sitekey, :created_at, :last_login_at, :password_changed_at, :authority_valid_from, :authority_valid_until)
         ";
 
         $created = date('Y-m-d H:i:s');
+        $period = AccountAccessPolicy::period($data);
         $stmt = $db->prepare($sql);
         $stmt->execute([
             ':uid' => $data['uid'],
@@ -25,6 +27,8 @@ class AccountModel {
             ':created_at' => $created,
             ':last_login_at' => $created,
             ':password_changed_at' => $created,
+            ':authority_valid_from' => $period['authority_valid_from'],
+            ':authority_valid_until' => $period['authority_valid_until'],
         ]);
 
         return $db->lastInsertId();
@@ -69,9 +73,13 @@ class AccountModel {
         }
 
         $current = self::findByNo((int) $id);
+        $period = AccountAccessPolicy::period($data, $current);
+        $fields += $period;
         $revoke = !$current || (int) $current['role_id'] !== (int) $fields['role_id']
             || $current['active_status'] !== $fields['active_status']
-            || $current['email'] !== $fields['email'] || !empty($data['upwd']);
+            || $current['email'] !== $fields['email'] || !empty($data['upwd'])
+            || ($current['authority_valid_from']??null)!==$period['authority_valid_from']
+            || ($current['authority_valid_until']??null)!==$period['authority_valid_until'];
         $set = implode(', ', array_map(fn($key) => "$key = :$key", array_keys($fields)));
         if ($revoke) $set .= ', login_token = NULL';
         $fields['no'] = $id;
@@ -261,7 +269,7 @@ class AccountModel {
         try {
             $stmt = DB::getInstance()->prepare(
                 'SELECT no, uid, uname, email, role_id, active_status, created_at,
-                        last_login_at, idle_locked_at, must_change_password, password_changed_at, temporary_password_expires_at
+                          last_login_at, idle_locked_at, must_change_password, password_changed_at, temporary_password_expires_at, authority_valid_from, authority_valid_until
                  FROM nb_admin WHERE no = :no'
             );
             $stmt->execute(['no' => $id]);

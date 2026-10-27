@@ -52,6 +52,16 @@ $resolveRoleId = static function (array $input) use (&$admin_roles): int {
 try {
     $input = $_POST;
     $mode = $input['mode'] ?? '';
+    $reason = AccountAccessPolicy::reason($input);
+    $db = DB::getInstance();
+    $db->beginTransaction();
+    $db->query('SELECT role_id FROM nb_roles WHERE role_id IN (1,2) ORDER BY role_id FOR UPDATE')->fetchAll();
+    $before=[];
+    $targetIds=$mode==='delete_array'?json_decode($input['ids']??'[]',true):[(int)($input['id']??$input['no']??0)];
+    if(is_array($targetIds))foreach(array_unique(array_map('intval',$targetIds)) as $targetId){
+        if($targetId>0){$row=AccountModel::authenticationRow($targetId);if($row && $row['sitekey']!==$NO_SITE_UNIQUE_KEY)throw new RuntimeException('대상 계정을 찾을 수 없습니다.');if($row){$row['_grants']=AclModel::fetch($targetId);$before[$targetId]=$row;}}
+    }
+    AccountAccessPolicy::beginAudit($reason,$before);
 
     if ($mode === 'save') {
         if (!empty($input['upwd']) || !empty($input['upwd_confirm'])) throw new RuntimeException('비밀번호는 시스템에서 자동 발급합니다.');
@@ -98,6 +108,7 @@ try {
             'uname' => $input['uname'],
             'grants' => $grants,
         ]);
+        $db->commit();
 
         echo json_encode([
             'success' => true,
@@ -129,6 +140,7 @@ try {
             AclModel::deleteByAdmin((int) $id);
             AuditLogger::record('delete', 'account', $id, (string) ($target['uid'] ?? $id));
         }
+        $db->commit();
 
         echo json_encode([
             'success' => $deleted,
@@ -140,6 +152,7 @@ try {
     if ($mode === 'reissue_temporary') {
         $credential = (new AccountCredentialService())->reissue((int) ($input['id'] ?? 0), $currentAdminNo);
         AuditLogger::record('update', 'account', $credential['id'], $credential['uid'], ['temporary_password_reissued' => true]);
+        $db->commit();
         echo json_encode(['success' => true, 'message' => '임시 비밀번호를 재발급했습니다.', 'credential' => $credential]);
         exit;
     }
@@ -229,6 +242,7 @@ try {
             }
         }
 
+        if($currentAdminNo===(int)$id)AccountAccessPolicy::assertAllowed(AccountAccessPolicy::period($input,AccountModel::findByNo((int)$id)));
         $updated = AccountModel::update($id, $input);
         if ($updated) {
             if (isset($input['upwd'])) {
@@ -259,6 +273,7 @@ try {
                 'password_reset' => isset($input['upwd']) && $currentAdminNo !== (int) $id,
             ]);
         }
+        $db->commit();
 
         echo json_encode([
             'success' => $updated,
@@ -296,8 +311,9 @@ try {
             foreach ($kept as $id) {
                 AclModel::deleteByAdmin((int) $id);
             }
-            AuditLogger::record('delete', 'account', 0, count($kept) . '건', ['ids' => $kept]);
+            foreach($kept as $deletedId)AuditLogger::record('delete','account',$deletedId,(string)($before[$deletedId]['uid']??$deletedId));
         }
+        $db->commit();
 
         echo json_encode([
             'success' => $result,
@@ -316,6 +332,7 @@ try {
         }
         $target = AccountModel::findByNo($id);
         AuditLogger::record('update', 'account', $id, (string) ($target['uid'] ?? $id), ['unlock_idle' => true]);
+        $db->commit();
         echo json_encode([
             'success' => true,
             'message' => '미접속 잠금을 해제했습니다.',
@@ -328,7 +345,8 @@ try {
         'message' => '유효하지 않은 요청입니다.'
     ]);
     exit;
-} catch (Exception $e) {
+} catch (Throwable $e) {
+    if(isset($db) && $db->inTransaction())$db->rollBack();
     http_response_code(500);
     echo json_encode([
         'success' => false,

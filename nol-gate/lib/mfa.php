@@ -26,6 +26,7 @@ class Mfa
             'no' => (int) $admin['no'], 'uid' => (string) $admin['uid'],
             'registered_email' => $email, 'email' => $email,
             'credential_version' => hash('sha256', (string) $admin['upwd']),
+            'authority_version' => AccountAccessPolicy::version($admin),
             'code_hash' => '', 'expires' => time() + self::ttlSeconds(),
             'attempts' => 0, 'email_attempts' => 0, 'sent_at' => 0,
         ];
@@ -56,11 +57,12 @@ class Mfa
         if (!$row || ($row['active_status'] ?? '') !== 'Y'
             || (string) ($row['sitekey'] ?? '') !== (string) ($GLOBALS['NO_SITE_UNIQUE_KEY'] ?? '')
             || !hash_equals((string) ($p['credential_version'] ?? ''), hash('sha256', (string) $row['upwd']))
+            || !hash_equals((string) ($p['authority_version'] ?? ''), AccountAccessPolicy::version($row))
             || (string) ($p['registered_email'] ?? '') !== trim((string) $row['email'])) {
             self::clear();
             throw new RuntimeException('계정 정보가 변경되었습니다. 다시 로그인하세요.');
         }
-        try { TemporaryPassword::assertUsable($row); (new AccountIdleLock())->guard($row); }
+        try { TemporaryPassword::assertUsable($row); AccountAccessPolicy::assertAllowed($row); (new AccountIdleLock())->guard($row); }
         catch (RuntimeException $e) { self::clear(); throw $e; }
         return $row;
     }

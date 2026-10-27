@@ -18,7 +18,7 @@ $totalCount = (int)$totalStmt->fetchColumn();
 $Page = ceil($totalCount / $perpage);
 
 // 실제 데이터 조회
-$sql = "SELECT a.no, a.uid, a.uname, a.email, a.phone, a.active_status, a.role_id, r.role_name, a.created_at, a.last_login_at, a.idle_locked_at, a.must_change_password, a.temporary_password_expires_at
+$sql = "SELECT a.no, a.uid, a.uname, a.email, a.phone, a.active_status, a.role_id, r.role_name, a.created_at, a.last_login_at, a.idle_locked_at, a.must_change_password, a.temporary_password_expires_at, a.authority_valid_from, a.authority_valid_until
         FROM nb_admin a
         LEFT JOIN nb_roles r ON a.role_id = r.role_id
         ORDER BY a.no DESC
@@ -124,8 +124,12 @@ $adminCredentialStyles = true;
                                             $lock = $isSelf ? 'self' : (($isSuperRow && $superTotal <= 1) ? 'last-super' : '');
                                             $layerName = $isSuperRow ? '최고 관리자' : '일반 관리자';
                                             $idleLocked = trim((string) ($row['idle_locked_at'] ?? '')) !== '';
+                                            $periodLabel=AccountAccessPolicy::periodLabel($row);
                                             if ($idleLocked) {
                                                 $statusLabel = '미접속잠금';
+                                                $statusClass = 'no-btn--delete-outline';
+                                            } elseif (($row['active_status'] ?? '') === 'Y' && $periodLabel!==null) {
+                                                $statusLabel = $periodLabel;
                                                 $statusClass = 'no-btn--delete-outline';
                                             } elseif (($row['active_status'] ?? '') === 'Y' && !empty($row['must_change_password'])) {
                                                 $statusLabel = '임시';

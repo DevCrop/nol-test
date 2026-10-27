@@ -146,6 +146,7 @@ include_once "../../inc/admin.js.php";
                                     </div>
                                 </div>
 
+                                <?php include dirname(__DIR__, 2) . '/inc/account.authority.php'; ?>
                                 <?php $aclGrants = []; include_once dirname(__DIR__, 2) . '/inc/admin.acl.php'; ?>
 
                                 <div class="no-items-center center">

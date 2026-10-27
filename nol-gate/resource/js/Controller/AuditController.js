@@ -95,12 +95,13 @@ export class AuditController {
       const entity = row.entity_label || "대상";
       const title = target || row.summary || "대상명 미기록";
       const description = target ? `${entity} 항목을 ${verb}.${Number(row.target_no) > 0 ? ` 대상 번호 #${Number(row.target_no)}` : ""}` : "기록 당시 저장된 내용을 표시합니다.";
+      const authority = Array.isArray(row.authority_lines) && row.authority_lines.length ? `<details><summary>계정·권한 변경 상세</summary>${row.authority_lines.map(line=>`<span class="audit-sub">${this.esc(line)}</span>`).join('')}</details>` : '';
       return `<tr>
         <td><span class="audit-date">${this.esc(date || "—")}</span><span class="audit-sub">${this.esc(time || "")}</span></td>
         <td><span class="audit-actor">${this.esc(row.actor_uid || "작업자 미기록")}</span><span class="audit-sub audit-ip">${this.esc(row.actor_ip || "IP 미기록")}</span></td>
         <td><span class="no-badge audit-badge-${action}"><span aria-hidden="true">${icon}</span> ${label}</span></td>
         <td><span class="audit-entity">${this.esc(entity)}</span></td>
-        <td class="no-td-title"><span class="audit-actor">${this.esc(title)}</span><span class="audit-sub">${this.esc(description)}</span></td>
+        <td class="no-td-title"><span class="audit-actor">${this.esc(title)}</span><span class="audit-sub">${this.esc(description)}</span>${authority}</td>
       </tr>`;
     }).join("");
   }

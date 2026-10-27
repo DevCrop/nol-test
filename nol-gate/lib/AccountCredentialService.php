@@ -16,7 +16,8 @@ final class AccountCredentialService
     {
         $hash = password_hash($temporary, PASSWORD_DEFAULT);
         $deadline = TemporaryPassword::deadline();
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) $this->db->beginTransaction();
         try {
             $roleId = (int) $input['role_id'];
             $lock = $this->db->prepare('SELECT role_id FROM nb_roles WHERE role_id = ? FOR UPDATE');
@@ -30,7 +31,7 @@ final class AccountCredentialService
             $stmt = $this->db->prepare('UPDATE nb_admin SET must_change_password=1, temporary_password_expires_at=:expires, login_token=NULL WHERE no=:no');
             $stmt->execute(['expires' => $deadline, 'no' => $id]);
             if ($roleId !== 1) AclModel::replaceAll($id, $grants);
-            $this->db->commit();
+            if ($ownsTransaction) $this->db->commit();
             return ['id' => $id, 'uid' => (string) $input['uid'], 'temporary_password' => $temporary, 'expires_at' => $deadline];
         } catch (Throwable $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
@@ -44,12 +45,13 @@ final class AccountCredentialService
         $temporary = TemporaryPassword::generate();
         $hash = password_hash($temporary, PASSWORD_DEFAULT);
         $deadline = TemporaryPassword::deadline();
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) $this->db->beginTransaction();
         try {
             $row = $this->locked($id);
             $stmt = $this->db->prepare('UPDATE nb_admin SET upwd=:hash, must_change_password=1, temporary_password_expires_at=:expires, login_token=NULL WHERE no=:no AND sitekey=:site');
             $stmt->execute(['hash' => $hash, 'expires' => $deadline, 'no' => $id, 'site' => $row['sitekey']]);
-            $this->db->commit();
+            if ($ownsTransaction) $this->db->commit();
             return ['id' => $id, 'uid' => (string) $row['uid'], 'temporary_password' => $temporary, 'expires_at' => $deadline];
         } catch (Throwable $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
@@ -64,18 +66,20 @@ final class AccountCredentialService
         $validator->passwordPolicy('upwd', $password, '비밀번호');
         if ($validator->fails()) throw new RuntimeException(implode("\n", $validator->getErrors()));
         $hash = password_hash($password, PASSWORD_DEFAULT);
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) $this->db->beginTransaction();
         try {
             $row = $this->locked($id);
             if (($row['active_status'] ?? '') !== 'Y' || !empty($row['idle_locked_at']) || $sessionToken === '' || !hash_equals((string) ($row['login_token'] ?? ''), $sessionToken)) {
                 throw new RuntimeException('인증 정보가 변경되었습니다. 다시 로그인하세요.');
             }
             TemporaryPassword::assertUsable($row);
+            AccountAccessPolicy::assertAllowed($row);
             if (empty($row['must_change_password']) && !password_verify($old, $row['upwd'])) throw new RuntimeException('현재 비밀번호가 일치하지 않습니다.');
             if (password_verify($password, $row['upwd'])) throw new RuntimeException('현재 비밀번호와 다른 비밀번호로 변경하세요.');
             $stmt = $this->db->prepare('UPDATE nb_admin SET upwd=:hash, must_change_password=0, temporary_password_expires_at=NULL, password_changed_at=NOW(), login_token=NULL WHERE no=:no AND sitekey=:site');
             $stmt->execute(['hash' => $hash, 'no' => $id, 'site' => $row['sitekey']]);
-            $this->db->commit();
+            if ($ownsTransaction) $this->db->commit();
         } catch (Throwable $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
             throw $e;
