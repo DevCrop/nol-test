@@ -1,5 +1,5 @@
 import { ThemeManager } from "./ui/ThemeManager.js";
-import { TabManager } from "./ui/TabManager.js";
+import { TabManager } from "./ui/TabManager.js?v=20261030";
 import { ScrollAnimation } from "./ui/ScrollAnimation.js";
 
 // 알림 모달 함수

@@ -9214,6 +9214,15 @@ html[data-theme="light"] .no-sub-whatson-view__back:hover i {
 }
 .no-sub-ui-seat-img figure img {
   display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+}
+.no-sub-ui-seat-img figure,
+.no-sub-ui-seat-img .no-theme-change {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 .no-sub-ui-seat__title {
   width: fit-content;

@@ -14,6 +14,8 @@ foreach (['php_lint.php','php-router-http.php','mutation_boundary.php','auth_ses
     if ($status !== 0) $failed++;
 }
 if (getenv('APP_ENV')==='development') {
+    passthru(escapeshellarg(PHP_BINARY).' '.escapeshellarg(__DIR__.'/admin-request-20261030.php'),$status);
+    if($status!==0)$failed++;
     passthru(escapeshellarg(PHP_BINARY).' '.escapeshellarg(__DIR__.'/admin-transactions.php'),$status);
     if($status!==0)$failed++;
     passthru(escapeshellarg(PHP_BINARY).' '.escapeshellarg(__DIR__.'/temporary_credentials_flow.php'),$status);

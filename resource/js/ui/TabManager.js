@@ -57,62 +57,36 @@ class TabManager {
 
     // 탭 클릭 이벤트
     this.setupTabListeners();
+    this.observeContent();
   }
 
   /**
    * 활성 패널 높이 설정
    */
   updateContainerHeight() {
-    const activePanel = this.rightContainer.querySelector(
-      ".no-sub-ui-panel.is-active"
-    );
-    if (!activePanel) return;
+    const panel=this.rightContainer.querySelector('.no-sub-ui-panel.is-active');
+    if(!panel)return;
+    const inner=panel.querySelector('.no-sub-ui-panel-inner') || panel;
+    const height=Math.ceil(Math.max(inner.scrollHeight,inner.getBoundingClientRect().height));
+    const value=height+'px';
+    if(panel.style.height!==value)panel.style.height=value;
+    if(this.rightContainer.style.height!==value)this.rightContainer.style.height=value;
+    this.lenis?.resize?.();
+  }
 
-    // panel-inner 요소의 높이 측정
-    const panelInner = activePanel.querySelector(".no-sub-ui-panel-inner");
-    if (panelInner) {
-      // 강제 리플로우
-      void panelInner.offsetHeight;
-      
-      // 높이 측정 및 설정 (패널과 컨테이너 모두 설정)
-      const height = panelInner.scrollHeight;
-      activePanel.style.height = `${height}px`;
-      this.rightContainer.style.height = `${height}px`;
-      
-      // 이미지가 있는 경우, 이미지 로드 후 높이 재계산
-      const images = activePanel.querySelectorAll("img");
-      if (images.length > 0) {
-        let loadedCount = 0;
-        const totalImages = images.length;
-        
-        const updateHeightAfterImages = () => {
-          loadedCount++;
-          if (loadedCount === totalImages) {
-            // 모든 이미지 로드 완료 후 높이 재계산
-            setTimeout(() => {
-              void panelInner.offsetHeight;
-              const newHeight = panelInner.scrollHeight;
-              activePanel.style.height = `${newHeight}px`;
-              this.rightContainer.style.height = `${newHeight}px`;
-            }, 50);
-          }
-        };
-        
-        images.forEach((img) => {
-          if (img.complete) {
-            updateHeightAfterImages();
-          } else {
-            img.addEventListener("load", updateHeightAfterImages, { once: true });
-            img.addEventListener("error", updateHeightAfterImages, { once: true });
-          }
-        });
-      }
-    } else {
-      // panel-inner가 없으면 패널의 높이 사용
-      const height = activePanel.scrollHeight;
-      activePanel.style.height = `${height}px`;
-      this.rightContainer.style.height = `${height}px`;
+  observeContent() {
+    const schedule=()=>{
+      if(this.heightFrame)return;
+      this.heightFrame=requestAnimationFrame(()=>{this.heightFrame=null;this.updateContainerHeight();});
+    };
+    if(typeof ResizeObserver!=='undefined'){
+      this.contentObserver=new ResizeObserver(schedule);
+      this.panels.forEach(panel=>{const inner=panel.querySelector('.no-sub-ui-panel-inner');if(inner)this.contentObserver.observe(inner);});
     }
+    // Hidden theme images may never load; do not wait for every image.
+    this.container.addEventListener('load',schedule,true);
+    this.container.addEventListener('error',schedule,true);
+    document.fonts?.ready.then(schedule);
   }
 
   /**
@@ -155,7 +129,7 @@ class TabManager {
     if (activePanel) {
       const isMobile = window.innerWidth <= 1024;
       console.log('TabManager - 모바일 체크:', isMobile, '화면 너비:', window.innerWidth);
-      
+
       if (isMobile) {
         // 모바일: window.scrollTo 사용
         console.log('모바일 - window.scrollTo 사용');

@@ -1,5 +1,8 @@
 <?php
 include_once dirname(__DIR__) . '/lib/admin.check.php';
+require_once dirname(__DIR__) . '/lib/PublicSiteLink.php';
+$developmentPort=parse_url('http://'.($_SERVER['HTTP_HOST']??''),PHP_URL_PORT);
+$publicHome=PublicSiteLink::home(PUBLIC_HOST,env('APP_ENV','production')==='development',is_int($developmentPort)?$developmentPort:null);
 
 $roleTitle = '계정: ' . htmlspecialchars($NO_ADM_ID ?? '') . ' / 권한: ' . htmlspecialchars($role->getName());
 $sessionLifetime = defined('SESSION_LIFETIME') ? (int) SESSION_LIFETIME : 1800;
@@ -43,7 +46,7 @@ if ($role->isReadOnly()) {
                         </li>
                         <?php if (empty($hideAdminNav)): ?>
                         <li class="no-header-actions__item">
-                            <a href="<?= $NO_IS_SUBDIR ?>/index.php" target="_blank" rel="noopener" class="no-header-actions__link" title="사이트 새 창에서 보기">
+                            <a href="<?= htmlspecialchars($publicHome,ENT_QUOTES,'UTF-8') ?>" target="_blank" rel="noopener" class="no-header-actions__link" title="사이트 새 창에서 보기">
                                 <i class="bx bx-home-alt" aria-hidden="true"></i>
                                 <span class="no-header-actions__text">홈페이지</span>
                             </a>

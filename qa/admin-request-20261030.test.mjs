@@ -1,0 +1,57 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+const root=new URL('../',import.meta.url);
+const read=p=>fs.readFileSync(new URL(p,root),'utf8');
+let pass=0;
+function check(name,fn){fn();pass++;console.log('PASS '+name);}
+const queueModule=await import('data:text/javascript;base64,'+Buffer.from(read('nol-gate/resource/js/utils/SortQueue.js')).toString('base64'));
+let calls=[],release=[],completed=0;
+const queue=new queueModule.SortQueue((id,action)=>{calls.push([id,action]);return new Promise(resolve=>release.push(resolve));},()=>completed++,e=>{throw e;});
+queue.enqueue('42','down');queue.enqueue('42','down');
+await new Promise(setImmediate);
+check('rapid clicks do not overlap requests or refresh early',()=>{assert.equal(calls.length,1);assert.equal(completed,0);});
+release.shift()();await new Promise(setImmediate);
+check('second click executes after first server response',()=>assert.equal(calls.length,2));
+release.shift()();await queue.tail;
+check('one refresh after both moves',()=>assert.equal(completed,1));
+
+const nodes=new Map(),readers=[],handlers={};
+const make=tag=>({tagName:tag.toUpperCase(),style:{},isConnected:true,removeAttribute(k){delete this[k];}});
+for(const id of ['name','mobileName','image','mobile','bannerPreviewContainer','bannerMobilePreviewContainer'])nodes.set(id,make('div'));
+for(const id of ['bannerPreviewContainer','bannerMobilePreviewContainer'])Object.assign(nodes.get(id),{children:[],replaceChildren(){this.children=[];},append(x){this.children.push(x);}});
+const document={getElementById:id=>nodes.get(id)||null,createElement:make,addEventListener:(name,fn)=>{handlers[name]=fn;}};
+class Reader{constructor(){readers.push(this);}readAsDataURL(file){this.file=file;}}
+const context={document,window:{},FileReader:Reader};vm.createContext(context);
+vm.runInContext(read('nol-gate/resource/js/core/previewImage.js').replaceAll('export function','function'),context);
+const input={files:[{name:'banner.png',type:'image/png'}]};
+context.window.previewImage(input,'image','name');const old=readers.at(-1);
+check('filename updates immediately before image decode',()=>assert.equal(nodes.get('name').value,'banner.png'));
+input.files=[{name:'next.png',type:'image/png'}];context.window.previewImage(input,'image','name');
+readers.at(-1).onload({target:{result:'data:new'}});old.onload({target:{result:'data:old'}});
+check('late decode cannot replace most recent selection',()=>assert.equal(nodes.get('image').src,'data:new'));
+context.window.previewBannerFile(input,'bannerPreview','name');
+check('desktop banner preview created',()=>assert.equal(nodes.get('bannerPreviewContainer').children[0].tagName,'IMG'));
+context.window.previewBannerFile({files:[{name:'mobile.webp',type:'image/webp'}]},'bannerMobilePreview','mobileName');
+check('mobile and desktop previews are independent',()=>{assert.equal(nodes.get('mobileName').value,'mobile.webp');assert.equal(nodes.get('bannerPreviewContainer').children.length,1);});
+check('missing optional preview does not prevent filename update',()=>{context.window.previewImage(input,'missing','name');assert.equal(nodes.get('name').value,'next.png');});
+context.window.previewBannerFile({files:[{name:'unsafe.svg',type:'image/svg+xml'}]},'bannerPreview','name');
+check('unsupported SVG is not rendered as banner media',()=>assert.equal(nodes.get('bannerPreviewContainer').children.length,0));
+
+let active,raf=[],observer;
+const panel=(height)=>({style:{},inner:{scrollHeight:height,getBoundingClientRect(){return {height:this.scrollHeight};}},querySelector(){return this.inner;}});
+const first=panel(500),second=panel(240);active=first;
+const env={console,URLSearchParams,window:{location:{search:''}},document:{fonts:{ready:Promise.resolve()}},requestAnimationFrame:fn=>{raf.push(fn);return raf.length;},ResizeObserver:class{constructor(fn){observer=fn;}observe(){}}};
+vm.createContext(env);vm.runInContext(read('resource/js/ui/TabManager.js').replace('export { TabManager };','globalThis.TestTab=TabManager;'),env);
+const tabs=Object.create(env.TestTab.prototype);
+tabs.rightContainer={style:{},querySelector(){return active;}};tabs.panels=[first,second];tabs.container={addEventListener(){}};
+tabs.updateContainerHeight();
+check('active panel height initially measured',()=>assert.equal(tabs.rightContainer.style.height,'500px'));
+tabs.observeContent();first.inner.scrollHeight=1300;observer();raf.shift()();
+check('lazy image height growth updates outer layout',()=>assert.equal(tabs.rightContainer.style.height,'1300px'));
+observer();active=second;raf.shift()();
+check('pending resize measures current tab rather than stale panel',()=>assert.equal(tabs.rightContainer.style.height,'240px'));
+const dist=read('resource/dist/app.js');const begin=dist.indexOf('  var M = class {'),end=dist.indexOf('  var A = class {',begin);
+const sourceClass=read('resource/js/ui/TabManager.js').split('class TabManager {')[1].split('export { TabManager };')[0].trim();
+check('deployed bundle uses the same tab implementation as source',()=>assert.equal(dist.slice(begin,end).split('var M = class {')[1].trim().replace(/;$/,''),sourceClass));
+console.log(pass+' PASS / 0 FAIL');

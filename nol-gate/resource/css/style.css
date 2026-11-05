@@ -4951,9 +4951,17 @@ input[type="file"].note-image-input {
 }
 
 .sort-btn-group {
-  display: flex;
-  gap: 6px;
-  justify-content: center;
+  white-space: nowrap;
+}
+.no-table .no-btn {
+  white-space: nowrap;
+  word-break: keep-all;
+  flex-shrink: 0;
+}
+.sort-btn-group .sort-btn {
+  display: inline-flex;
+  vertical-align: middle;
+  margin: 2px;
 }
 
 .sort-btn {

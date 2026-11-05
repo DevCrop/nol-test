@@ -188,69 +188,10 @@ try {
     }
 
     if ($mode === 'sort') {
-        $id = (int)($input['id'] ?? 0);
-        $newNo = (int)($input['new_no'] ?? 0);
-
-        if (!$id || $newNo <= 0) {
-            echo json_encode(['success' => false, 'message' => '잘못된 데이터']);
-            exit;
-        }
-
-        $db = DB::getInstance();
-        $stmt = $db->prepare("SELECT * FROM nb_popups WHERE id = :id");
-        $stmt->execute([':id' => $id]);
-        $currentData = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$currentData) {
-            echo json_encode(['success' => false, 'message' => '존재하지 않는 항목입니다.']);
-            exit;
-        }
-
-        $oldNo = (int)$currentData['sort_no'];
-
-        if ($oldNo === $newNo) {
-            echo json_encode(['success' => true, 'message' => '변경 없음']);
-            exit;
-        }
-
-        $minSortNo = PopupModel::getMinSortNo((string)$currentData['popup_path']);
-        $maxSortNo = PopupModel::getMaxSortNo((string)$currentData['popup_path']);
-
-        if ($newNo > $maxSortNo) {
-            echo json_encode(['success' => false, 'message' => '제일 높은 순서의 게시물입니다.']);
-            exit;
-        }
-
-        if ($newNo < $minSortNo) {
-            echo json_encode(['success' => false, 'message' => '제일 낮은 순서의 게시물입니다.']);
-            exit;
-        }
-
-        $dataToUpdate = [
-            'title'        => $currentData['title'],
-            'popup_type'   => (int)($currentData['popup_type'] ?? 1),
-            'popup_path'   => $currentData['popup_path'] ?? '',
-            'has_link'     => (int)$currentData['has_link'],
-            'link_url'     => $currentData['link_url'],
-            'is_target'    => (int)$currentData['is_target'],
-            'is_active'    => (int)$currentData['is_active'],
-            'description'  => $currentData['description'],
-            'start_at'     => $currentData['start_at'],
-            'end_at'       => $currentData['end_at'],
-            'is_unlimited' => (int)$currentData['is_unlimited'],
-            'popup_image'  => $currentData['popup_image'],
-            'sort_no'      => $newNo,
-        ];
-
-        $updateResult = PopupModel::update($id, $dataToUpdate);
-        AuditLogger::ifOk($updateResult, 'update', 'popup', $id, (string) ($currentData['title'] ?? $id), [
-            'sort_no' => $newNo,
-        ]);
-
-        echo json_encode([
-            'success' => (bool)$updateResult,
-            'message' => $updateResult ? '순서가 변경되었습니다.' : '변경 실패'
-        ]);
+        require_once dirname(__DIR__).'/lib/OrderedList.php';
+        $result=(new OrderedList(DB::getInstance()))->move('nb_popups',(int)($input['id']??0),(string)($input['direction']??''),isset($input['new_no'])?(int)$input['new_no']:null);
+        if($result['changed'])AuditLogger::record('update','popup',(int)$input['id'],(string)$result['target']['title'],['sort_no'=>$result['position']]);
+        echo json_encode(['success'=>true,'message'=>'순서가 변경되었습니다.','position'=>$result['position']]);
         exit;
     }
 

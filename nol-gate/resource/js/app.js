@@ -6,8 +6,8 @@ import { InquiryDownloadReason } from "./utils/InquiryDownloadReason.js";
 import { SettingController } from "./Controller/SettingController.js";
 import { SeoController } from "./Controller/SeoController.js";
 import { FaqController } from "./Controller/FaqController.js";
-import { BannerController } from "./Controller/BannerController.js";
-import { PopupController } from "./Controller/PopupController.js";
+import { BannerController } from "./Controller/BannerController.js?v=20261030";
+import { PopupController } from "./Controller/PopupController.js?v=20261030";
 import { attachRadioToggle } from "./utils/initRadioToggle.js";
 import { SessionIdleTimer } from "./utils/SessionIdleTimer.js";
 

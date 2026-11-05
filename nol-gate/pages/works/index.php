@@ -2,6 +2,8 @@
 include_once "../../../inc/lib/base.class.php";
 
 $db = DB::getInstance();
+$listOrder=($_GET['list_order']??'')==='display'?'display':'latest';
+$listOrderSql=$listOrder==='display'?'w.sort_order ASC, w.id DESC':'w.id DESC';
 
 $works_venue = $works_venue ?? [
     1 => '우리카드홀',
@@ -99,7 +101,7 @@ $sql = "
            w.is_published, w.sort_order, w.created_at, w.updated_at
     FROM nb_works w
     {$where}
-    ORDER BY w.sort_order ASC, w.id DESC
+    ORDER BY {$listOrderSql}
     LIMIT :offset, :perpage
 ";
 
@@ -160,6 +162,13 @@ $worksRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             </div>
                             <div class="no-card-body no-admin-column">
 
+                                <div class="no-admin-block">
+                                    <h3 class="no-admin-title"><label for="list_order">목록 정렬</label></h3>
+                                    <div class="no-admin-content"><select name="list_order" id="list_order">
+                                        <option value="latest" <?= $listOrder==='latest'?'selected':'' ?>>최신 등록순</option>
+                                        <option value="display" <?= $listOrder==='display'?'selected':'' ?>>사용자 화면 노출 순서</option>
+                                    </select></div>
+                                </div>
                                 <!-- 공연장 선택 -->
                                 <div class="no-admin-block">
                                     <h3 class="no-admin-title">공연장</h3>
@@ -372,19 +381,19 @@ $worksRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                 </td>
                                                 <td class="sort-btn-group">
                                                     <button type="button" class="sort-btn" data-id="<?= $row['id'] ?>"
-                                                        data-action="up" data-no="<?= $row['sort_order'] + 1 ?>">
+                                                        data-action="down" aria-label="한 칸 아래로" data-no="<?= $row['sort_order'] + 1 ?>">
                                                         <i class='bx bx-chevron-down'></i>
                                                     </button>
                                                     <button type="button" class="sort-btn" data-id="<?= $row['id'] ?>"
-                                                        data-action="down" data-no="<?= $row['sort_order'] - 1 ?>">
+                                                        data-action="up" aria-label="한 칸 위로" data-no="<?= $row['sort_order'] - 1 ?>">
                                                         <i class='bx bx-chevron-up'></i>
                                                     </button>
                                                     <button type="button" class="sort-btn" data-id="<?= $row['id'] ?>"
-                                                        data-action="first" data-no="<?= $totalCount ?>">
+                                                        data-action="last" aria-label="맨 아래로" data-no="<?= $totalCount ?>">
                                                         <i class='bx bx-chevrons-down'></i>
                                                     </button>
                                                     <button type="button" class="sort-btn" data-id="<?= $row['id'] ?>"
-                                                        data-action="last" data-no="1">
+                                                        data-action="first" aria-label="맨 위로" data-no="1">
                                                         <i class='bx bx-chevrons-up'></i>
                                                     </button>
                                                 </td>
@@ -541,35 +550,14 @@ $worksRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
             });
         });
 
-        $('.sort-btn').on('click', function() {
-            var id = $(this).data('id');
-            var targetNo = parseInt($(this).data('no'), 10);
-
-            if (!id || isNaN(targetNo) || targetNo <= 0) {
-                alert('Invalid sort value.');
-                return;
-            }
-
-            $.ajax({
-                url: './process.php',
-                type: 'POST',
-                dataType: 'json',
-                data: {
-                    mode: 'sort',
-                    id: id,
-                    new_no: targetNo
-                },
-                success: function(response) {
-                    if (response && response.success) {
-                        location.reload();
-                        return;
-                    }
-
-                    alert((response && response.message) || 'Sort update failed.');
-                },
-                error: function() {
-                    alert('Sort update failed.');
-                }
+        let sortTail=Promise.resolve(),sortPending=0,sortFailed=false;
+        $('.sort-btn').on('click',function(){
+            const id=this.dataset.id,direction=this.dataset.action;
+            sortPending++;
+            sortTail=sortTail.then(()=>sortFailed?null:$.ajax({url:'./process.php',type:'POST',dataType:'json',data:{mode:'sort',id:id,direction:direction}}).then(response=>{
+                if(!response?.success)throw new Error(response?.message || '정렬에 실패했습니다.');
+            })).catch(error=>{sortFailed=true;alert(error.message || '정렬에 실패했습니다.');}).finally(()=>{
+                sortPending--;if(!sortPending){const url=new URL(location.href);url.searchParams.set('list_order','display');location.href=url.href;}
             });
         });
     });

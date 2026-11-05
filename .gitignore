@@ -1,6 +1,9 @@
 # Secrets and original/customer data are local only.
 .env
 /deploy/candidates/
+/deploy/private-handoff/
+/qa/http-preview-*/
+/*.sql
 .env.*
 !.env.example
 !.env.production.example

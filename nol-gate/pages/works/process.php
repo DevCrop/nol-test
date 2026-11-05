@@ -180,9 +180,9 @@ try {
             throw new Exception('ID가 필요합니다.');
         }
         
-        $stmt = $db->prepare("UPDATE nb_works SET sort_order = :sort_order WHERE id = :id");
-        $stmt->execute([':id' => $id, ':sort_order' => $sort_order]);
-        AuditLogger::record('update', 'works', $id, (string) $id, ['sort_order' => $sort_order]);
+        require_once dirname(__DIR__,2).'/lib/OrderedList.php';
+        $moved=(new OrderedList($db))->move('nb_works',$id,(string)($_POST['direction']??''),$sort_order);
+        if($moved['changed'])AuditLogger::record('update', 'works', $id, (string) $moved['target']['title'], ['sort_order' => $moved['position']]);
         echo json_encode(['success' => true, 'message' => '순서가 변경되었습니다.']);
     } else {
         throw new Exception('잘못된 요청입니다.');

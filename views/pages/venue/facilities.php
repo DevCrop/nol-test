@@ -157,9 +157,9 @@ $cacheDate = date('Ymd');
                                         <figure>
                                             <div class="no-theme-change">
                                                 <img src="<?= base_path('/resource/images/sub/card_chart_img_white.png?v=' . $cacheDate) ?>"
-                                                    alt="우리카드홀 좌석배치도" class="dark" loading="lazy" decoding="async">
+                                                    alt="우리카드홀 좌석배치도" width="1457" height="1416" class="dark" loading="lazy" decoding="async">
                                                 <img src="<?= base_path('/resource/images/sub/card_chart_img_color.png?v=' . $cacheDate) ?>"
-                                                    alt="우리카드홀 좌석배치도" class="light" loading="lazy" decoding="async">
+                                                    alt="우리카드홀 좌석배치도" width="1460" height="1416" class="light" loading="lazy" decoding="async">
                                             </div>
                                         </figure>
                                     </div>

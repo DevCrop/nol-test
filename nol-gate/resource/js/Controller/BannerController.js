@@ -1,4 +1,5 @@
 import { fetcher } from "../core/fetcher.js";
+import { SortQueue } from "../utils/SortQueue.js?v=20261030";
 import { API } from "../core/apiRoutes.js";
 import { summernoteInit } from "../core/summernoteInit.js";
 import { initCheckboxManager } from "../utils/initCheckboxManager.js";
@@ -100,28 +101,11 @@ export class BannerController {
   }
 
   attachSortEvents() {
-    this.sortButtons.forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        const id = btn.dataset.id;
-        const action = btn.dataset.action;
-        console.log(id, action);
-
-        if (!id || !action) return;
-
-        const targetSortNo = parseInt(btn.dataset.no, 10);
-        if (isNaN(targetSortNo) || targetSortNo <= 0) {
-          alert("잘못된 순서 번호입니다.");
-          return;
-        }
-
-        const formData = new FormData();
-        formData.set("mode", "sort");
-        formData.set("id", id);
-        formData.set("new_no", targetSortNo);
-
-        await this.sendRequest(formData, "순서가 변경되었습니다.");
-      });
-    });
+    this.sortQueue=new SortQueue(async(id,direction)=>{
+      const data=new FormData();data.set('mode','sort');data.set('id',id);data.set('direction',direction);
+      return fetcher(API.BANNER,data);
+    },()=>location.reload(),error=>alert(error.message || '정렬에 실패했습니다.'));
+    this.sortButtons.forEach(button=>button.addEventListener('click',()=>this.sortQueue.enqueue(button.dataset.id,button.dataset.action)));
   }
 
   async sendRequest(formData, successMessage) {

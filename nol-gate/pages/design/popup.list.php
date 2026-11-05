@@ -2,6 +2,8 @@
 include_once "../../../inc/lib/base.class.php";
 
 $db = DB::getInstance();
+require_once dirname(__DIR__,2).'/lib/DisplayStatus.php';
+$effectiveDisplay=DisplayStatus::expression('p','popup');
 
 // 페이지네이션 설정
 $perpage = 10;
@@ -20,7 +22,7 @@ $where = "WHERE 1=1";
 $params = [];
 
 if ($active_filter !== '') {
-    $where .= " AND p.is_active = :is_active";
+    $where .= " AND {$effectiveDisplay} = :is_active";
     $params[':is_active'] = (int)$active_filter;
 }
 
@@ -52,7 +54,7 @@ $Page = ceil($totalCount / $perpage);
 
 // 실제 데이터 조회
 $sql = "
-    SELECT p.*
+    SELECT p.*, {$effectiveDisplay} AS effective_active, NOW() AS display_today
     FROM nb_popups p
     $where
     ORDER BY p.sort_no ASC, p.id DESC
@@ -269,20 +271,20 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                 <td class="sort-btn-group">
                                                     <!-- sort_no가 클수록 위니까 버튼 누르면 sort_no를 크게/작게 조절 -->
                                                     <button type="button" class="sort-btn" data-id="<?= $row['id'] ?>"
-                                                        data-action="up" data-no="<?= $row['sort_no'] + 1 ?>">
+                                                        data-action="down" aria-label="한 칸 아래로" data-no="<?= $row['sort_no'] + 1 ?>">
                                                         <i class='bx bx-chevron-down'></i>
                                                     </button>
                                                     <button type="button" class="sort-btn" data-id="<?= $row['id'] ?>"
-                                                        data-action="down" data-no="<?= $row['sort_no'] - 1 ?>">
+                                                        data-action="up" aria-label="한 칸 위로" data-no="<?= $row['sort_no'] - 1 ?>">
 
                                                         <i class='bx bx-chevron-up'></i>
                                                     </button>
                                                     <button type="button" class="sort-btn" data-id="<?= $row['id'] ?>"
-                                                        data-action="first" data-no="<?= $totalCount ?>">
+                                                        data-action="last" aria-label="맨 아래로" data-no="<?= $totalCount ?>">
                                                         <i class='bx bx-chevrons-down'></i>
                                                     </button>
                                                     <button type="button" class="sort-btn" data-id="<?= $row['id'] ?>"
-                                                        data-action="last" data-no="1">
+                                                        data-action="first" aria-label="맨 위로" data-no="1">
                                                         <i class='bx bx-chevrons-up'></i>
                                                     </button>
                                                 </td>
@@ -290,8 +292,8 @@ $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                 <!-- 노출 여부 -->
                                                 <td>
                                                     <span
-                                                        class="no-btn <?= $row['is_active'] ? 'no-btn--notice' : 'no-btn--normal' ?>">
-                                                        <?= htmlspecialchars($is_active[$row['is_active']] ?? '미정') ?>
+                                                                class="no-btn <?= $row['effective_active'] ? 'no-btn--notice' : 'no-btn--normal' ?>">
+                                                                <?= htmlspecialchars(DisplayStatus::label($row,'popup'),ENT_QUOTES,'UTF-8') ?>
                                                     </span>
                                                 </td>
 
