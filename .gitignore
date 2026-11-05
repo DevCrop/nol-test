@@ -1,5 +1,8 @@
 .env
 /deploy/candidates/
+/deploy/private-handoff/
+/qa/http-preview-*/
+/*.sql
 .phpunit.result.cache
 qa/artifacts/*
 !qa/artifacts/.gitkeep
