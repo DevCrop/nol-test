@@ -1,0 +1,33 @@
+블루스퀘어 최종 배포 — 웹 ZIP과 DB/설정 ZIP 분리
+
+받을 파일
+1. deploy/candidates/final-deploy-20261019/bluesquare-web-final-20261019.zip
+   웹 파일만. 최종 260918 코드 전체이며 별도 Gate 패치를 추가 업로드하지 않음.
+2. deploy/candidates/final-deploy-20261019/bluesquare-DB-guide-DO-NOT-UPLOAD-20261019.zip
+   PC에서만 압축 해제. 최상위 bluesquare-production-final-20261019.sql 하나와 가이드/설정 포함.
+   private/.env 및 private/.env.gate에는 실제 비밀번호가 있으므로 ZIP 자체를 공개 서버/GitHub에 올리지 않음.
+
+배포 순서 (계정 정리 완료 및 유지보수 시간에 실행)
+1. 기존 홈페이지/관리자 쓰기를 중지하고 FTP+DB 최신 백업.
+2. 준비된 private/.env의 DB_HOST/DB_NAME/DB_USER/DB_PASS가 현재 가비아 운영 DB 값과 맞는지 대조.
+   제공한 prod/261016 코드의 DB 값을 사용했으며, 실제 서버 연결 검사 대신 Docker에서 코드/스키마를 검증한 것임.
+3. 운영 DB dbusrbluesq0211을 선택하고 bluesquare-production-final-20261019.sql 하나를 가져오기 실행.
+   오류 시 중단. changed_accounts는 처음 1/재실행 0이 정상일 수 있고 recipient_matches=1 확인.
+   이 합본에 사전 검사/스키마/이메일 설정 포함. preflight/changes/이메일 SQL을 추가 중복 실행하지 않음.
+   원본 260918.sql이나 prod/261019.sql은 전체 백업이므로 업데이트 SQL로 실행하지 않음.
+4. 설정 ZIP의 private/.env를 서버 /www_root/.env로 올림. private/.env.gate도 /www_root/.env.gate로 올려 예전 미리보기 설정을 해제.
+   허용 IP 175.192.246.121, MFA 수신자 [비공개 인증 이메일], 발신자 bluesquare@nol-theater.com.
+5. 웹 ZIP을 PC에서 풀고 내부 index.php/admin/inc/pages/resource 등 파일·폴더를 /www_root/에 덮어쓰기.
+   전체 FTP 삭제/없는 파일 삭제/동기화 삭제 금지. 기존 uploads/resource/file/.well-known 고객 파일은 보존.
+6. 공개 홈페이지 HTTPS, https://bluesquare.kr/admin/, http://gate.bluesquare.kr/ 확인.
+   로그인→MFA→게시판/공연/팝업/배너/대관 조회·등록·수정·첨부·삭제 및 로그아웃 확인. 오류 로그 확인 후 유지보수 해제.
+
+SSL 이후
+- 인증서 경고 없이 https://gate.bluesquare.kr/ 접속과 실제 MFA/CRUD를 확인.
+- .env의 GATE_ALLOW_HTTP=false, GATE_ALLOW_LEGACY_ADMIN=false로 변경.
+- HTTP gate는 HTTPS로 전환되고 공개 호스트 /admin/은 차단됨. 기존 홈페이지 HTTPS 유지.
+
+주의
+- 원래 운영 소스는 구형이므로 Gate.php 한 파일 패치만 올리면 전체 보안 업데이트가 되지 않음.
+- 공개/관리자 보안에 필요한 .htaccess 보호는 별도이며, PHP gate 라우터만으로 모든 비밀파일/업로드 실행 차단을 보장한다고 가정하지 않음. 실제 호스팅에서도 확인 필요.
+- 이 배포와 DB 이전은 고객 계정 정리 완료 뒤에 진행. 계정 구성이 바뀌면 tmaster no=1/권한/이메일 조건을 재확인.

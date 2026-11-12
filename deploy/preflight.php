@@ -25,7 +25,7 @@ final class DeploymentPreflight
     }
 
     /** Returned labels never contain a credential or a configured address. */
-    public static function configuration(array $c, bool $blue): array
+    public static function configuration(array $c, bool $blue, bool $httpsFinal = false): array
     {
         $domain = $blue ? 'bluesquare.kr' : 'noltheater-daehakro.com';
         $ipRules = array_filter(preg_split('/[\s,]+/', trim((string) ($c['GATE_ALLOW_IPS'] ?? ''))));
@@ -56,20 +56,26 @@ final class DeploymentPreflight
             'database_configuration_present' => !empty($c['DB_HOST']) && !empty($c['DB_USER']) && !empty($c['DB_PASS']),
             'not_qa_database_user' => ($c['DB_USER'] ?? '') !== 'qa_app',
         ];
+        if ($httpsFinal) {
+            $out['temporary_gate_http_disabled'] = !self::enabled($c['GATE_ALLOW_HTTP'] ?? '');
+            $out['legacy_public_admin_disabled'] = !self::enabled($c['GATE_ALLOW_LEGACY_ADMIN'] ?? '');
+        }
         return $out;
     }
 
     public static function run(string $root, string $phase): int
     {
         $blue = is_file($root . '/inc/lib/security.bootstrap.php');
+        // Handoff tools and SQL stay together outside the public web root.
+        $releaseDir = is_dir($root . '/sql/release') ? $root . '/sql/release' : dirname(__DIR__) . '/sql/release';
         $site = $blue ? 'BLUESQ' : 'NOLTHE';
         $pass = 0; $fail = 0;
         $check = static function ($ok, string $label) use (&$pass, &$fail): void {
             if ($ok) { $pass++; echo "PASS " . $label . "\n"; }
             else { $fail++; echo "HOLD " . $label . "\n"; }
         };
-        if (!in_array($phase, ['source', 'config', 'compat', 'schema', 'all'], true)) {
-            fwrite(STDERR, "Usage: php deploy/preflight.php source|config|compat|schema|all\n"); return 2;
+        if (!in_array($phase, ['source', 'config', 'config-https', 'compat', 'schema', 'all'], true)) {
+            fwrite(STDERR, "Usage: php deploy/preflight.php source|config|config-https|compat|schema|all\n"); return 2;
         }
         try {
             if ($phase === 'source' || $phase === 'all') {
@@ -81,16 +87,16 @@ final class DeploymentPreflight
                 foreach (['index.php','inc/lib/base.class.php','inc/lib/PhpGateRouter.php',
                     $blue ? 'inc/lib/security.bootstrap.php' : 'config/env.php',
                     ($blue ? 'admin' : 'nol-gate') . '/index.php'] as $file) $check(is_file($root . '/' . $file), 'required file ' . $file);
-                $manifest = json_decode((string) file_get_contents($root . '/sql/release/manifest.json'), true);
+                $manifest = json_decode((string) file_get_contents($releaseDir . '/manifest.json'), true);
                 $check(($manifest['sitekey'] ?? '') === $site, 'SQL release identity');
                 foreach (['preflight.sql','changes.sql','target-schema.json'] as $file) {
                     $hash = $manifest['files'][$file] ?? '';
-                    $check($hash !== '' && is_file($root . '/sql/release/' . $file)
-                        && hash_equals($hash, hash_file('sha256', $root . '/sql/release/' . $file)), 'immutable SQL checksum ' . $file);
+                    $check($hash !== '' && is_file($releaseDir . '/' . $file)
+                        && hash_equals($hash, hash_file('sha256', $releaseDir . '/' . $file)), 'immutable SQL checksum ' . $file);
                 }
                 echo "NOTE No production readiness claim: source checks do not validate hosting/TLS/data/content.\n";
             }
-            if ($phase === 'config' || $phase === 'all') {
+            if ($phase === 'config' || $phase === 'config-https' || $phase === 'all') {
                 $base = self::parseSettings($root . '/.env');
                 $overlay = self::parseSettings($root . '/.env.gate');
                 if ($overlay) {
@@ -102,10 +108,10 @@ final class DeploymentPreflight
                 }
                 $settings = array_merge($base, $overlay);
                 foreach (array_keys($settings + array_fill_keys(['APP_ENV','GATE_HOST','GATE_ROUTE_MODE','GATE_HTTP_PREVIEW',
-                    'GATE_ENFORCE','GATE_ALLOW_IPS','GATE_ALLOW_HTTP','SESSION_SECURE','MFA_ENABLED'], '')) as $key) {
+                    'GATE_ENFORCE','GATE_ALLOW_IPS','GATE_ALLOW_HTTP','GATE_ALLOW_LEGACY_ADMIN','SESSION_SECURE','MFA_ENABLED'], '')) as $key) {
                     if (getenv($key) !== false) $settings[$key] = getenv($key);
                 }
-                foreach (self::configuration($settings, $blue) as $label => $ok) $check($ok, $label);
+                foreach (self::configuration($settings, $blue, $phase === 'config-https') as $label => $ok) $check($ok, $label);
                 if (self::enabled($settings['GATE_ALLOW_HTTP'] ?? '')) {
                     echo "WARNING TEMPORARY_HTTP: gate credentials, OTP, sessions and uploads are unencrypted; HTTPS security requirement remains DEFERRED.\n";
                 }
@@ -121,7 +127,7 @@ final class DeploymentPreflight
                     $settings['DB_USER'] ?? '', $settings['DB_PASS'] ?? '',
                     [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_TIMEOUT => 5]);
                 $check(true, 'database connection (credentials redacted)');
-                $sql = (string) file_get_contents($root . '/sql/release/changes.sql');
+                $sql = (string) file_get_contents($releaseDir . '/changes.sql');
                 preg_match_all('/COLLATE[=\s]+([a-zA-Z0-9_]+)/i', $sql, $collations);
                 foreach (array_unique($collations[1]) as $collation) {
                     $st = $pdo->prepare('SELECT COUNT(*) FROM information_schema.COLLATIONS WHERE COLLATION_NAME=?');
@@ -131,7 +137,7 @@ final class DeploymentPreflight
                 $st = $pdo->prepare('SELECT COUNT(*) FROM nb_admin WHERE sitekey=?');
                 $st->execute([$site]); $check((int) $st->fetchColumn() > 0, 'expected project admin data');
                 if ($phase !== 'compat') {
-                    $spec = json_decode((string) file_get_contents($root . '/sql/release/target-schema.json'), true);
+                    $spec = json_decode((string) file_get_contents($releaseDir . '/target-schema.json'), true);
                     $complete = true;
                     $st = $pdo->query("SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='nb_admin'");
                     $transactional = strcasecmp((string) $st->fetchColumn(), 'InnoDB') === 0;
@@ -154,6 +160,16 @@ final class DeploymentPreflight
                         $st=$pdo->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='nb_admin' AND COLUMN_NAME=? AND DATA_TYPE='datetime' AND IS_NULLABLE='YES'");
                         $st->execute([$policyColumn]);$ok=(int)$st->fetchColumn()===1;
                         $check($ok,'account authority period schema '.$policyColumn);$complete=$complete&&$ok;
+                    }
+                    if($blue){
+                        $st=$pdo->query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='nb_admin' AND COLUMN_NAME='menu_permissions' AND DATA_TYPE='text' AND IS_NULLABLE='YES'");
+                        $ok=(int)$st->fetchColumn()===1;$check($ok,'administrator menu permission schema');$complete=$complete&&$ok;
+                        if($ok){
+                            require_once $root.'/inc/lib/classes/Security/AdminAcl.php';
+                            $regulars=$pdo->query("SELECT menu_permissions FROM nb_admin WHERE sitekey='BLUESQ' AND role_code='admin' AND active_status='Y'")->fetchAll(PDO::FETCH_ASSOC);
+                            $unconfigured=0;foreach($regulars as $regular)if(\Security\AdminAcl::grants($regular)===[])$unconfigured++;
+                            $ok=$unconfigured===0;$check($ok,'active regular administrator grants configured');$complete=$complete&&$ok;
+                        }
                     }
                     foreach ($spec as $table => $tableSpec) {
                         $st = $pdo->prepare('SELECT COLUMN_NAME,COLUMN_TYPE,IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?');

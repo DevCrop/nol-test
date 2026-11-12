@@ -1,5 +1,14 @@
+var legacyAdminPending = false;
+function legacyAdminAjax(options) {
+    return window.BlueAdminAjax.send(options, {
+        get pending() { return legacyAdminPending; },
+        set pending(value) { legacyAdminPending = value; }
+    });
+}
+
 
 function doDelete(no){
+    if (legacyAdminPending) return;
 
 	var con = confirm("정말 삭제하시겠습니까?");
 	
@@ -12,21 +21,21 @@ function doDelete(no){
 
 	if(con){
 	
-		$.ajax({
+		legacyAdminAjax({
 			type:"POST",
-			url:"./ajax/request.process.php",
+			url:"./ajax/opera.process.php",
 			data:param,
 			cache: false,
-			dataType:"html",
+			dataType: 'json',
 			success:function(data){
 			
-				var jsonData = $.parseJSON(data);
+				var jsonData = data;
 
 				if(jsonData.result == "fail"){
 					alert(jsonData.msg);
 				}else if(jsonData.result == "success"){
 					alert(jsonData.msg);
-					location.href = "./request.list.php";
+					location.href = "./index.php";
 				}
 			},
 			error:function(a,s){
@@ -39,6 +48,7 @@ function doDelete(no){
 
 
 function doManageSave() {
+    if (legacyAdminPending) return;
     const con = confirm("저장하시겠습니까?");
     if (!con) return;
 
@@ -57,7 +67,7 @@ function doManageSave() {
     }
 
     // AJAX request to save data
-    $.ajax({
+    legacyAdminAjax({
         type: "POST",
         url: "./ajax/opera.process.php",
         data: param,
@@ -79,6 +89,7 @@ function doManageSave() {
 
 // manage 관리
 function doManageDelete(no){
+    if (legacyAdminPending) return;
 
 	var con = confirm("정말 삭제하시겠습니까?");
 	
@@ -91,14 +102,14 @@ function doManageDelete(no){
 
 	if(con){
 	
-		$.ajax({
+		legacyAdminAjax({
 			type:"POST",
 			url: "./ajax/opera.process.php",
 			data:param,
 			cache: false,
-			dataType:"html",
+			dataType: 'json',
 			success:function(data){
-				var jsonData = $.parseJSON(data);
+				var jsonData = data;
 
 				if(jsonData.result == "fail"){
 					alert(jsonData.msg);
@@ -119,6 +130,7 @@ function doManageDelete(no){
 }
 
 function doManageEdit() {
+    if (legacyAdminPending) return;
     const con = confirm("수정하시겠습니까?");
     if (!con) return;
 
@@ -136,7 +148,7 @@ function doManageEdit() {
         return;
     }
 
-    $.ajax({
+    legacyAdminAjax({
         type: "POST",
         url: "./ajax/opera.process.php",
         data: param,

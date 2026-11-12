@@ -1,4 +1,13 @@
+var legacyAdminPending = false;
+function legacyAdminAjax(options) {
+    return window.BlueAdminAjax.send(options, {
+        get pending() { return legacyAdminPending; },
+        set pending(value) { legacyAdminPending = value; }
+    });
+}
+
 function doRegSave() {
+    if (legacyAdminPending) return;
     if ($('#skin').val() == '') {
         alert('게시판 타입을 선택해주세요');
         $('#skin').focus();
@@ -16,7 +25,6 @@ function doRegSave() {
     //에디터 적용
     submitContents();
 
-    var params = jQuery('#frm').serialize();
 
     // Get form
     var form = $('#frm')[0];
@@ -24,7 +32,7 @@ function doRegSave() {
     // Create an FormData object
     var data = new FormData(form);
 
-    $.ajax({
+    legacyAdminAjax({
         type: 'POST',
         enctype: 'multipart/form-data',
         url: './ajax/board.manage.process.php',
@@ -33,7 +41,7 @@ function doRegSave() {
         contentType: false,
         cache: false,
         success: function (data) {
-            var jsonData = $.parseJSON(data);
+            var jsonData = data;
 
             if (jsonData.result == 'fail') {
                 alert(jsonData.msg);
@@ -48,6 +56,7 @@ function doRegSave() {
 }
 
 function doEditSave() {
+    if (legacyAdminPending) return;
     if ($('#skin').val() == '') {
         alert('게시판 타입을 선택해주세요');
         $('#skin').focus();
@@ -65,7 +74,6 @@ function doEditSave() {
     //에디터 적용
     submitContents();
 
-    var params = jQuery('#frm').serialize();
 
     // Get form
     var form = $('#frm')[0];
@@ -73,7 +81,7 @@ function doEditSave() {
     // Create an FormData object
     var data = new FormData(form);
 
-    $.ajax({
+    legacyAdminAjax({
         type: 'POST',
         enctype: 'multipart/form-data',
         url: './ajax/board.manage.process.php',
@@ -82,7 +90,7 @@ function doEditSave() {
         contentType: false,
         cache: false,
         success: function (data) {
-            var jsonData = $.parseJSON(data);
+            var jsonData = data;
 
             if (jsonData.result == 'fail') {
                 alert(jsonData.msg);
@@ -97,6 +105,7 @@ function doEditSave() {
 }
 
 function doDelete(no) {
+    if (legacyAdminPending) return;
     var con = confirm('정말 삭제하시겠습니까?');
 
     var param = '';
@@ -107,14 +116,14 @@ function doDelete(no) {
     }
 
     if (con) {
-        $.ajax({
+        legacyAdminAjax({
             type: 'POST',
             url: './ajax/board.manage.process.php',
             data: param,
             cache: false,
-            dataType: 'html',
+            dataType: 'json',
             success: function (data) {
-                var jsonData = $.parseJSON(data);
+                var jsonData = data;
 
                 if (jsonData.result == 'fail') {
                     alert(jsonData.msg);
@@ -132,6 +141,7 @@ function doDelete(no) {
 }
 
 function doCategoryAdd() {
+    if (legacyAdminPending) return;
     if ($('#name').val() == '') {
         alert('카테고리 이름을 입력해주세요');
         $('#name').focus();
@@ -140,7 +150,6 @@ function doCategoryAdd() {
 
     $('#mode').val('category.add');
 
-    var params = jQuery('#frm').serialize();
 
     // Get form
     var form = $('#frm')[0];
@@ -148,7 +157,7 @@ function doCategoryAdd() {
     // Create an FormData object
     var data = new FormData(form);
 
-    $.ajax({
+    legacyAdminAjax({
         type: 'POST',
         enctype: 'multipart/form-data',
         url: './ajax/board.manage.process.php',
@@ -157,7 +166,7 @@ function doCategoryAdd() {
         contentType: false,
         cache: false,
         success: function (data) {
-            var jsonData = $.parseJSON(data);
+            var jsonData = data;
 
             if (jsonData.result == 'fail') {
                 alert(jsonData.msg);
@@ -172,6 +181,7 @@ function doCategoryAdd() {
 }
 
 function doCategorySave(n) {
+    if (legacyAdminPending) return;
     if ($('#name_' + n).val() == '') {
         alert('카테고리 이름을 입력해주세요');
         $('#name_' + n).focus();
@@ -184,20 +194,19 @@ function doCategorySave(n) {
         return;
     }
 
-    var name = encodeURI($('#name_' + n).val());
+    var name = $('#name_' + n).val();
     var sort_no = $('#sort_no_' + n).val();
 
-    param =
-        'no=' + n + '&mode=category.save&name=' + name + '&sort_no=' + sort_no;
+    var param = { no: n, mode: 'category.save', name: name, sort_no: sort_no };
 
-    $.ajax({
+    legacyAdminAjax({
         type: 'POST',
         url: './ajax/board.manage.process.php',
         data: param,
         cache: false,
-        dataType: 'html',
+        dataType: 'json',
         success: function (data) {
-            var jsonData = $.parseJSON(data);
+            var jsonData = data;
 
             if (jsonData.result == 'fail') {
                 alert(jsonData.msg);
@@ -214,6 +223,7 @@ function doCategorySave(n) {
 }
 
 function doCategoryDelete(no) {
+    if (legacyAdminPending) return;
     var con = confirm('정말 삭제하시겠습니까?');
 
     var param = '';
@@ -224,14 +234,14 @@ function doCategoryDelete(no) {
     }
 
     if (con) {
-        $.ajax({
+        legacyAdminAjax({
             type: 'POST',
             url: './ajax/board.manage.process.php',
             data: param,
             cache: false,
-            dataType: 'html',
+            dataType: 'json',
             success: function (data) {
-                var jsonData = $.parseJSON(data);
+                var jsonData = data;
 
                 if (jsonData.result == 'fail') {
                     alert(jsonData.msg);

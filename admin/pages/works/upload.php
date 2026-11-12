@@ -15,7 +15,7 @@ $uploadDir = $root . '/uploads/works';
 
 // 업로드 디렉터리 존재 여부 확인 후 생성
 if (!is_dir($uploadDir)) {
-    mkdir($uploadDir, 0777, true);
+    mkdir($uploadDir, 0755, true);
 }
 
 $jsonData = [
@@ -46,10 +46,11 @@ try {
             throw new Exception('업로드할 파일이 없습니다.');
         }
     }
-} catch (Exception $e) {
-    http_response_code(400); // Bad Request
-    $jsonData['message'] = blue_safe_error($e);
+} catch (Throwable $e) {
+    $jsonData['message'] = $e instanceof RuntimeException ? $e->getMessage() : '이미지를 업로드하지 못했습니다.';
 }
 
+header('Content-Type: application/json; charset=utf-8');
+if(ob_get_level()>0)ob_clean();
 echo json_encode($jsonData);
 exit;

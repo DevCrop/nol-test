@@ -1,9 +1,27 @@
 (() => {
-  let loading = 0;
-  const beginLoading = () => { loading += 1; document.body.classList.add('is-loading'); document.body.setAttribute('aria-busy', 'true'); };
-  const endLoading = () => { loading = Math.max(0, loading - 1); if (!loading) { document.body.classList.remove('is-loading'); document.body.removeAttribute('aria-busy'); } };
-  // AJAX forms prevent default later in dispatch. Count their fetch, not the canceled navigation.
-  document.addEventListener('submit', event => queueMicrotask(() => { if (!event.defaultPrevented) beginLoading(); }), true);
+  if (window.BlueAdminLoading) return;
+  const loading = new Set();
+  const renderLoading = () => {
+    if (loading.size) { document.body.classList.add('is-loading'); document.body.setAttribute('aria-busy', 'true'); }
+    else { document.body.classList.remove('is-loading'); document.body.removeAttribute('aria-busy'); }
+  };
+  const beginLoading = () => {
+    const request = {}; loading.add(request); renderLoading();
+    return () => { loading.delete(request); renderLoading(); };
+  };
+  window.BlueAdminLoading = Object.freeze({ begin: beginLoading });
+  let navigation = null;
+  // A microtask checkpoint can run between native event listeners. A task waits
+  // until the entire submit dispatch (including preventDefault) has finished.
+  document.addEventListener('submit', event => setTimeout(() => {
+    // Native attachment responses keep this document alive; no navigation completion fires.
+    if (event.target?.hasAttribute?.('data-native-download') || event.submitter?.hasAttribute?.('data-native-download')) return;
+    const target = event.submitter?.formTarget || event.target?.target || '_self';
+    if (!event.defaultPrevented && target === '_self' && !navigation) navigation = beginLoading();
+  }, 0), true);
+  window.addEventListener('pageshow', event => {
+    if (event.persisted) { loading.clear(); navigation = null; renderLoading(); }
+  });
   const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
   document.querySelectorAll('form[method="post" i]').forEach((form) => {
     if (form.querySelector('input[name="_csrf"]')) return;
@@ -13,7 +31,11 @@
     window.jQuery(document).ajaxSend((_e, xhr, options) => {
       if (!options.crossDomain && (options.type || 'GET').toUpperCase() !== 'GET') xhr.setRequestHeader('X-CSRF-Token', token);
     });
-    window.jQuery(document).ajaxStart(beginLoading).ajaxStop(endLoading);
+    // Register cleanup before page success callbacks. A callback exception must
+    // not strand the loader or rely on jQuery's global active counter recovering.
+    window.jQuery.ajaxPrefilter((options, _original, xhr) => {
+      if (options.global !== false) xhr.always(beginLoading());
+    });
   }
   const originalFetch = window.fetch;
   window.fetch = (input, init = {}) => {
@@ -25,8 +47,9 @@
     }
     init = {...init, headers};
     const silent = headers.get('X-Loading-Silent') === '1';
-    if (!silent) beginLoading();
-    return originalFetch(input, init).finally(() => { if (!silent) endLoading(); });
+    const release = silent ? () => {} : beginLoading();
+    try { return Promise.resolve(originalFetch.call(window, input, init)).finally(release); }
+    catch (error) { release(); return Promise.reject(error); }
   };
 
   const timer = document.querySelector('[data-session-timer]');

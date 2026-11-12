@@ -4,7 +4,6 @@ const commonSelectMenu = (selectors) => {
 };
 
 const initDatepickers = (elements) => {
-	console.log(elements);
     elements.forEach(el => $(el).datepicker({
         dateFormat: 'yy-mm-dd',
         prevText: '이전 달',
@@ -23,12 +22,24 @@ const initDatepickers = (elements) => {
     }));
 };
 
-const toggleDateInputs = (radioButtons, dateInputs) => {
-    radioButtons.forEach(radio => {
-        $(radio).change(() => {
-            const isDisabled = $(radioButtons[0]).is(':checked');
-            dateInputs.forEach(input => $(input).attr('disabled', isDisabled));
-        });
+// Bind by the form contract, never shared radio IDs (link targets reuse input5/6).
+const toggleDateInputs = (groupName, dateNames) => {
+    const radios = Array.from(document.querySelectorAll('input[type="radio"][name="' + groupName + '"]'));
+    if (!radios.length) return;
+    const scopes = new Set(radios.map(radio => radio.form || document));
+    scopes.forEach(scope => {
+        const group = Array.from(scope.querySelectorAll('input[type="radio"][name="' + groupName + '"]'));
+        const sync = () => {
+            const selected = group.find(radio => radio.checked);
+            if (!selected || !['Y', 'N'].includes(selected.value)) return;
+            dateNames.forEach(name => {
+                scope.querySelectorAll('input[name="' + name + '"]').forEach(input => {
+                    input.disabled = selected.value === 'Y';
+                });
+            });
+        };
+        group.forEach(radio => radio.addEventListener('change', sync));
+        sync();
     });
 };
 
@@ -58,23 +69,10 @@ const formInit = () => {
 
     initDatepickers(dateElements);
 
-	// Date input 토글
-	toggleDateInputs(
-		['#input3', '#input4'], 
-		['#b_sdate', '#b_edate']
-	);
-	toggleDateInputs(
-		['#input5', '#input6'], 
-		['#b_sdate_view', '#b_edate_view'] // ✅ 노출기간 토글 적용
-	);
-	toggleDateInputs(
-		['#input7', '#input8'], 
-		['#w_sdate', '#w_edate']
-	);
-	toggleDateInputs(
-		['#input9', '#input10'], 
-		['#start_date', '#end_date']
-	);
+    // Only optional period groups present in this form control their own date fields.
+    toggleDateInputs('b_none_limit', ['b_sdate', 'b_edate']);
+    toggleDateInputs('b_none_view', ['b_sdate_view', 'b_edate_view']);
+    toggleDateInputs('p_none_limit', ['p_sdate', 'p_edate']);
 };
 
 // 초기화 실행

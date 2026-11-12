@@ -97,7 +97,7 @@ try {
     qa_expect(crudOk($response) && (int)$q->fetchColumn()===0,'rental fixture deleted through authenticated HTTP');
 } catch(Throwable $e) {qa_expect(false,$e->getMessage());}
 finally {
-    foreach($files as $file)if(is_file($file))unlink($file);
+    foreach($files as $file){clearstatcache(true,$file);if(is_file($file))unlink($file);}
     foreach($cleanup as [$table,$key,$id])$db->prepare("DELETE FROM $table WHERE $key=?")->execute([$id]);
     if($admin){$db->prepare('DELETE FROM nb_admin_audit WHERE actor_no=?')->execute([$admin]);$db->prepare('DELETE FROM nb_admin_privacy_access WHERE actor_no=?')->execute([$admin]);$db->prepare('DELETE FROM nb_admin WHERE no=? AND uid=?')->execute([$admin,$uid]);}
     if($sid){$file=(session_save_path()?:sys_get_temp_dir()).'/sess_'.$sid;if(is_file($file))unlink($file);}

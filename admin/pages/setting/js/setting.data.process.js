@@ -1,6 +1,15 @@
+var legacyAdminPending = false;
+function legacyAdminAjax(options) {
+    return window.BlueAdminAjax.send(options, {
+        get pending() { return legacyAdminPending; },
+        set pending(value) { legacyAdminPending = value; }
+    });
+}
+
 
 
 function doRegSave(){
+    if (legacyAdminPending) return;
 	
 	if($("#target").val() == ""){
 		alert("데이터가 사용될 영역(위치)를 선택해주세요");
@@ -13,7 +22,6 @@ function doRegSave(){
 	//에디터 적용
 	submitContents();
 
-	var params = jQuery("#frm").serialize();
 	
 	// Get form
 	var form = $('#frm')[0];
@@ -21,7 +29,7 @@ function doRegSave(){
 	// Create an FormData object 
 	var data = new FormData(form);
 
-	$.ajax({
+	legacyAdminAjax({
 		type: "POST",
 		enctype: 'multipart/form-data',
 		url:"./ajax/setting.data.process.php",
@@ -31,7 +39,7 @@ function doRegSave(){
 		cache: false,
 		success: function (data) {
 
-			var jsonData = $.parseJSON(data);
+			var jsonData = data;
 
 			if(jsonData.result == "fail"){
 				alert(jsonData.msg);
@@ -55,6 +63,7 @@ function doRegSave(){
 
 
 function doEditSave(){
+    if (legacyAdminPending) return;
 
 
 	if($("#target").val() == ""){
@@ -68,7 +77,6 @@ function doEditSave(){
 	//에디터 적용
 	submitContents();
 
-	var params = jQuery("#frm").serialize();
 	
 	// Get form
 	var form = $('#frm')[0];
@@ -76,7 +84,7 @@ function doEditSave(){
 	// Create an FormData object 
 	var data = new FormData(form);
 
-	$.ajax({
+	legacyAdminAjax({
 		type: "POST",
 		enctype: 'multipart/form-data',
 		url:"./ajax/setting.data.process.php",
@@ -86,7 +94,7 @@ function doEditSave(){
 		cache: false,
 		success: function (data) {
 
-			var jsonData = $.parseJSON(data);
+			var jsonData = data;
 
 			if(jsonData.result == "fail"){
 				alert(jsonData.msg);

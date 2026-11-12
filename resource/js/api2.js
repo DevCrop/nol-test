@@ -166,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="no-skin-gallery-item__circle">
                     <span>${genresMap[item.genre] || '장르 없음'}</span>
                 </div>
-                <img src="/uploads/works/${item.poster_image}" alt="${item.title}">
+                <img src="/uploads/works/${encodeURIComponent(String(item.poster_image || ''))}" alt="">
             </figure>
             <div class="no-skin-gallery-item__txt no-pd-sm--t">
                 <div class="no-skin-gallery-item__info">
@@ -177,11 +177,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${item.start_date || '시작 날짜 없음'} - ${item.end_date || '종료 날짜 없음'}
                     </div>
                 </div>
-                <h3 class="no-heading-md">${item.title}</h3>
+                <h3 class="no-heading-md"></h3>
             </div>
         </a>
     `;
 
+    element.querySelector('img').alt = String(item.title || '');
+    element.querySelector('.no-heading-md').textContent = String(item.title || '');
     workHook.appendChild(element);
 };
 

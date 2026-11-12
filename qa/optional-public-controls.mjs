@@ -1,0 +1,27 @@
+import fs from 'node:fs';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
+const root=new URL('../',import.meta.url);
+let passed=0;
+const verify=(label,fn)=>{fn();passed++;console.log('PASS '+label);};
+const app=fs.readFileSync(new URL('resource/js/app.js',root),'utf8');
+const panorama=fs.readFileSync(new URL('resource/js/panorama.js',root),'utf8');
+const errors=[];
+const ctx=vm.createContext({gsap:{registerPlugin(){}},ScrollTrigger:{},MutationObserver:class{observe(){}},console:{error(...x){errors.push(x)},warn(){},log(){}},window:{addEventListener(){}},document:{documentElement:{dataset:{theme:'light'}},addEventListener(){},querySelector(){return null},querySelectorAll(){return []}},$:()=>({})});
+const start=app.indexOf('function buttonManager('),end=app.indexOf('\nfunction curstomCursor(',start);
+assert.ok(start>=0 && end>start,'actual shared function available');
+vm.runInContext(app.slice(start,end),ctx);
+verify('optional date controls absent without console error',()=>{ctx.buttonManager('.no-date-btn','.no-date-list');assert.equal(errors.length,0)});
+const element=()=>{const classes=new Set;return {handlers:{},classList:{toggle(n){classes.has(n)?classes.delete(n):classes.add(n)},remove(n){classes.delete(n)},contains:n=>classes.has(n)},addEventListener(n,fn){this.handlers[n]=fn}}};
+const button=element(),list=element(),input=element();input.checked=true;list.querySelectorAll=()=>[input];
+ctx.document.querySelector=s=>s==='button'?button:s==='list'?list:null;
+ctx.buttonManager('button','list');
+verify('existing control still opens list',()=>{button.handlers.click.call(button);assert.equal(list.classList.contains('visible'),true);assert.equal(button.classList.contains('active'),true)});
+verify('selection closes list',()=>{input.handlers.change.call(input);assert.equal(list.classList.contains('visible'),false);assert.equal(button.classList.contains('active'),false);assert.equal(errors.length,0)});
+function loadPanorama(anchor){let callback;let count=0;const context={window:{},document:{addEventListener(type,fn){callback=fn},querySelector(){return anchor}},Swiper:function(){count++}};vm.runInNewContext(panorama,context);callback();return count;}
+verify('no panorama anchor safely skipped',()=>assert.equal(loadPanorama(null),0));
+verify('no panorama container safely skipped',()=>assert.equal(loadPanorama({closest:()=>null}),0));
+verify('no panorama swiper safely skipped',()=>assert.equal(loadPanorama({closest:()=>({querySelector:()=>null})}),0));
+verify('empty panorama avoids cloning loop',()=>assert.equal(loadPanorama({closest:()=>({querySelector:()=>({querySelector:()=>({children:[]})})})}),0));
+verify('existing panorama still initializes',()=>{const slides={children:Array.from({length:7},()=>({}))};assert.equal(loadPanorama({closest:()=>({querySelector:()=>({querySelector:()=>slides})})}),1)});
+console.log(`${passed} PASS / 0 FAIL`);

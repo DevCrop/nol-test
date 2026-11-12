@@ -53,14 +53,14 @@
                     <div class="no-toolbar">
                         <div class="no-toolbar-container no-flex-stack">
                             <div class="no-page-indicator">
-                                <h1 class="no-page-title">배너 관리</h1>
+                                <h1 class="no-page-title">팝업 관리</h1>
                                 <div class="no-breadcrumb-container">
                                     <ul class="no-breadcrumb-list">
                                         <li class="no-breadcrumb-item">
                                             <span>디자인</span>
                                         </li>
                                         <li class="no-breadcrumb-item">
-                                            <span>배너 관리</span>
+                                            <span>팝업 관리</span>
                                         </li>
                                     </ul>
                                 </div>
@@ -72,7 +72,7 @@
                     <div class="no-toolbar-container">
                         <div class="no-card">
                             <div class="no-card-header no-card-header--detail">
-                                <h2 class="no-card-title">팝업 등록</h2>
+                                <h2 class="no-card-title">팝업 수정</h2>
                             </div>
                             <div class="no-card-body no-admin-column no-admin-column--detail">
                                 
@@ -193,7 +193,7 @@
                                     </h3>
                                     <div class="no-admin-content">
                                         <input type="text" name="p_idx" id="p_idx" value="<?= htmlspecialchars($data['p_idx']) ?>" class="no-input--detail" placeholder="0">
-                                        <span class="no-admin-info"><i class="bx bxs-info-circle"></i> 노출순위가 높을수록 우선 노출됩니다.</span>
+                                        <span class="no-admin-info"><i class="bx bxs-info-circle"></i> 순위 숫자가 작을수록 먼저 노출됩니다.</span>
                                         <span class="no-admin-info"><i class="bx bxs-info-circle"></i> 미입력시 자동으로 부여됩니다.</span>
                                     </div>
                                 </div>
@@ -217,7 +217,7 @@
                                         <div class="no-radio-form">
                                             <label for="input5">
                                                 <div class="no-radio-box">
-                                                    <input type="radio" name="p_target" id="input5" value="_none" <?= $data['p_target'] === "_none" ? "checked" : "" ?> onClick="doHideDiv('no_linkaddress');">
+                                                    <input type="radio" name="p_target" id="input5" value="_none" <?= (trim((string)$data['p_link']) === "" || !in_array($data['p_target'], ["_self", "_blank"], true)) ? "checked" : "" ?> onClick="doHideDiv('no_linkaddress');">
                                                     <span><i class="bx bx-radio-circle-marked"></i></span>
                                                 </div>
                                                 <span class="no-radio-text">링크없음</span>
@@ -225,7 +225,7 @@
 
                                             <label for="input6">
                                                 <div class="no-radio-box">
-                                                    <input type="radio" name="p_target" id="input6" value="_self" <?= $data['p_target'] === "_self" ? "checked" : "" ?> onClick="doOpenDiv('no_link_target_box');">
+                                                    <input type="radio" name="p_target" id="input6" value="_self" <?= $data['p_target'] === "_self" && trim((string)$data['p_link']) !== "" ? "checked" : "" ?> onClick="doOpenDiv('no_link_target_box');">
                                                     <span><i class="bx bx-radio-circle-marked"></i></span>
                                                 </div>
                                                 <span class="no-radio-text">같은창</span>
@@ -233,7 +233,7 @@
 
                                             <label for="input7">
                                                 <div class="no-radio-box">
-                                                    <input type="radio" name="p_target" id="input7" value="_blank" <?= $data['p_target'] === "_blank" ? "checked" : "" ?> onClick="doOpenDiv('no_link_target_box');">
+                                                    <input type="radio" name="p_target" id="input7" value="_blank" <?= $data['p_target'] === "_blank" && trim((string)$data['p_link']) !== "" ? "checked" : "" ?> onClick="doOpenDiv('no_link_target_box');">
                                                     <span><i class="bx bx-radio-circle-marked"></i></span>
                                                 </div>
                                                 <span class="no-radio-text">새창</span>
@@ -243,7 +243,7 @@
                                 </div>
 
                                 <!-- admin-block -->
-                                <div id="no_link_target_box" class="no-admin-block no_linkaddress" style="<?= $data['p_loc'] === "_none" ? "display:none" : "" ?>">
+                                <div id="no_link_target_box" class="no-admin-block no_linkaddress" style="<?= (trim((string)$data['p_link']) === "" || !in_array($data['p_target'], ["_self", "_blank"], true)) ? "display:none" : "" ?>">
                                     <h3 class="no-admin-title">
                                         <label for="p_link">링크주소</label>
                                     </h3>

@@ -34,14 +34,14 @@
                     <div class="no-toolbar">
                         <div class="no-toolbar-container no-flex-stack">
                             <div class="no-page-indicator">
-                                <h1 class="no-page-title">배너 관리</h1>
+                                <h1 class="no-page-title">팝업 관리</h1>
                                 <div class="no-breadcrumb-container">
                                     <ul class="no-breadcrumb-list">
                                         <li class="no-breadcrumb-item">
                                             <span>디자인</span>
                                         </li>
                                         <li class="no-breadcrumb-item">
-                                            <span>배너 관리</span>
+                                            <span>팝업 관리</span>
                                         </li>
                                     </ul>
                                 </div>
@@ -54,7 +54,7 @@
                     <div class="no-toolbar-container">
                         <div class="no-card">
                             <div class="no-card-header no-card-header--detail">
-                                <h2 class="no-card-title">배너 등록</h2>
+                                <h2 class="no-card-title">팝업 등록</h2>
                             </div>
                             <div class="no-card-body no-admin-column no-admin-column--detail">
                                 
@@ -210,7 +210,7 @@
                                         />
                                         <span class="no-admin-info">
                                             <i class="bx bxs-info-circle"></i>
-                                            노출순위가 높을수록 우선 노출됩니다.
+                                            순위 숫자가 작을수록 먼저 노출됩니다.
                                         </span>
                                         <span class="no-admin-info">
                                             <i class="bx bxs-info-circle"></i>
@@ -248,7 +248,7 @@
                                                         type="radio"
                                                         name="p_target"
                                                         id="input5"
-                                                        value=""
+                                                        value="_none"
                                                         checked
                                                         onClick="doHideDiv('no_linkaddress');"
                                                     />
@@ -314,7 +314,7 @@
 
                                 <div class="no-items-center center">
                                     <a href="./popup.list.php" class="no-btn no-btn--big no-btn--normal">목록</a>
-                                    <a href="javascript:void(0);" class="no-btn no-btn--big no-btn--main" onClick="doRegSave();">수정</a>
+                                    <a href="javascript:void(0);" class="no-btn no-btn--big no-btn--main" onClick="doRegSave();">등록</a>
                                 </div>
                             </div>
                             <!-- card-body -->

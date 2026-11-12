@@ -59,7 +59,7 @@ $data = $data[0]; // 첫 번째 결과만 사용
                                                 <ul>
                                                     <li>
                                                         <p class="no-body-md">
-                                                            <?=$data['title']?>
+                                                            <?=htmlspecialchars((string)$data['title'],ENT_QUOTES,'UTF-8')?>
                                                         </p>
                                                     </li>
                                                 </ul>

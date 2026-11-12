@@ -17,3 +17,4 @@ foreach(['','X-Forwarded-Proto: https','X-Forwarded-Proto: HTTPS','X-Forwarded-P
     echo ($ok?'PASS ':'FAIL ')."production HTTP enforces HTTPS: ".($forwarded?:'no forwarded header')."\n";
 }
 echo "pass=".$pass." fail=".$fail."\n";exit($fail?1:0);
+

@@ -25,9 +25,18 @@ try {
     $row = \Security\AdminAccount::findByNo((int) $row['no']);
     if (!$row || !\Security\AdminAccount::verifyPassword($row, $password)) blue_login_fail('계정 정보가 변경되었습니다. 다시 로그인하세요.');
     unset($_SESSION['captcha_secure'], $_SESSION['mfa_pending']);
-    if (MFA_ENABLED) { \Security\Mfa::begin($row); header('Location: ' . blue_admin_url('/admin/mfa.php')); exit; }
+    if (MFA_ENABLED) {
+        \Security\Mfa::begin($row);
+        unset($_SESSION['mfa_error']);
+        try { \Security\Mfa::sendInitial(); }
+        catch (Throwable $sendError) {
+            $_SESSION['mfa_error'] = $sendError instanceof RuntimeException && !($sendError instanceof PDOException)
+                ? $sendError->getMessage() : '인증 메일을 보내지 못했습니다. 잠시 후 다시 요청하세요.';
+        }
+        header('Location: ' . blue_admin_url('/admin/mfa.php')); exit;
+    }
     \Security\AdminAccount::establish($row);
-    header('Location: ' . blue_admin_url('/admin/pages/board/board.list.php')); exit;
+    header('Location: ' . blue_admin_url(\Security\AdminAcl::landing($row))); exit;
 } catch (Throwable $e) {
     blue_login_fail($e instanceof RuntimeException && !($e instanceof PDOException) ? $e->getMessage() : '로그인을 처리할 수 없습니다.');
 }

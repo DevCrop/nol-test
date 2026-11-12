@@ -6,6 +6,12 @@ $pdo = DB::getInstance();
 header('Content-Type: application/json; charset=utf-8');
 $mode = (string) ($_POST['mode'] ?? '');
 
+function validateRequestSchedule(string $title,string $start,string $end): void {
+    if(trim($title)==='')throw new RuntimeException('일정 제목을 입력하세요.');
+    foreach([$start,$end]as $raw){$date=DateTimeImmutable::createFromFormat('!Y-m-d',$raw);if(!$date||$date->format('Y-m-d')!==$raw)throw new RuntimeException('노출 날짜를 YYYY-MM-DD 형식으로 입력하세요.');}
+    if($end<$start)throw new RuntimeException('종료일은 시작일보다 빠를 수 없습니다.');
+}
+
 function normalizeRequestNoticeHtml($html) {
     if (!is_string($html) || $html === '') {
         return $html;
@@ -45,13 +51,8 @@ if ($mode == "delete") {
             exit;
         }
 
-        $query = "DELETE FROM nb_request WHERE no = :no AND sitekey = :sitekey";
-        $stmt = $pdo->prepare($query);
-        $result = $stmt->execute(['no' => $no, 'sitekey' => $NO_SITE_UNIQUE_KEY]);
-
-        echo $result
-            ? json_encode(["result" => "success", "msg" => "정상적으로 삭제되었습니다."])
-            : json_encode(["result" => "fail", "msg" => "삭제에 실패했습니다."]);
+        (new \Security\RentalRequestService($pdo, $NO_SITE_UNIQUE_KEY))->delete((int) $no);
+        echo json_encode(['result' => 'success', 'msg' => '정상적으로 삭제되었습니다.']);
     } catch (Exception $e) {
         error_log('request delete failed: ' . blue_safe_error($e)); echo json_encode(["result" => "fail", "msg" => "요청을 처리할 수 없습니다."]);
     }
@@ -61,7 +62,8 @@ if ($mode == "delete") {
 // manage 관리
 if ($mode == 'manageSave') {
     try {
-        $no = filter_var($_POST['no'] ?? null, FILTER_VALIDATE_INT);
+        if (!empty($_POST['no'])) throw new RuntimeException('새 일정 등록에는 기존 번호를 지정할 수 없습니다.');
+        $no = null;
         $r_view = in_array($_POST['r_view'] ?? '', ['Y','N'], true) ? $_POST['r_view'] : 'N';
         $r_title = trim((string) ($_POST['r_title'] ?? ''));
         $r_sdate = (string) ($_POST['r_sdate'] ?? '');
@@ -70,13 +72,9 @@ if ($mode == 'manageSave') {
 
       $query = "INSERT INTO nb_request_manage (sitekey, no, r_view, r_title, r_sdate, r_edate, contents) 
           VALUES (:sitekey, :no, :r_view, :r_title, :r_sdate, :r_edate, :contents)
-          ON DUPLICATE KEY UPDATE 
-              r_view = :r_view,
-              r_title = :r_title,
-              r_sdate = :r_sdate,
-              r_edate = :r_edate,
-			  contents = :contents";
+          ";
 
+	validateRequestSchedule($r_title,$r_sdate,$r_edate);
 	$stmt = $pdo->prepare($query);
 
 	$result = $stmt->execute([
@@ -125,6 +123,9 @@ if ($mode == "manageDelete") {
 if ($mode == 'manageEdit') {
     try {
         $no = filter_var($_POST['no'] ?? null, FILTER_VALIDATE_INT);
+        if(!$no||$no<1)throw new RuntimeException('수정할 일정을 선택하세요.');
+        $exists=$pdo->prepare('SELECT no FROM nb_request_manage WHERE no=? AND sitekey=?');$exists->execute([$no,$NO_SITE_UNIQUE_KEY]);
+        if(!$exists->fetchColumn())throw new RuntimeException('일정 정보를 찾을 수 없습니다.');
         $r_view = in_array($_POST['r_view'] ?? '', ['Y','N'], true) ? $_POST['r_view'] : 'N';
         $r_title = trim((string) ($_POST['r_title'] ?? ''));
         $r_sdate = (string) ($_POST['r_sdate'] ?? '');
@@ -134,6 +135,7 @@ if ($mode == 'manageEdit') {
 
 
         // UPDATE 쿼리
+        validateRequestSchedule($r_title,$r_sdate,$r_edate);
         $query = "UPDATE nb_request_manage 
                   SET r_view = :r_view, 
                       r_title = :r_title, 

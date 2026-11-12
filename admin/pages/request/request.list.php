@@ -9,6 +9,14 @@
 
 	$mainqry = " WHERE a.sitekey = :sitekey ";
 	$params = ['sitekey' => $NO_SITE_UNIQUE_KEY];
+	$filterInput = static function(string $key): string { $v=$_POST[$key]??$_GET[$key]??'';return is_string($v)?trim($v):''; };
+	$sdate=$filterInput('sdate');$edate=$filterInput('edate');$searchKeyword=$filterInput('searchKeyword');$searchColumn=$filterInput('searchColumn');
+	foreach(['sdate'=>&$sdate,'edate'=>&$edate]as $key=>&$value){if($value!==''){ $date=DateTimeImmutable::createFromFormat('!Y-m-d',$value);if(!$date||$date->format('Y-m-d')!==$value)$value=''; }}unset($value);
+	if($sdate!==''){$mainqry.=' AND a.regdate >= :sdate';$params['sdate']=$sdate.' 00:00:00';}
+	if($edate!==''){$mainqry.=' AND a.regdate < :edate';$params['edate']=(new DateTimeImmutable($edate))->modify('+1 day')->format('Y-m-d').' 00:00:00';}
+	$searchColumns=['a.performance_name'=>'a.performance_name','a.title'=>'a.performance_name','a.contents'=>'a.contents'];
+	if(!isset($searchColumns[$searchColumn]))$searchColumn='';
+	if($searchKeyword!==''&&$searchColumn!==''){$mainqry.=' AND '.$searchColumns[$searchColumn].' LIKE :keyword';$params['keyword']='%'.$searchKeyword.'%';}
 
 
 	$page = $_POST['page'] ?? $_GET['page'] ?? 1;
@@ -36,7 +44,7 @@
 		$dataQuery = "SELECT a.* FROM nb_request a $mainqry ORDER BY a.regdate DESC LIMIT :offset, :limit";
 
 		$stmt = $db->prepare($dataQuery);
-		$stmt->bindValue(':sitekey', $NO_SITE_UNIQUE_KEY);
+		foreach($params as $key=>$value)$stmt->bindValue(':'.$key,$value);
 		$stmt->bindValue(':offset', (int) $count, PDO::PARAM_INT);
 		$stmt->bindValue(':limit', (int) $listRowCnt, PDO::PARAM_INT);
 		$stmt->execute();
@@ -125,7 +133,7 @@
                                     <div class="no-search-select">
                                         <select name="searchColumn" id="searchColumn">
                                             <option value="">선택</option>
-                                            <option value="a.title" <?= $searchColumn == "a.title" ? "selected" : "" ?>>게시물 제목</option>
+                                            <option value="a.performance_name" <?= in_array($searchColumn, ['a.title','a.performance_name'], true) ? "selected" : "" ?>>공연명</option>
                                             <option value="a.contents" <?= $searchColumn == "a.contents" ? "selected" : "" ?>>게시물 내용</option>
                                         </select>
                                         <div class="no-search-wrap no-ml">

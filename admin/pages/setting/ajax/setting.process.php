@@ -4,7 +4,7 @@ include_once "../../../../inc/lib/base.class.php";
 include_once "../../../lib/admin.check.ajax.php";
 
 $pdo = DB::getInstance();
-$mode = $_POST['mode'];
+$mode = (string)($_POST['mode']??'');
 
 if ($mode == "pwd.change") {
     http_response_code(410);
@@ -12,6 +12,16 @@ if ($mode == "pwd.change") {
     exit;
 
 } else if ($mode == "setting.config.save") {
+
+    $logoFiles=\Security\UploadLifecycle::forTable($UPLOAD_SITEINFO_DIR_LOGO,$pdo,'nb_siteinfo',['logo_top','logo_footer']);
+    $metaFiles=\Security\UploadLifecycle::forTable($UPLOAD_META_DIR,$pdo,'nb_siteinfo',['meta_thumb','meta_favicon_ico']);
+    try {
+    $oldStatement=$pdo->prepare('SELECT * FROM nb_siteinfo WHERE sitekey=?');$oldStatement->execute([$NO_SITE_UNIQUE_KEY]);$oldSite=$oldStatement->fetch(PDO::FETCH_ASSOC)?:[];
+    $finishFiles=static function()use($logoFiles,$metaFiles,$oldSite):void {
+        foreach(['logo_top','logo_footer']as $field)$logoFiles->retire($oldSite[$field]??null);
+        foreach(['meta_thumb','meta_favicon_ico']as $field)$metaFiles->retire($oldSite[$field]??null);
+        $logoFiles->commit();$metaFiles->commit();
+    };
 
     // Collect all sanitized POST data directly without a custom function
     $title = $_POST['title'] ?? '';
@@ -50,21 +60,25 @@ if ($mode == "pwd.change") {
     if (isset($_FILES['logo_top'])) {
         $uploadResult = imageUpload($dir_logo, $_FILES['logo_top'], $logo_top_filename, false);
         $logo_top = $uploadResult['saved'] ?? '';
+        $logoFiles->track($logo_top);
     }
 
     if (isset($_FILES['logo_footer'])) {
         $uploadResult = imageUpload($dir_logo, $_FILES['logo_footer'], $logo_footer_filename, false);
         $logo_footer = $uploadResult['saved'] ?? '';
+        $logoFiles->track($logo_footer);
     }
 
     if (isset($_FILES['meta_thumb'])) {
         $uploadResult = imageUpload($dir_meta, $_FILES['meta_thumb'], $meta_thumb_filename, false);
         $meta_thumb = $uploadResult['saved'] ?? '';
+        $metaFiles->track($meta_thumb);
     }
 
     if (isset($_FILES['meta_favicon_ico'])) {
         $uploadResult = imageUpload($dir_meta, $_FILES['meta_favicon_ico'], $meta_favicon_ico_filename, false);
         $meta_favicon_ico = $uploadResult['saved'] ?? '';
+        $metaFiles->track($meta_favicon_ico);
     }
 
     // Check if entry exists
@@ -116,6 +130,7 @@ if ($mode == "pwd.change") {
 
         $result = $stmt->execute($params);
 
+        if($result)$finishFiles();
         echo json_encode(["result" => $result ? "success" : "fail", "msg" => $result ? "정상적으로 수정되었습니다." : "처리중 문제가 발생하였습니다.[Error-DB]"]);
 
     } else {
@@ -144,8 +159,10 @@ if ($mode == "pwd.change") {
         );
 
         $result = $stmt->execute($params);
+        if($result)$finishFiles();
         echo json_encode(["result" => $result ? "success" : "fail", "msg" => $result ? "정상적으로 등록 되었습니다." : "처리중 문제가 발생하였습니다.[Error-DB]"]);
     }
+    }catch(Throwable $e){$logoFiles->rollback();$metaFiles->rollback();echo json_encode(['result'=>'fail','msg'=>$e instanceof RuntimeException&&!($e instanceof PDOException)?$e->getMessage():'설정 저장을 처리하지 못했습니다.']);}
 }
 
 

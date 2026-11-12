@@ -69,3 +69,4 @@ listPrivacyCheck((int)$q->fetchColumn()===0,'synthetic rental removed');
 $q=$db->prepare('SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA=DATABASE() AND TRIGGER_NAME=?');$q->execute([$createdTrigger??'']);
 listPrivacyCheck((int)$q->fetchColumn()===0,'failure injection trigger removed');
 echo "pass=".$pass." fail=".$fail."\n";exit($fail?1:0);
+

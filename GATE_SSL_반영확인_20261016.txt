@@ -1,0 +1,45 @@
+블루스퀘어 260918 — gate 반영 및 SSL 전환 확인 (2026-10-16)
+
+반영
+- 실서버 prod/261016의 최소 HTTP gate 라우터를 260918/inc/lib/LegacyGateHttpRouter.php에 반영.
+- gate-http-entry.php는 GATE_HTTP_PREVIEW=true일 때만 이 독립 라우터를 호출.
+- 동적 PHP가 포함된 개발본 admin 로그인 템플릿은 실행하지 않고 기존 정적 preview 템플릿 사용.
+- 개발 gate.local도 기존 설정 검증을 통과한 호스트로 처리.
+- preview=false일 때 기존 PhpGateRouter -> 공통 보안 bootstrap -> 실제 admin 경로 유지.
+- DB/SMTP 비밀값 및 실제 .env는 변경하지 않음.
+- 실서버용 prod/261016/블루스퀘어_실서버261016_GATE만_2파일.zip은 그대로 보존.
+  변경 전후 SHA256: 4F524DF4467713F1128763FB9F11D33F4413A9DF1771894ED913E774B4D64E4F
+- 이 개발본 라우터는 개발 템플릿 대응/설정 호스트 지원이 추가되어 실서버용 라우터와 완전 동일한 파일은 아님.
+  실서버용 2파일 ZIP에 보안 개발본을 섞지 않음.
+
+이번 확인
+- Docker APP_ENV=production / 실제 gate 호스트 / .htaccess 미사용 / 격리 QA DB / SMTP 미발송.
+- HTTP preview 24 PASS / 0 FAIL.
+- preview=false + HTTPS 서버 인식 모의 8 PASS / 0 FAIL:
+  HTTP -> HTTPS, 위조 forwarded 헤더 무시, gate 루트 실제 로그인 폼, preview 미표시,
+  Secure/HttpOnly/SameSite 쿠키, CSS/로고 200, 공개 HTTPS 호스트 /admin 404.
+- 변경 클래스/진입 PHP 문법 통과.
+- 직접 정적 비밀파일 차단은 별도 QA Apache 보호 설정이며 PHP 라우터가 호스팅 보호를 대신하지 않음.
+- 이번 범위에서는 전체 로그인/MFA/CRUD/업로드/브라우저 시각 QA를 재실행하지 않음.
+- 예전 Docker regression 215건과 실서버 최소 패치 219건은 과거 별도 검증이며 이번 32건과 구분.
+- QA 초기 설정의 비밀파일 보호 누락 및 production HTTP 302 기대값을 수정 후 최종 재검사.
+- 테스트를 위해 QA 설정에서만 X-QA-HTTPS 헤더로 HTTPS 서버 변수를 모의함.
+  실제 인증서/암호화 통신 검사나 실서버 TLS 완료를 뜻하지 않음.
+
+SSL 설치 이후 (운영 적용 전 확인)
+1. 인증서 대상은 gate.bluesquare.kr. 가비아 설치 완료 후 정상 TLS/호스트명 일치 확인.
+2. 보안 개발본 배포와 운영 DB 증분 SQL 적용 여부를 기존 운영배포 절차대로 확인.
+   최소 2파일 ZIP만 올린 구형 운영 서버는 보안 개발본 전체가 아님.
+3. 개발 .env를 그대로 올리지 않음. 운영 .env에서:
+   APP_ENV=production
+   GATE_HOST=gate.bluesquare.kr
+   GATE_ROUTE_MODE=php
+   GATE_ENFORCE=true
+   SESSION_SECURE=true
+   GATE_ALLOW_IPS=<실제 관리자 공인 IP/CIDR>
+   MFA_ENABLED=true
+   SMTP/계정 이메일은 고객 운영값 사용.
+4. 260918에는 .env.gate가 있으므로 운영 전환 시 그 파일의 GATE_HTTP_PREVIEW=false를 명시.
+   .env.gate의 GATE_HOST/ROUTE도 위와 맞춤. .env.gate가 .env보다 우선하고 프로세스 환경변수가 최우선.
+   true이면 HTTPS에서도 미리보기로 유지되며 SSL 설치만으로 인증이 활성화되지 않음.
+5. 실제 HTTPS gate에서 로그인/MFA/세션/CRUD/업로드/다운로드 최종 QA 후 운영 전환.

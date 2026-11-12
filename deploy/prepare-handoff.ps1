@@ -1,13 +1,15 @@
 #requires -Version 7.0
 [CmdletBinding()]
-param([string]$CandidateId='staging-http-20261019',[string]$HandoffId='handoff-http-20261019')
+param([Parameter(Mandatory=$true)][string]$CandidateId,[Parameter(Mandatory=$true)][string]$HandoffId,[switch]$AllowTemporaryHttp)
 $ErrorActionPreference='Stop'
 foreach($id in @($CandidateId,$HandoffId)){ if($id -notmatch '^[A-Za-z0-9_-]{1,80}$'){throw 'Invalid artifact id'} }
 $root=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $candidate=Join-Path $PSScriptRoot ('candidates/'+$CandidateId)
 $m=Get-Content -Raw -LiteralPath (Join-Path $candidate 'operations/manifest.json') | ConvertFrom-Json
 if($m.project -notin @('bluesquare','noltheater')){throw 'Unknown project'}
-if(!$m.incremental_sql -or @($m.incremental_sql.PSObject.Properties).Count -ne 3){throw 'Latest incremental SQL manifest required'}
+$requiredSql=@('bluesquare-temporary-password-20261021.sql','admin-transactions-20261027.sql','account-authority-20261027.sql','admin-menu-permissions-20261105.sql')
+if(!$m.incremental_sql -or @($m.incremental_sql.PSObject.Properties).Count -ne $requiredSql.Count){throw 'Latest incremental SQL manifest required'}
+foreach($file in $requiredSql){if($null -eq $m.incremental_sql.PSObject.Properties[$file]){throw 'Required incremental SQL missing'}}
 foreach($entry in $m.incremental_sql.PSObject.Properties){
  if((Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $candidate ('operations/sql/manual/'+$entry.Name))).Hash.ToLowerInvariant() -ne $entry.Value){throw 'Incremental SQL integrity failure'}
 }
@@ -28,19 +30,20 @@ $null=New-Item -ItemType Directory -Path $ops
 Copy-Item -LiteralPath (Join-Path $candidate 'operations/sql') -Destination (Join-Path $ops 'sql') -Recurse
 Copy-Item -LiteralPath (Join-Path $candidate 'operations/deploy') -Destination (Join-Path $ops 'deploy') -Recurse
 Copy-Item -LiteralPath (Join-Path $candidate 'operations/UPGRADE-20261027.md') -Destination (Join-Path $ops 'UPGRADE-20261027.md')
-Copy-Item -LiteralPath (Join-Path $candidate 'operations/UPGRADE-20261027.md') -Destination (Join-Path $ops '서버업로드_SQL순서.md')
+Copy-Item -LiteralPath (Join-Path $candidate 'operations/UPGRADE-20261105.md') -Destination (Join-Path $ops 'UPGRADE-20261105.md')
+Copy-Item -LiteralPath (Join-Path $candidate 'operations/UPGRADE-20261105.md') -Destination (Join-Path $ops '서버업로드_SQL순서.md')
 Copy-Item -LiteralPath (Join-Path $root '최종검토_계정준비_20261027.md') -Destination (Join-Path $ops 'QA_계정준비_20261027.md')
 Copy-Item -LiteralPath (Join-Path $root '운영배포.md') -Destination (Join-Path $ops '운영배포.md')
 Copy-Item -LiteralPath (Join-Path $candidate 'operations/manifest.json') -Destination (Join-Path $ops 'web-file-manifest.json')
 $domain=if($m.project -eq 'bluesquare'){'bluesquare.kr'}else{'noltheater-daehakro.com'}
 $envTemplate=[IO.File]::ReadAllText((Join-Path $candidate 'operations/production.env.example'))
-$envTemplate=$envTemplate -replace '(?m)^GATE_ALLOW_HTTP=false\r?$','GATE_ALLOW_HTTP=true'
+if($AllowTemporaryHttp){$envTemplate=$envTemplate -replace '(?m)^GATE_ALLOW_HTTP=false\r?$','GATE_ALLOW_HTTP=true'}
 $envTemplate=$envTemplate -replace '(?m)^PUBLIC_HOST=\r?$',('PUBLIC_HOST='+$domain)
 $envTemplate=$envTemplate -replace '(?m)^GATE_HOST=\r?$',('GATE_HOST=gate.'+$domain)
-[IO.File]::WriteAllText((Join-Path $ops 'production-http.env.example'),$envTemplate,[Text.UTF8Encoding]::new($false))
+[IO.File]::WriteAllText((Join-Path $ops 'production.env.example'),$envTemplate,[Text.UTF8Encoding]::new($false))
 Add-Type -AssemblyName System.IO.Compression
-$webZip=Join-Path $output ($m.project+'-web-http-20261019.zip')
-$sqlZip=Join-Path $output ($m.project+'-SQL-guide-DO-NOT-UPLOAD-20261019.zip')
+$webZip=Join-Path $output ($m.project+'-web-'+$HandoffId+'.zip')
+$sqlZip=Join-Path $output ($m.project+'-SQL-guide-DO-NOT-UPLOAD-'+$HandoffId+'.zip')
 [IO.Compression.ZipFile]::CreateFromDirectory((Join-Path $candidate 'web-files'),$webZip,[IO.Compression.CompressionLevel]::Optimal,$false)
 [IO.Compression.ZipFile]::CreateFromDirectory($ops,$sqlZip,[IO.Compression.CompressionLevel]::Optimal,$false)
 $zip=[IO.Compression.ZipFile]::OpenRead($webZip)

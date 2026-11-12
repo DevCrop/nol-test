@@ -3,7 +3,8 @@ include_once "../../../../inc/lib/base.class.php";
 include_once "../../../lib/admin.check.ajax.php";
 
 $connect = DB::getInstance(); // Initialize PDO instance
-$mode = $_POST['mode'];
+$mode = (string) ($_POST['mode'] ?? '');
+$uploads = \Security\UploadLifecycle::forTable($UPLOAD_DIR_BOARD, $connect, 'nb_board_manage', ['top_banner_image'], ['contents']);
 
 if ($mode == "save") {
 		try {
@@ -35,8 +36,9 @@ if ($mode == "save") {
 
 			// 파일 업로드 처리
 			$uploads_dir = $UPLOAD_DIR_BOARD;
-			$uploadResult = imageUpload($uploads_dir, $_FILES['top_banner_image'], $origin_file, false);
+			$uploadResult = imageUpload($uploads_dir, $_FILES['top_banner_image'] ?? null, '', false);
 			$savedFile = $uploadResult['saved'];
+			$uploads->track($savedFile);
 
 			// SQL 쿼리 준비
 			$query = "INSERT INTO nb_board_manage (
@@ -88,6 +90,8 @@ if ($mode == "save") {
 				':extra15' => $extra_fields[14]
 			]);
 
+			if (!$result) throw new RuntimeException('게시판을 저장하지 못했습니다.');
+			$uploads->commit();
 			// 성공 메시지
 			if ($result) {
 				echo json_encode(["result" => "success", "msg" => "정상적으로 등록되었습니다."]);
@@ -95,6 +99,7 @@ if ($mode == "save") {
 				echo json_encode(["result" => "fail", "msg" => "처리 중 문제가 발생하였습니다.[Error-DB]"]);
 			}
 		} catch (Exception $e) {
+			$uploads->rollback();
 			// 예외 처리
 			echo json_encode(["result" => "fail", "msg" => "처리 중 문제가 발생하였습니다: " . blue_safe_error($e)]);
 		}
@@ -102,6 +107,10 @@ if ($mode == "save") {
 } elseif ($mode == "edit") {
 	try {
 		$no = $_POST['no'];
+		$existing = $connect->prepare('SELECT top_banner_image FROM nb_board_manage WHERE no=? AND sitekey=?');
+		$existing->execute([$no, $NO_SITE_UNIQUE_KEY]);
+		$old = $existing->fetch(PDO::FETCH_ASSOC);
+		if (!$old) throw new RuntimeException('정보를 찾을 수 없습니다.');
 		$title = $_POST['title'];
 		$skin = $_POST['skin'];
 		$content = $_POST['content'];
@@ -126,6 +135,8 @@ if ($mode == "save") {
 		$origin_file = ''; 
 		$uploadResult = imageUpload($uploads_dir, $_FILES['top_banner_image'] ?? null, $origin_file, false);
 		$savedFile = $uploadResult['saved'] ?? '';
+		$uploads->track($savedFile);
+		if ($savedFile !== '') $uploads->retire($old['top_banner_image'] ?? null);
 
 		// 기본 업데이트 쿼리 문자열
 		$query = "UPDATE nb_board_manage SET 
@@ -142,7 +153,7 @@ if ($mode == "save") {
 		if ($savedFile) {
 			$query .= ", top_banner_image = :top_banner_image";
 		}
-		$query .= " WHERE no = :no";
+		$query .= " WHERE no = :no AND sitekey = :sitekey";
 
 		$stmt = $connect->prepare($query);
 
@@ -162,6 +173,7 @@ if ($mode == "save") {
 			':lnb_path' => $lnb_path,
 			':category_yn' => $category_yn,
 			':no' => $no,
+			':sitekey' => $NO_SITE_UNIQUE_KEY,
 		];
 
 		foreach ($extra_match_fields as $index => $field) {
@@ -174,6 +186,8 @@ if ($mode == "save") {
 		}
 
 		$result = $stmt->execute($params);
+		if (!$result) throw new RuntimeException('게시판을 저장하지 못했습니다.');
+		$uploads->commit();
 
 		echo json_encode([
 			"result" => $result ? "success" : "fail",
@@ -181,11 +195,13 @@ if ($mode == "save") {
 		]);
 
 	} catch (PDOException $e) {
+		$uploads->rollback();
 		echo json_encode([
 			"result" => "fail",
 			"msg" => "데이터베이스 오류가 발생하였습니다: " . blue_safe_error($e)
 		]);
 	} catch (Exception $e) {
+		$uploads->rollback();
 		echo json_encode([
 			"result" => "fail",
 			"msg" => "처리 중 문제가 발생하였습니다: " . blue_safe_error($e)
@@ -202,9 +218,9 @@ if ($mode == "save") {
 		$connect = DB::getInstance();
 		
 		// 삭제할 파일명을 가져오는 쿼리
-		$query = "SELECT top_banner_image FROM nb_board_manage WHERE no = :no";
+		$query = "SELECT top_banner_image FROM nb_board_manage WHERE no = :no AND sitekey = :sitekey";
 		$stmt = $connect->prepare($query);
-		$stmt->execute([':no' => $no]);
+		$stmt->execute([':no' => $no, ':sitekey' => $NO_SITE_UNIQUE_KEY]);
 		$data = $stmt->fetch(PDO::FETCH_ASSOC);
 
 		// 파일 정보가 없을 경우 에러 메시지 반환
@@ -215,28 +231,25 @@ if ($mode == "save") {
 
 		// 이미지 파일 삭제
 		$filename = $data['top_banner_image'];
-		if ($filename) {
-			$filePath = $UPLOAD_DIR_BOARD . "/" . $filename;
-			
-			if (file_exists($filePath) && !unlink($filePath)) {
-				echo json_encode(["result" => "fail", "msg" => "이미지 파일 삭제에 실패했습니다."]);
-				exit;
-			}
-		}
+		$uploads->retire($filename);
 
 		// 데이터베이스에서 해당 레코드 삭제
-		$query = "DELETE FROM nb_board_manage WHERE no = :no";
+		$query = "DELETE FROM nb_board_manage WHERE no = :no AND sitekey = :sitekey";
 		$stmt = $connect->prepare($query);
-		$result = $stmt->execute([':no' => $no]);
+		$result = $stmt->execute([':no' => $no, ':sitekey' => $NO_SITE_UNIQUE_KEY]);
+		if (!$result) throw new RuntimeException('게시판을 삭제하지 못했습니다.');
+		$uploads->commit();
 
 		echo json_encode([
 			"result" => $result ? "success" : "fail",
 			"msg" => $result ? "정상적으로 삭제되었습니다." : "데이터 삭제에 실패했습니다."
 		]);
 	} catch (PDOException $e) {
+		$uploads->rollback();
 		// PDO 예외 처리
 		echo json_encode(["result" => "fail", "msg" => "데이터베이스 오류: " . blue_safe_error($e)]);
 	} catch (Exception $e) {
+		$uploads->rollback();
 		// 기타 예외 처리
 		echo json_encode(["result" => "fail", "msg" => "오류가 발생했습니다: " . blue_safe_error($e)]);
 	}

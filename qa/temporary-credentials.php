@@ -71,6 +71,9 @@ try {
     $sessions[]=session_id();session_write_close();$session=tempSession($id);
     [$status,$html,,$headers]=tempHttp($session,'/pages/account/password.php');
     qa_expect($status===200 && strpos($html,'required-password.js')!==false && strpos($html,'<aside')===false && strpos($html,'name="current_password"')===false,'forced change uses login shell without menus or old password input');
+      preg_match('/<form[^>]*id="required-password-form"[^>]*action="([^"]+)"/',$html,$formAction);
+      qa_expect(($formAction[1]??'')==='/index.php/pages/account/ajax/password.process.php','forced password form posts to explicit gate JSON endpoint');
+      qa_expect(substr_count($html,'data-password-toggle=')===2 && strpos($html,'no-password-required-page')!==false,'forced password form reuses login components with two visibility controls');
     qa_expect(stripos($headers,'no-store')!==false,'forced change page no-store');
     preg_match_all('/(?:src|href)="([^"]+\.(?:css|js|png)(?:\?[^"]*)?)"/',$html,$assets);$assetsOk=count($assets[1])>=4;
     foreach($assets[1] as $asset){$asset=html_entity_decode($asset);if(strpos($asset,'/index.php')===0)$asset=substr($asset,10);[$assetStatus,$assetBody]=tempHttp($session,$asset);$assetsOk=$assetsOk&&$assetStatus===200&&$assetBody!=='';}
@@ -84,8 +87,8 @@ try {
     [$status,,$result,$headers]=tempHttp($session,'/pages/account/ajax/password.process.php',['new_password'=>'NewPassword9!','new_password_confirm'=>'NewPassword9!']);
     qa_expect($status===200 && ($result['result']??'')==='success','HTTP forced password change succeeds');
     $row=\Security\AdminAccount::findByNo($id);
-    qa_expect(password_verify('NewPassword9!',$row['upwd'])&&empty($row['password_must_change'])&&$row['temporary_password_expires_at']===null&&empty($row['login_token']),'atomic hash change and temporary expiry token clearance');
-    qa_expect(stripos($headers,'Set-Cookie:')!==false,'password change expires cookie');
+    qa_expect(password_verify('NewPassword9!',$row['upwd'])&&empty($row['password_must_change'])&&$row['temporary_password_expires_at']===null&&!empty($row['login_token'])&&$row['login_token']!==$token,'atomic temporary password change rotates active token');
+    qa_expect(stripos($headers,'Set-Cookie:')!==false,'temporary password change rotates cookie');
     [$status]=tempHttp($session,'/lib/session/ping.php',[]);qa_expect(in_array($status,[401,403],true),'completed change cannot reuse old session');
     $session=tempSession($id);
     [$status,,$result]=tempHttp($session,'/pages/account/process.php',['mode'=>'reissue_temporary','no'=>$super]);qa_expect($status===403,'ordinary administrator cannot manage credentials');

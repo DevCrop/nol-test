@@ -143,9 +143,9 @@ $query = "SELECT *
 											</div>
 
 											<div class="no-admin-content no-admin-date no-pd no-flex-row">
-												<input type="text" name="b_sdate" id="b_sdate" <?= $data['b_none_limit'] == "N" ? '' : 'disabled' ?> value="<?= $data['b_sdate'] == "0000-00-00" ? "" : htmlspecialchars($data['b_sdate']) ?>" />
+												<input type="text" name="b_sdate" id="b_sdate" class="b_date" <?= $data['b_none_limit'] == "N" ? '' : 'disabled' ?> value="<?= $data['b_sdate'] == "0000-00-00" ? "" : htmlspecialchars($data['b_sdate']) ?>" />
 												<span></span>
-												<input type="text" name="b_edate" id="b_edate" <?= $data['b_none_limit'] == "N" ? '' : 'disabled' ?> value="<?= $data['b_edate'] == "0000-00-00" ? "" : htmlspecialchars($data['b_edate']) ?>" />
+												<input type="text" name="b_edate" id="b_edate" class="b_date" <?= $data['b_none_limit'] == "N" ? '' : 'disabled' ?> value="<?= $data['b_edate'] == "0000-00-00" ? "" : htmlspecialchars($data['b_edate']) ?>" />
 											</div>
 										</div>
 									</div>
@@ -158,7 +158,7 @@ $query = "SELECT *
 											<div class="no-radio-link">
 												<label for="b_none_view_input_1">
 													<div class="no-radio-box">
-														<input type="radio" name="b_none_view" id="b_none_view_input_1" value="Y" <?= $data['b_none_view'] == "Y" ? 'checked' : '' ?> checked onClick="doAttrChange('b_view_date', 'disabled', true);" />
+														<input type="radio" name="b_none_view" id="b_none_view_input_1" value="Y" <?= $data['b_none_view'] == "Y" ? 'checked' : '' ?> onClick="doAttrChange('b_view_date', 'disabled', true);" />
 														<span><i class="bx bx-radio-circle-marked"></i></span>
 													</div>
 													<span class="no-radio-text">무기한</span>

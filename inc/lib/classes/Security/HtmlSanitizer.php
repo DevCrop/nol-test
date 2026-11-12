@@ -3,7 +3,8 @@ namespace Security;
 
 final class HtmlSanitizer
 {
-    private const TAGS = ['p','br','strong','b','em','i','u','s','ul','ol','li','blockquote','h1','h2','h3','h4','h5','h6','div','span','figure','figcaption','table','thead','tbody','tr','th','td','a','img'];
+    // Legacy Summernote content uses font wrappers; retain text, strip all font attributes.
+    private const TAGS = ['p','br','strong','b','em','i','u','s','ul','ol','li','blockquote','h1','h2','h3','h4','h5','h6','div','span','font','figure','figcaption','table','thead','tbody','tr','th','td','a','img'];
     private const ATTRS = ['a'=>['href','target','rel','title'],'img'=>['src','alt','title','width','height','loading'],'th'=>['colspan','rowspan','scope'],'td'=>['colspan','rowspan']];
 
     public static function clean(string $html): string

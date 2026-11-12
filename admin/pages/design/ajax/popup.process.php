@@ -1,132 +1,51 @@
 <?php
-
-include_once "../../../../inc/lib/base.class.php";
-include_once "../../../lib/admin.check.ajax.php";
-
-$mode = isset($_POST['mode']) ? $_POST['mode'] : null;
-$db = DB::getInstance();
-$uploads_dir = $UPLOAD_DIR_POPUP;
-
-try {
-    if ($mode === "save") {
-        $p_view = isset($_POST['p_view']) ? $_POST['p_view'] : '';
-        $p_none_limit = isset($_POST['p_none_limit']) ? $_POST['p_none_limit'] : '';
-        $p_sdate = isset($_POST['p_sdate']) ? $_POST['p_sdate'] : null;
-        $p_edate = isset($_POST['p_edate']) ? $_POST['p_edate'] : null;
-        $p_title = isset($_POST['p_title']) ? $_POST['p_title'] : '';
-        $p_target = isset($_POST['p_target']) && $_POST['p_target'] !== '' ? $_POST['p_target'] : '_self';
-        $p_link = isset($_POST['p_link']) ? $_POST['p_link'] : '';
-        $p_idx = isset($_POST['p_idx']) ? $_POST['p_idx'] : '';
-        $p_loc = isset($_POST['p_loc']) ? $_POST['p_loc'] : '';
-        $p_left = isset($_POST['p_left']) ? $_POST['p_left'] : null;
-        $p_top = isset($_POST['p_top']) ? $_POST['p_top'] : null;
-
-        if ($p_none_limit === "Y") {
-            $p_sdate = null;
-            $p_edate = null;
-        }
-
-        if ($p_loc === "M") {
-            $p_left = null;
-            $p_top = null;
-        }
-
-        // 파일 업로드
-        $uploads_dir = isset($UPLOAD_DIR_POPUP) ? $UPLOAD_DIR_POPUP : "";
-        $savedFile = null;
-        if (!empty($_FILES['p_img']['name'])) {
-            $uploadResult = imageUpload($uploads_dir, $_FILES['p_img']);
-            $savedFile = isset($uploadResult['saved']) ? $uploadResult['saved'] : null;
-        }
-
-        // 최대 순서 조회
-        $stmt = $db->prepare("SELECT IFNULL(MAX(p_idx) + 1, 1) AS maxcnt FROM nb_popup WHERE sitekey = :sitekey AND p_loc = :p_loc");
-        $stmt->execute(['sitekey' => $NO_SITE_UNIQUE_KEY, 'p_loc' => $p_loc]);
-        $maxcnt = $stmt->fetchColumn();
-
-        // 데이터 삽입
-        $query = "INSERT INTO nb_popup 
-            (sitekey, p_title, p_img, p_target, p_link, p_view, p_left, p_top, p_idx, p_sdate, p_edate, p_rdate, p_none_limit, p_loc) 
-            VALUES 
-            (:sitekey, :p_title, :p_img, :p_target, :p_link, :p_view, :p_left, :p_top, :p_idx, :p_sdate, :p_edate, NOW(), :p_none_limit, :p_loc)";
-
-        $stmt = $db->prepare($query);
-        $result = $stmt->execute([
-            'sitekey' => $NO_SITE_UNIQUE_KEY,
-            'p_title' => $p_title,
-            'p_img' => $savedFile,
-            'p_target' => $p_target,
-            'p_link' => $p_link,
-            'p_view' => $p_view,
-            'p_left' => $p_left,
-            'p_top' => $p_top,
-            'p_idx' => $maxcnt,
-            'p_sdate' => $p_sdate,
-            'p_edate' => $p_edate,
-            'p_none_limit' => $p_none_limit,
-            'p_loc' => $p_loc
-        ]);
-
-        ob_clean();
-        echo json_encode(["result" => $result ? "success" : "fail", "msg" => $result ? "정상적으로 등록되었습니다." : "처리 중 문제가 발생하였습니다. [Error-DB]"]);
-    } elseif ($mode === "edit") {
-        $no = isset($_POST['no']) ? intval($_POST['no']) : 0;
-        $p_view = isset($_POST['p_view']) ? $_POST['p_view'] : '';
-        $p_none_limit = isset($_POST['p_none_limit']) ? $_POST['p_none_limit'] : '';
-        $p_sdate = isset($_POST['p_sdate']) ? $_POST['p_sdate'] : null;
-        $p_edate = isset($_POST['p_edate']) ? $_POST['p_edate'] : null;
-        $p_title = isset($_POST['p_title']) ? $_POST['p_title'] : '';
-        $p_target = isset($_POST['p_target']) ? $_POST['p_target'] : '_self';
-        $p_link = isset($_POST['p_link']) ? $_POST['p_link'] : '';
-        $p_idx = isset($_POST['p_idx']) ? $_POST['p_idx'] : '';
-        $p_loc = isset($_POST['p_loc']) ? $_POST['p_loc'] : '';
-        $p_left = isset($_POST['p_left']) ? $_POST['p_left'] : null;
-        $p_top = isset($_POST['p_top']) ? $_POST['p_top'] : null;
-
-        // 기존 이미지 확인
-        $stmt = $db->prepare("SELECT p_img FROM nb_popup WHERE no = :no");
-        $stmt->execute(['no' => $no]);
-        $data = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$data) throw new Exception("정보를 찾을 수 없습니다");
-
-        $p_img = isset($data['p_img']) ? $data['p_img'] : '';
-
-        // 파일 업로드
-        if (!empty($_FILES['p_img']['name'])) {
-            $uploadResult = imageUpload($uploads_dir, $_FILES['p_img'], $p_img);
-            $p_img = isset($uploadResult['saved']) ? $uploadResult['saved'] : '';
-        }
-
-        $query = "UPDATE nb_popup SET 
-                    p_title = :p_title, p_target = :p_target, p_link = :p_link, p_view = :p_view, 
-                    p_left = :p_left, p_top = :p_top, p_idx = :p_idx, p_sdate = :p_sdate, p_edate = :p_edate, 
-                    p_none_limit = :p_none_limit, p_loc = :p_loc";
-        if (!empty($p_img)) {
-            $query .= ", p_img = :p_img";
-        }
-        $query .= " WHERE no = :no";
-
-        $params = compact('p_title', 'p_target', 'p_link', 'p_view', 'p_left', 'p_top', 'p_idx', 'p_sdate', 'p_edate', 'p_none_limit', 'p_loc', 'no');
-        if (!empty($p_img)) $params['p_img'] = $p_img;
-
-        $stmt = $db->prepare($query);
-        $result = $stmt->execute($params);
-
-        ob_clean();
-        echo json_encode(["result" => $result ? "success" : "fail", "msg" => $result ? "정상적으로 수정되었습니다." : "처리 중 문제가 발생하였습니다. [Error-DB]"]);
-    } elseif ($mode === "delete") {
-        $no = isset($_POST['no']) ? intval($_POST['no']) : 0;
-
-        $stmt = $db->prepare("DELETE FROM nb_popup WHERE no = :no");
-        $result = $stmt->execute(['no' => $no]);
-
-        ob_clean();
-        echo json_encode(["result" => $result ? "success" : "fail", "msg" => $result ? "정상적으로 삭제되었습니다." : "파일 삭제에 실패했습니다."]);
-    }
-} catch (Exception $e) {
-    ob_clean();
-    echo json_encode(["result" => "fail", "msg" => blue_safe_error($e)]);
-    error_log("Error: " . blue_safe_error($e));
+require_once '../../../../inc/lib/base.class.php';
+require_once '../../../lib/admin.check.ajax.php';
+$db=DB::getInstance();$uploads_dir=$UPLOAD_DIR_POPUP;$files=\Security\UploadLifecycle::forTable($uploads_dir,$db,'nb_popup',['p_img']);
+function popupReply(bool $ok,string $message,int $status=200):void {
+    if(ob_get_level()>0)ob_clean();http_response_code($status);header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['result'=>$ok?'success':'fail','msg'=>$message],JSON_UNESCAPED_UNICODE);exit;
 }
-
-?>
+if(($_SERVER['REQUEST_METHOD']??'GET')!=='POST')popupReply(false,'POST 요청만 허용됩니다.',405);
+$mode=(string)($_POST['mode']??'');
+try{
+    if(!in_array($mode,['save','edit','delete'],true))throw new InvalidArgumentException('잘못된 요청입니다.');
+    $current=[];$no=0;
+    if($mode!=='save'){
+        $no=filter_var($_POST['no']??null,FILTER_VALIDATE_INT);if(!$no||$no<1)popupReply(false,'정보를 찾을 수 없습니다.',404);
+        $stmt=$db->prepare('SELECT * FROM nb_popup WHERE no=? AND sitekey=?');$stmt->execute([$no,$NO_SITE_UNIQUE_KEY]);$current=$stmt->fetch(PDO::FETCH_ASSOC);
+        if(!$current)popupReply(false,'정보를 찾을 수 없습니다.',404);
+    }
+    if($mode==='delete'){$stmt=$db->prepare('DELETE FROM nb_popup WHERE no=? AND sitekey=?');$stmt->execute([$no,$NO_SITE_UNIQUE_KEY]);$files->retire($current['p_img']??null);$files->commit();popupReply(true,'정상적으로 삭제되었습니다.');}
+    $values=[];foreach(['p_view','p_none_limit','p_title','p_target','p_link','p_loc']as $key){if(isset($_POST[$key])&&!is_scalar($_POST[$key]))throw new InvalidArgumentException('입력값을 확인하세요.');$values[$key]=trim((string)($_POST[$key]??''));}
+    $values['p_target']=$values['p_target']===''?'_none':$values['p_target'];
+    // Current shared responsive forms do not expose p_loc or PC coordinates.
+    if (!array_key_exists('p_loc', $_POST)) $values['p_loc'] = in_array($current['p_loc'] ?? '', ['P','M'], true) ? $current['p_loc'] : 'M';
+    if($values['p_title']===''||!in_array($values['p_none_limit'],['Y','N'],true)||!in_array($values['p_view'],['Y','N'],true)||!in_array($values['p_loc'],['P','M'],true))throw new InvalidArgumentException('제목과 팝업 설정을 확인하세요.');
+    if(!in_array($values['p_target'],['_none','_self','_blank'],true))throw new InvalidArgumentException('링크 형식을 확인하세요.');
+    // The legacy enum supports only _self/_blank; no-link is _self plus an empty URL.
+    if($values['p_target']==='_none'){$values['p_link']='';$values['p_target']='_self';}
+    elseif($values['p_link']!==''){$link=\Security\SafeLink::normalize($values['p_link']);if($link==='')throw new InvalidArgumentException('HTTP(S) 또는 사이트 내부 링크를 입력하세요.');$values['p_link']=$link;}
+    $values['p_sdate']=$values['p_edate']=null;
+    if($values['p_none_limit']==='N'){
+        foreach(['p_sdate','p_edate']as $key){$date=(string)($_POST[$key]??'');if(!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/D',$date,$parts)||!checkdate((int)$parts[2],(int)$parts[3],(int)$parts[1]))throw new InvalidArgumentException('올바른 시작일과 종료일을 입력하세요.');$values[$key]=$date;}
+        if($values['p_sdate']>$values['p_edate'])throw new InvalidArgumentException('시작일은 종료일보다 늦을 수 없습니다.');
+    }
+    $values['p_left']=$values['p_top']=null;
+    if($values['p_loc']==='P')foreach(['p_left','p_top']as $key){$coordinate=filter_var($_POST[$key]??($current[$key]??0),FILTER_VALIDATE_INT);if($coordinate===false||$coordinate<0)throw new InvalidArgumentException('팝업 위치를 확인하세요.');$values[$key]=$coordinate;}
+    if(isset($_POST['p_idx'])&&!is_scalar($_POST['p_idx']))throw new InvalidArgumentException('노출 순위를 확인하세요.');
+    $rank=trim((string)($_POST['p_idx']??''));
+    if($rank!==''){$values['p_idx']=filter_var($rank,FILTER_VALIDATE_INT,['options'=>['min_range'=>0,'max_range'=>2147483647]]);if($values['p_idx']===false)throw new InvalidArgumentException('노출 순위를 확인하세요.');}
+    elseif($mode==='save'){$stmt=$db->prepare('SELECT IFNULL(MAX(p_idx)+1,1) FROM nb_popup WHERE sitekey=?');$stmt->execute([$NO_SITE_UNIQUE_KEY]);$values['p_idx']=(int)$stmt->fetchColumn();}
+    else $values['p_idx']=(int)$current['p_idx'];
+    $result=isset($_FILES['p_img'])?imageUpload($uploads_dir,$_FILES['p_img'],'',false,['jpg','jpeg','png','gif','webp']):null;$saved=(string)($result['saved']??'');
+    if($saved!==''){$values['p_img']=$saved;$files->track($saved);if($mode==='edit')$files->retire($current['p_img']??null);}
+    elseif($mode==='save')$values['p_img']='';
+    if($mode==='save'){$values['sitekey']=$NO_SITE_UNIQUE_KEY;$columns=array_keys($values);$sql='INSERT INTO nb_popup (`'.implode('`,`',$columns).'`,p_rdate)VALUES(:'.implode(',:',$columns).',NOW())';}
+    else{$sql='UPDATE nb_popup SET '.implode(',',array_map(static function($column){return '`'.$column.'`=:'.$column;},array_keys($values))).' WHERE no=:no AND sitekey=:sitekey';$values['no']=$no;$values['sitekey']=$NO_SITE_UNIQUE_KEY;}
+    $stmt=$db->prepare($sql);$stmt->execute($values);$files->commit();popupReply(true,$mode==='save'?'정상적으로 등록되었습니다.':'정상적으로 수정되었습니다.');
+}catch(Throwable $e){
+    $files->rollback();
+    if($e instanceof InvalidArgumentException||($e instanceof RuntimeException&&!($e instanceof PDOException)))popupReply(false,$e->getMessage(),400);
+    error_log('Popup operation failed: '.blue_safe_error($e));popupReply(false,'요청을 처리할 수 없습니다. 다시 시도하세요.',500);
+}

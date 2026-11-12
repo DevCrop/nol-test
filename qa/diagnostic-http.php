@@ -111,7 +111,7 @@ try {
     }
     foreach(['a@example.com'=>'*@example.com','ab@example.com'=>'a*@example.com','abc@example.com'=>'ab*@example.com'] as $input=>$expected) qa_expect(\Security\PiiMask::email($input)===$expected,'NPG email '.$input);
     qa_expect(\Security\PiiMask::phone('02-1234-5678')==='02-****-5678','NPG Seoul phone');
-    qa_expect(\Security\PiiMask::name('Lionel Andres Messi')==='L***** ****** Messi','NPG English given/middle/surname');
+    qa_expect(\Security\PiiMask::name('Lionel Andres Messi')==='L***** A***** M****','unstructured Latin full name conservatively masked');
 } catch(Throwable $e) { qa_expect(false,$e->getMessage()); }
 finally {
     foreach($posts as $id) $db->prepare('DELETE FROM nb_board WHERE no=? AND board_no=999999')->execute([$id]);

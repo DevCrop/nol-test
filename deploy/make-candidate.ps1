@@ -90,11 +90,12 @@ Copy-Item -LiteralPath (Join-Path $projectRoot 'sql/release') -Destination (Join
 Copy-Item -LiteralPath (Join-Path $projectRoot 'sql/release.php') -Destination (Join-Path $ops 'sql/release.php')
 $null=New-Item -ItemType Directory -Path (Join-Path $ops 'sql/manual') -Force
 $incrementalHashes=[ordered]@{}
-foreach($file in @('bluesquare-temporary-password-20261021.sql','admin-transactions-20261027.sql','account-authority-20261027.sql')) {
+foreach($file in @('bluesquare-temporary-password-20261021.sql','admin-transactions-20261027.sql','account-authority-20261027.sql','admin-menu-permissions-20261105.sql')) {
     Copy-Item -LiteralPath (Join-Path $projectRoot ('sql/manual/'+$file)) -Destination (Join-Path $ops ('sql/manual/'+$file))
     $incrementalHashes[$file]=(Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $ops ('sql/manual/'+$file))).Hash.ToLowerInvariant()
 }
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'UPGRADE-20261027.md') -Destination (Join-Path $ops 'UPGRADE-20261027.md')
+  Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'UPGRADE-20261105.md') -Destination (Join-Path $ops 'UPGRADE-20261105.md')
 Copy-Item -LiteralPath (Join-Path $projectRoot '.env.production.example') -Destination (Join-Path $ops 'production.env.example')
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'preflight.php') -Destination (Join-Path $ops 'deploy/preflight.php')
 Copy-Item -LiteralPath (Join-Path $projectRoot '운영배포.md') -Destination (Join-Path $ops '운영배포.md')

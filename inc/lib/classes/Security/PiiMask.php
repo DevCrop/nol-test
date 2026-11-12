@@ -14,11 +14,14 @@ final class PiiMask
     {
         $value = trim($value); $len = mb_strlen($value, 'UTF-8');
         if ($len === 0) return '';
-        if (preg_match('/^[A-Za-z .\x27-]+$/', $value) && strpos($value, ' ') !== false) {
-            $parts = preg_split('/\s+/', $value);
-            $surname = array_pop($parts);
-            foreach ($parts as $i => $part) $parts[$i] = ($i === 0 ? substr($part, 0, 1) : '') . str_repeat('*', strlen($part) - ($i === 0 ? 1 : 0));
-            return implode(' ', $parts) . ' ' . $surname;
+        // Full-name fields do not identify surname order. Never expose a guessed surname.
+        if (preg_match('/^[\p{Latin}\p{M} .\x27-]+$/u', $value)) {
+            $parts = preg_split('/\s+/u', $value);
+            foreach ($parts as $i => $part) {
+                $length = mb_strlen($part, 'UTF-8');
+                $parts[$i] = $length > 1 ? mb_substr($part, 0, 1, 'UTF-8') . str_repeat('*', $length - 1) : '*';
+            }
+            return implode(' ', $parts);
         }
         if ($len === 1) return '*';
         if ($len === 2) return mb_substr($value, 0, 1, 'UTF-8') . '*';

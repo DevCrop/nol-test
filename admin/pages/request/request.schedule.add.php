@@ -104,8 +104,8 @@ include_once "../../inc/admin.js.php";
 								</div>
                                 <!-- admin-block -->
                                 <div class="no-items-center center">
-                                    <a href="./banner.list.php" class="no-btn no-btn--big no-btn--normal">목록</a>
-                                    <a href="javascript:void(0);" class="no-btn no-btn--big no-btn--main" onClick="doManageSave();">수정</a>
+                                    <a href="./request.schedule.list.php" class="no-btn no-btn--big no-btn--normal">목록</a>
+                                    <a href="javascript:void(0);" class="no-btn no-btn--big no-btn--main" onClick="doManageSave();">저장</a>
                                 </div>
                             </div>
                         </div>

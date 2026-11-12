@@ -160,7 +160,6 @@
         </main>
 
         <!-- Footer -->
-        <script type="text/javascript" src="./js/setting.process.js?c=<?= htmlspecialchars($STATIC_ADMIN_JS_MODIFY_DATE) ?>"></script>
         <?php include_once "../../inc/admin.footer.php"; ?>
     </div>
     <style>

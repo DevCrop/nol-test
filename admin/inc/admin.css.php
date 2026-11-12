@@ -22,3 +22,7 @@
 <link rel="stylesheet" href="<?=blue_admin_base()?>/resource/css/account-credentials.css?v=20261021">
 <link rel="stylesheet" href="<?=blue_admin_base()?>/resource/css/account.css?v=<?=filemtime(__DIR__ . '/../resource/css/account.css')?>">
 <?php endif; ?>
+
+<?php if (!empty($adminLogStyles)): ?>
+<link rel="stylesheet" href="<?=blue_admin_base()?>/resource/css/admin-logs.css?v=<?=filemtime(__DIR__ . '/../resource/css/admin-logs.css')?>">
+<?php endif; ?>

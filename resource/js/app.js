@@ -2168,19 +2168,8 @@ function buttonManager(buttonSelector, listSelector, startYear = 2011) {
     const buttonElement = document.querySelector(buttonSelector);
     const listElement = document.querySelector(listSelector);
 
-    // 버튼 또는 리스트가 존재하지 않으면 에러 메시지 출력 후 종료
-    if (!buttonElement) {
-      console.error(
-        `buttonManager Error: Button element not found for selector "${buttonSelector}"`
-      );
-      return;
-    }
-    if (!listElement) {
-      console.error(
-        `buttonManager Error: List element not found for selector "${listSelector}"`
-      );
-      return;
-    }
+    // Shared scripts also load on pages without these optional controls.
+    if (!buttonElement || !listElement) return;
 
     // 버튼 클릭 이벤트 등록
     buttonElement.addEventListener("click", function () {

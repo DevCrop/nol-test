@@ -37,16 +37,17 @@ function uploadImage(string $key, string $uploadDir = null, ?array $allowedExten
 
     $files = $files ?? $_FILES;
     $uploadDir = $uploadDir ?? $_SERVER['DOCUMENT_ROOT'] . '/uploads';
-    if (!isset($files[$key]) || $files[$key]['error'] !== UPLOAD_ERR_OK) {
+    if (!isset($files[$key]) || ($files[$key]['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
 		return null;
     }
+    if (($files[$key]['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) throw new RuntimeException('이미지 업로드가 완료되지 않았습니다. 파일 크기와 업로드 상태를 확인하세요.');
 
     $file = $files[$key];
-    try { [$fileExtension] = \Security\UploadGuard::image($file); }
-    catch (Throwable $e) { return null; }
+    if ((int)($file['size'] ?? 0) > $maxFileSize) throw new RuntimeException('이미지 파일 크기 제한을 초과했습니다.');
+    [$fileExtension] = \Security\UploadGuard::image($file);
 
     if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true)) {
-		return null;
+        throw new RuntimeException('이미지 저장 경로를 생성하지 못했습니다.');
         //throw new RuntimeException("Failed to create upload directory: {$uploadDir}.");
     }
 
@@ -54,7 +55,7 @@ function uploadImage(string $key, string $uploadDir = null, ?array $allowedExten
     $destination = rtrim($uploadDir, '/') . '/' . $uniqueFileName;
 	
     if (!move_uploaded_file($file['tmp_name'], $destination)) {
-		return null;
+        throw new RuntimeException('이미지를 저장하지 못했습니다.');
         //throw new RuntimeException("Failed to move uploaded file to destination: {$destination}.");
     }
 
@@ -314,15 +315,11 @@ function imageUpload($path, $upfile, $origin_file = '', $return_origin = false, 
             throw new RuntimeException('파일 업로드 경로를 생성하지 못했습니다.');
         }
         if (!move_uploaded_file($upfile['tmp_name'], $path . DIRECTORY_SEPARATOR . $file_saved)) throw new RuntimeException('파일 업로드에 실패했습니다.');
-        if ($origin_file) {
-            $old = \Security\UploadGuard::pathInside($path, basename((string) $origin_file));
-            if ($old !== null) unlink($old);
-        }
+        // The caller retires old files only after the database reference changes.
         return $return_origin ? ['origin' => $file_origin, 'saved' => $file_saved] : ['origin' => '', 'saved' => $file_saved];
     } catch (Throwable $e) {
-        $message = $e instanceof RuntimeException ? $e->getMessage() : blue_safe_error($e);
-        echo json_encode(["result" => "fail", "msg" => $message]);
-        exit;
+        if ($e instanceof RuntimeException) throw $e;
+        throw new RuntimeException('파일 업로드를 처리하지 못했습니다.', 0, $e);
     }
 }
 

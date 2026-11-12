@@ -10,7 +10,7 @@ namespace Security {
         public static function findByUid($uid) { throw $GLOBALS['qa_exception']; }
     }
     final class Mfa {
-        public static function bindEmail($email) { throw $GLOBALS['qa_exception']; }
+        public static function sendInitial() { throw $GLOBALS['qa_exception']; }
         public static function resend() { throw $GLOBALS['qa_exception']; }
         public static function verify($code) { throw $GLOBALS['qa_exception']; }
     }

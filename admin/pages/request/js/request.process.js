@@ -1,167 +1,46 @@
+var requestPending = false;
 $(document).ready(function () {
-    if ($('#contents').length > 0) {
-        $('#contents').summernote({
-            lang: 'ko-KR',
-            height: 500,
-        });
-    }
+    if ($('#contents').length > 0) $('#contents').summernote({ lang: 'ko-KR', height: 500 });
 });
-
-
-function doDelete(no){
-
-	var con = confirm("정말 삭제하시겠습니까?");
-	
-	var param = "";
-	if(no){
-		param = "no="+no+"&mode=delete";
-	}else{
-		param = "no="+$("#no").val()+"&mode=delete";
-	}
-
-	if(con){
-	
-		$.ajax({
-			type:"POST",
-			url:"./ajax/request.process.php",
-			data:param,
-			cache: false,
-			dataType:"html",
-			success:function(data){
-			
-				var jsonData = $.parseJSON(data);
-
-				if(jsonData.result == "fail"){
-					alert(jsonData.msg);
-				}else if(jsonData.result == "success"){
-					alert(jsonData.msg);
-					location.href = "./request.list.php";
-				}
-			},
-			error:function(a,s){
-				alert("처리중 문제가 발생하였습니다.");
-				return;
-			}
-		});
-	}
-}
-
-
-// manage 관리
-function doManageSave(no) {
-    const con = confirm("저장하시겠습니까?");
-    if (!con) return;
-
-    const param = {
-        mode: "manageSave",
-        no: no || $("#no").val(),
-        r_view: $("input[name='r_view']:checked").val(),
-        r_title: $("#r_title").val(),
-        r_sdate: $("#r_sdate").val(),
-        r_edate: $("#r_edate").val(),
-		contents : $("#contents").val(),
-    };
-
-    if (!param.r_title || !param.r_sdate || !param.r_edate) {
-        alert("모든 필드를 입력해주세요.");
-        return;
-    }
-
+function requestSend(data, destination) {
+    if (requestPending) return;
+    requestPending = true;
+    $('#frm').attr('aria-busy', 'true');
     $.ajax({
-        type: "POST",
-        url: "./ajax/request.process.php",
-        data: param,
-        dataType: "json",
-        success: function (data) {
-            if (data.result === "fail") {
-                alert(data.msg);
-            } else if (data.result === "success") {
-                alert(data.msg);
-                location.href = "./request.schedule.list.php";
-            }
+        type: 'POST', url: './ajax/request.process.php', data: data, dataType: 'json', cache: false,
+        success: function (response) {
+            alert(response.msg || '처리 결과를 확인할 수 없습니다.');
+            if (response.result === 'success') location.href = destination;
         },
-        error: function () {
-            alert("처리 중 문제가 발생하였습니다.");
+        error: function (xhr) {
+            alert(xhr.responseJSON && (xhr.responseJSON.msg || xhr.responseJSON.message) || '처리 중 문제가 발생했습니다. 다시 시도해주세요.');
         },
+        complete: function () {
+            requestPending = false; $('#frm').removeAttr('aria-busy'); $('#process-loading').hide();
+        }
     });
 }
-
-// manage 관리
-function doManageDelete(no){
-
-	var con = confirm("정말 삭제하시겠습니까?");
-	
-	var param = "";
-	if(no){
-		param = "no="+no+"&mode=manageDelete";
-	}else{
-		param = "no="+$("#no").val()+"&mode=manageDelete";
-	}
-
-	if(con){
-	
-		$.ajax({
-			type:"POST",
-			url:"./ajax/request.process.php",
-			data:param,
-			cache: false,
-			dataType:"html",
-			success:function(data){
-			
-				var jsonData = $.parseJSON(data);
-
-				if(jsonData.result == "fail"){
-					alert(jsonData.msg);
-				}else if(jsonData.result == "success"){
-					alert(jsonData.msg);
-					location.href = "./request.schedule.list.php";
-				}
-			},
-			error:function(a,s){
-				alert("처리중 문제가 발생하였습니다.");
-				return;
-			}
-		});
-	
-	
-	}
-
+function doDelete(no) {
+    if (requestPending || !confirm('정말 삭제하시겠습니까?')) return;
+    requestSend({mode: 'delete', no: no || $('#no').val()}, './request.list.php');
 }
-
-function doManageEdit(no) {
-    const con = confirm("수정하시겠습니까?");
-    if (!con) return;
-
-    const param = {
-        mode: "manageEdit",
-        no: no || $("#no").val(),
-        r_view: $("input[name='r_view']:checked").val(),
-        r_title: $("#r_title").val(),
-        r_sdate: $("#r_sdate").val(),
-        r_edate: $("#r_edate").val(),
-		contents : $("#contents").val(),
+function requestManage(mode, no) {
+    if (requestPending) return;
+    var data = {
+        mode: mode, no: no || $('#no').val(),
+        r_view: $('input[name="r_view"]:checked').val(),
+        r_title: $('#r_title').val(), r_sdate: $('#r_sdate').val(), r_edate: $('#r_edate').val(),
+        contents: $('#contents').val()
     };
-
-    if (!param.r_title || !param.r_sdate || !param.r_edate) {
-        alert("모든 필드를 입력해주세요.");
-        return;
-    }
-
-    $.ajax({
-        type: "POST",
-        url: "./ajax/request.process.php",
-        data: param,
-        dataType: "json",
-        success: function (data) {
-            if (data.result === "fail") {
-                alert(data.msg);
-            } else if (data.result === "success") {
-                alert(data.msg);
-                location.href = "./request.schedule.list.php";
-            }
-        },
-        error: function () {
-            alert("처리 중 문제가 발생하였습니다.");
-        },
-    });
+    if (!String(data.r_title || '').trim()) { alert('제목을 입력해주세요.'); $('#r_title').focus(); return; }
+    if (!data.r_sdate || !data.r_edate) { alert('대관 기간을 선택해주세요.'); $(data.r_sdate ? '#r_edate' : '#r_sdate').focus(); return; }
+    if (data.r_sdate > data.r_edate) { alert('종료일은 시작일 이후로 선택해주세요.'); $('#r_edate').focus(); return; }
+    if (!confirm(mode === 'manageSave' ? '저장하시겠습니까?' : '수정하시겠습니까?')) return;
+    requestSend(data, './request.schedule.list.php');
+}
+function doManageSave(no) { requestManage('manageSave', no); }
+function doManageEdit(no) { requestManage('manageEdit', no); }
+function doManageDelete(no) {
+    if (requestPending || !confirm('정말 삭제하시겠습니까?')) return;
+    requestSend({mode: 'manageDelete', no: no || $('#no').val()}, './request.schedule.list.php');
 }

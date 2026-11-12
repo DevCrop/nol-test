@@ -13,6 +13,10 @@ foreach([false,true] as $blue){
  deploymentCheck(!in_array(false,DeploymentPreflight::configuration($settings,$blue),true),'complete project configuration '.($blue?'blue':'nol'));
  $httpSettings=$settings;$httpSettings['GATE_ALLOW_HTTP']='true';
  deploymentCheck(!in_array(false,DeploymentPreflight::configuration($httpSettings,$blue),true),'explicit HTTP exception retains IP/MFA/secure baseline configuration');
+ deploymentCheck(!in_array(false,DeploymentPreflight::configuration($settings,$blue,true),true),'HTTPS final config accepted');
+ deploymentCheck(!DeploymentPreflight::configuration($httpSettings,$blue,true)['temporary_gate_http_disabled'],'HTTPS final rejects temporary HTTP');
+ $legacySettings=$settings;$legacySettings['GATE_ALLOW_LEGACY_ADMIN']='true';
+ deploymentCheck(!DeploymentPreflight::configuration($legacySettings,$blue,true)['legacy_public_admin_disabled'],'HTTPS final rejects legacy public admin');
  foreach(['APP_ENV'=>'development','GATE_HOST'=>'gate.other.invalid','GATE_ROUTE_MODE'=>'internal','GATE_HTTP_PREVIEW'=>'true',
  'GATE_ALLOW_IPS'=>'','SESSION_SECURE'=>'false','MFA_ENABLED'=>'false','SMTP_PASS'=>'','DB_NAME'=>'wrong','DB_USER'=>'qa_app'] as $k=>$v){
   $bad=$settings;$bad[$k]=$v;deploymentCheck(in_array(false,DeploymentPreflight::configuration($bad,$blue),true),'reject unsafe '.$k.' '.($blue?'blue':'nol'));

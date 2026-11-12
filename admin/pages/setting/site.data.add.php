@@ -5,6 +5,7 @@
 
 	$depthnum = 4;
 	$pagenum = 3;
+	$target = '';
 
 	include_once "../../inc/admin.title.php";
 	include_once "../../inc/admin.css.php";

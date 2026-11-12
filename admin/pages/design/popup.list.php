@@ -90,14 +90,14 @@
                     <div class="no-toolbar">
                         <div class="no-toolbar-container no-flex-stack">
                             <div class="no-page-indicator">
-                                <h1 class="no-page-title">배너 관리</h1>
+                                <h1 class="no-page-title">팝업 관리</h1>
                                 <div class="no-breadcrumb-container">
                                     <ul class="no-breadcrumb-list">
                                         <li class="no-breadcrumb-item">
                                             <span>디자인 관리</span>
                                         </li>
                                         <li class="no-breadcrumb-item">
-                                            <span>배너 목록</span>
+                                            <span>팝업 목록</span>
                                         </li>
                                     </ul>
                                 </div>
@@ -221,7 +221,7 @@
                     <div class="no-content-container">
                         <div class="no-card">
                             <div class="no-card-header">
-                                <h2 class="no-card-title">배너 관리</h2>
+                                <h2 class="no-card-title">팝업 관리</h2>
                             </div>
 
                             <div class="no-card-body">

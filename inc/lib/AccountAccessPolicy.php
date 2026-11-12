@@ -55,7 +55,7 @@ final class AccountAccessPolicy
     }
     public static function version(array $row): string
     {
-        return hash('sha256',json_encode([(int)($row['no']??0),(string)($row['uid']??''),(string)($row['email']??''),(string)($row['role_id']??$row['role_code']??''),(string)($row['active_status']??''),$row['authority_valid_from']??null,$row['authority_valid_until']??null]));
+        return hash('sha256',json_encode([(int)($row['no']??0),(string)($row['uid']??''),(string)($row['email']??''),(string)($row['role_id']??$row['role_code']??''),(string)($row['active_status']??''),$row['authority_valid_from']??null,$row['authority_valid_until']??null,$row['menu_permissions']??null]));
     }
     public static function beginAudit(string $reason,array $before): void {self::$context=['reason'=>$reason,'before'=>$before];}
     public static function audit(int $id,array $after): array
@@ -66,7 +66,7 @@ final class AccountAccessPolicy
     public static function snapshot(array $row): array
     {
         if(!$row)return [];
-        return ['account_no'=>(int)($row['no']??0),'account_identifier'=>(string)($row['uid']??''),'owner_display_name'=>(string)($row['uname']??''),'role'=>$row['role_id']??$row['role_code']??null,'permissions'=>$row['_grants']??[],'active_status'=>$row['active_status']??null,'authority_valid_from'=>$row['authority_valid_from']??null,'authority_valid_until'=>$row['authority_valid_until']??null];
+        return ['account_no'=>(int)($row['no']??0),'account_identifier'=>(string)($row['uid']??''),'owner_display_name'=>(string)($row['uname']??''),'role'=>$row['role_id']??$row['role_code']??null,'permissions'=>$row['_grants']??(isset($row['menu_permissions'])?\Security\AdminAcl::grants($row):[]),'active_status'=>$row['active_status']??null,'authority_valid_from'=>$row['authority_valid_from']??null,'authority_valid_until'=>$row['authority_valid_until']??null];
     }
     public static function auditLines(array $detail,callable $maskId,callable $maskName): array
     {

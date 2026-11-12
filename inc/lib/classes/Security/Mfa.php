@@ -20,17 +20,17 @@ final class Mfa
         $_SESSION['mfa_pending'] = $pending;
     }
 
-    // NOL의 begin → 이메일 입력 → issue 흐름. 수신처는 계정 이메일에 바인딩한다.
+    // Legacy callers cannot select a recipient. Only the registered address is used.
     public static function bindEmail(string $input): void
+    {
+        self::sendInitial();
+    }
+
+    public static function sendInitial(): void
     {
         $p = $_SESSION['mfa_pending'] ?? null;
         if (!is_array($p)) throw new \RuntimeException('인증 세션이 없습니다. 다시 로그인하세요.');
-        if (!empty($p['code_hash'])) throw new \RuntimeException('인증번호 다시 받기를 이용하세요.');
-        if (!filter_var(trim($input), FILTER_VALIDATE_EMAIL) || strcasecmp(trim($input), (string) $p['email']) !== 0) {
-            $_SESSION['mfa_pending']['email_attempts'] = (int) ($p['email_attempts'] ?? 0) + 1;
-            if ($_SESSION['mfa_pending']['email_attempts'] >= MFA_MAX_ATTEMPTS) unset($_SESSION['mfa_pending']);
-            throw new \RuntimeException('계정에 등록된 이메일을 입력하세요.');
-        }
+        if (!empty($p['code_hash'])) return;
         self::issue();
     }
 
@@ -38,11 +38,13 @@ final class Mfa
     {
         $p = $_SESSION['mfa_pending'] ?? null;
         if (!is_array($p) || (int) $p['expires'] <= time()) { unset($_SESSION['mfa_pending']); throw new \RuntimeException('인증번호가 만료되었습니다. 다시 로그인하세요.'); }
-        if (time() - (int) $p['sent_at'] < MFA_RESEND_SECONDS) throw new \RuntimeException('잠시 후 다시 요청하세요.');
+        if (time() - max((int) $p['sent_at'], (int) ($p['attempted_at'] ?? 0)) < MFA_RESEND_SECONDS) throw new \RuntimeException('잠시 후 다시 요청하세요.');
         $row = AdminAccount::findByNo((int) $p['admin_no']);
         if (!$row || !hash_equals((string) ($p['credential_version'] ?? ''), hash('sha256', (string) $row['upwd'])) || !hash_equals((string)($p['authority_version']??''),\AccountAccessPolicy::version($row)) || $p['email'] !== $row['email']) { unset($_SESSION['mfa_pending']); throw new \RuntimeException('계정 정보가 변경되었습니다. 다시 로그인하세요.'); }
         AdminAccount::assertLoginAllowed($row);
         $code = (string) random_int(100000, 999999);
+        // Failed SMTP attempts also consume the resend cooldown, but never create a challenge.
+        $_SESSION['mfa_pending']['attempted_at'] = time();
         self::deliver((string) $row['email'], $code);
         $_SESSION['mfa_pending']['code_hash'] = password_hash($code, PASSWORD_DEFAULT);
         $_SESSION['mfa_pending']['sent_at'] = time();
@@ -68,7 +70,7 @@ final class Mfa
     public static function resend(): void
     {
         $p = $_SESSION['mfa_pending'] ?? null;
-        if (!is_array($p) || empty($p['code_hash'])) throw new \RuntimeException('이메일을 먼저 입력하세요.');
+        if (!is_array($p)) throw new \RuntimeException('인증 세션이 없습니다. 다시 로그인하세요.');
         self::issue();
     }
 

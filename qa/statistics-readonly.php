@@ -5,6 +5,7 @@ if(APP_ENV!=='development'||!is_file('/.dockerenv')||blue_env('DB_USER')!=='qa_a
 $db=DB::getInstance();$admin=0;$sid='';$ids=[];$uid='qa_statread_'.bin2hex(random_bytes(4));
 $http=static function(string $method,string $date,string $csrf='') use(&$sid):array {
     $path='/admin/pages/log/log.time.php';
+    if(blue_env('GATE_ROUTE_MODE','path')==='php') $path='/index.php'.substr($path,6);
     if(blue_env('GATE_ROUTE_MODE','path')==='internal') $path=substr($path,6);
     $content=$method==='POST'?http_build_query(['sdate'=>$date,'_csrf'=>$csrf]):'';
     if($method!=='POST') $path.='?sdate='.rawurlencode($date);
@@ -48,3 +49,4 @@ finally {
     if($sid){$file=(session_save_path()?:sys_get_temp_dir()).'/sess_'.$sid;if(is_file($file))unlink($file);}
 }
 qa_done();
+

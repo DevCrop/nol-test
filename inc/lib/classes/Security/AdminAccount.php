@@ -43,8 +43,9 @@ final class AdminAccount
         $data = self::validated($input, true);
         if (self::taken('uid', $data['uid']) || self::taken('email', $data['email'])) throw new \RuntimeException('이미 사용 중인 아이디 또는 이메일입니다.');
         $period=\AccountAccessPolicy::period($input);
-        $stmt = \DB::getInstance()->prepare('INSERT INTO nb_admin (sitekey, uid, upwd, uname, email, active_status, role_code, login_fail_count, password_changed_at, password_must_change, created_at, updated_at, authority_valid_from, authority_valid_until) VALUES (?, ?, ?, ?, ?, ?, ?, 0, NOW(), 1, NOW(), NOW(), ?, ?)');
-        $stmt->execute([self::SITE, $data['uid'], password_hash($data['password'], PASSWORD_DEFAULT), $data['uname'], $data['email'], $data['active_status'], $data['role_code'], $period['authority_valid_from'], $period['authority_valid_until']]);
+        $permissions=json_encode(AdminAcl::normalize((array)($input['permissions']??[])),JSON_UNESCAPED_UNICODE);
+        $stmt = \DB::getInstance()->prepare('INSERT INTO nb_admin (sitekey, uid, upwd, uname, email, active_status, role_code, login_fail_count, password_changed_at, password_must_change, created_at, updated_at, authority_valid_from, authority_valid_until, menu_permissions) VALUES (?, ?, ?, ?, ?, ?, ?, 0, NOW(), 1, NOW(), NOW(), ?, ?, ?)');
+        $stmt->execute([self::SITE, $data['uid'], password_hash($data['password'], PASSWORD_DEFAULT), $data['uname'], $data['email'], $data['active_status'], $data['role_code'], $period['authority_valid_from'], $period['authority_valid_until'],$permissions]);
         return (int) \DB::getInstance()->lastInsertId();
     }
 
@@ -57,10 +58,11 @@ final class AdminAccount
         if ($actorNo === $no && ($data['active_status'] !== 'Y' || $data['role_code'] !== 'super')) throw new \RuntimeException('본인 계정은 비활성화하거나 관리자 권한을 낮출 수 없습니다.');
         if (($target['role_code'] ?? '') === 'super' && ($data['active_status'] !== 'Y' || $data['role_code'] !== 'super') && self::activeSuperCount($no) === 0) throw new \RuntimeException('마지막 최고 관리자는 비활성화하거나 권한을 낮출 수 없습니다.');
         $period=\AccountAccessPolicy::period($input,$target);
+        $permissions=json_encode((isset($input['permissions_present'])||array_key_exists('permissions',$input))?AdminAcl::normalize((array)($input['permissions']??[])):AdminAcl::grants($target),JSON_UNESCAPED_UNICODE);
         if($actorNo===$no)\AccountAccessPolicy::assertAllowed($period);
-        $revoke = $target['email'] !== $data['email'] || $target['role_code'] !== $data['role_code'] || $target['active_status'] !== $data['active_status'] || ($target['authority_valid_from']??null)!==$period['authority_valid_from'] || ($target['authority_valid_until']??null)!==$period['authority_valid_until'];
-        $stmt = \DB::getInstance()->prepare("UPDATE nb_admin SET uname = ?, email = ?, active_status = ?, role_code = ?, authority_valid_from=?, authority_valid_until=?, login_token = CASE WHEN ? = 1 THEN NULL ELSE login_token END, updated_at = NOW() WHERE no = ? AND sitekey = ?");
-        $stmt->execute([$data['uname'], $data['email'], $data['active_status'], $data['role_code'], $period['authority_valid_from'], $period['authority_valid_until'], (int)$revoke, $no, self::SITE]);
+        $revoke = $target['email'] !== $data['email'] || $target['role_code'] !== $data['role_code'] || $target['active_status'] !== $data['active_status'] || ($target['authority_valid_from']??null)!==$period['authority_valid_from'] || ($target['authority_valid_until']??null)!==$period['authority_valid_until'] || (string)($target['menu_permissions']??'')!==$permissions;
+        $stmt = \DB::getInstance()->prepare("UPDATE nb_admin SET uname = ?, email = ?, active_status = ?, role_code = ?, authority_valid_from=?, authority_valid_until=?, menu_permissions=?, login_token = CASE WHEN ? = 1 THEN NULL ELSE login_token END, updated_at = NOW() WHERE no = ? AND sitekey = ?");
+        $stmt->execute([$data['uname'], $data['email'], $data['active_status'], $data['role_code'], $period['authority_valid_from'], $period['authority_valid_until'],$permissions, (int)$revoke, $no, self::SITE]);
         return $stmt->rowCount() === 1;
     }
 

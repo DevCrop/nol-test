@@ -6,6 +6,7 @@ if (APP_ENV !== 'development' || !is_file('/.dockerenv') || DB_USER !== 'qa_app'
 $db=DB::getInstance(); $ids=[]; $tag='qa_banner_'.bin2hex(random_bytes(4)); $admin=0; $sid='';
 $mode=(string)$db->query('SELECT @@SESSION.sql_mode')->fetchColumn();
 function bannerHttp(string $path, ?array $data=null, bool $gate=false): array {
+    if(blue_env('GATE_ROUTE_MODE')==='php' && strpos($path,'/admin/')===0)$path='/index.php'.substr($path,6);
     $headers="Host: ".($data===null && !$gate?'localhost':'gate.local')."\r\n";
     if ($data!==null || $gate) $headers.='Cookie: '.session_name().'='.$GLOBALS['sid']."\r\n";
     if ($data!==null) $headers.="Content-Type: application/x-www-form-urlencoded\r\nX-Requested-With: XMLHttpRequest\r\n";

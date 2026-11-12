@@ -1,0 +1,5 @@
+# Font files must never undergo text-mode newline conversion.
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary

@@ -1,3 +1,4 @@
+<?php require_once __DIR__.'/../lib/TimedValues.php'; ?>
 <footer class="no-footer no-pd-xl--y">
 
     <div class="no-container-2xl">

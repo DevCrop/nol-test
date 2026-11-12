@@ -1,0 +1,36 @@
+블루스퀘어 HTTP gate 확인용 적용 안내 (2026-10-16)
+
+이 ZIP은 로그인 가능한 보안 전체 배포본이 아닙니다.
+gate.bluesquare.kr 접속을 DB/세션 없는 확인용 로그인 화면으로 분기합니다.
+SSL이 설치되더라도 GATE_HTTP_PREVIEW=true 동안 인증 작업은 차단됩니다.
+
+1. 먼저 운영 파일을 별도로 백업하세요.
+2. ZIP의 upload 폴더 내부 5개 파일을 기존 사이트 루트 기준 동일 경로에 업로드합니다.
+   .env.gate
+   inc/lib/PhpGateRouter.php
+   inc/lib/GateHttpPreview.php
+   inc/lib/gate-http-entry.php
+   inc/lib/gate-http-preview.html
+   기존 .env/DB/SMTP/.htaccess/관리자 파일은 이 ZIP으로 덮어쓰지 않습니다.
+   PhpGateRouter.php가 이미 운영에 있으면 해당 파일도 반드시 백업합니다.
+3. 운영 루트 index.php의 첫 <?php 바로 다음, 기존 include/HTTPS 전환/출력보다 앞에 다음 한 줄만 추가합니다.
+   require_once __DIR__ . '/inc/lib/gate-http-entry.php';
+   중복 삽입하지 않습니다. 기존 공개 화면 코드는 삭제하거나 교체하지 않습니다.
+   개발본 전체 index.php는 ZIP에 넣지 않았습니다.
+4. http://gate.bluesquare.kr/ 확인:
+   접속 확인 문구 + 비활성 로그인 화면, 주소창 /admin 없음.
+   로고는 기존 resource/images/admin/logo.png를 사용합니다.
+5. 기존 홈페이지 메인/공연/주차/게시판/대관을 확인합니다.
+6. 문제가 생기면 index.php의 추가 한 줄을 제거하고 백업한 라우터를 복원합니다.
+   다른 파일이나 DB를 삭제할 필요는 없습니다.
+
+주의
+- 실서버 최신 파일 사본이 없어 QA는 260918 개발본의 변경 직전/직후 비교입니다.
+- 서버 .htaccess가 PHP 실행 전에 HTTPS 이동/차단을 하면 이 코드보다 먼저 적용됩니다.
+- PHP PATH_INFO(/index.php/...) 지원은 Docker에서 확인했으며 실서버 적용 후 확인해야 합니다.
+- 프로세스 환경변수 GATE_HOST/GATE_ROUTE_MODE가 있다면 .env.gate보다 우선합니다.
+  gate.bluesquare.kr / php와 일치해야 합니다. 기존 .env의 비밀값은 유지하세요.
+- 이 미리보기는 호스팅 수준의 비밀파일 보호나 기존 관리자 전체 보안을 대체하지 않습니다.
+- HTTP에서 비밀번호를 입력하거나 실제 로그인/CRUD를 테스트하지 마세요.
+- SSL 설치 뒤 운영 보안 배포본 및 SQL 적용 상태를 확인하고 별도 최종 QA 후 전환해야 합니다.
+- 가비아 연결 이전의 403은 이 코드로 우회할 수 없습니다.

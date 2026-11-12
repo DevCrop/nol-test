@@ -31,3 +31,7 @@ storage/*.log
 *.p12
 *.pdf
 node_modules/
+
+# Local verification depends on private production configuration/backups.
+/qa/release-private-config.php
+/qa/restore-board184-sql.php

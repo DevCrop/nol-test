@@ -1,4 +1,15 @@
 
+let workRequestPending = false;
+async function worksJson(response) {
+    if (response.status === 401) { location.href = window.BLUE_ADMIN_BASE || '/'; throw new Error('다시 로그인해 주세요.'); }
+    if (!(response.headers.get('Content-Type') || '').includes('application/json')) throw new Error('서버 응답을 확인하지 못했습니다. 목록에서 처리 여부를 확인해 주세요.');
+    let data;
+    try { data = await response.json(); } catch { throw new Error('응답을 처리하지 못했습니다. 목록에서 저장 여부를 확인해 주세요.'); }
+    if (!data || typeof data !== 'object') throw new Error('응답을 처리하지 못했습니다. 목록에서 저장 여부를 확인해 주세요.');
+    if (!response.ok) throw new Error(data.message || '요청을 처리하지 못했습니다.');
+    return data;
+}
+function workError(error) { return error?.name === 'TypeError' ? '요청 결과를 확인하지 못했습니다. 목록에서 저장 여부를 확인해 주세요.' : error?.message || '요청에 실패했습니다.'; }
 function qs(selector){
 	return document.querySelector(selector); 
 }
@@ -20,7 +31,9 @@ async function bindForm(){
 	if(deleteBtns.length > 0){
 		deleteBtns.forEach(deleteBtn => {
 			on(deleteBtn, 'click', async (e) => {
+				e.preventDefault(); if (workRequestPending) return;
 				if(!confirm('정말로 삭제하시겠습니까?')) return; 
+				workRequestPending = true;
 				const id = deleteBtn.dataset.id; 
 				try
 				{
@@ -32,11 +45,8 @@ async function bindForm(){
 						})
 					});
 					
-					if(!response.ok){
-						throw new Error('네트워크 에러가 발생하였습니다.');
-					}
 
-					const resData = await response.json();
+					const resData = await worksJson(response);
 					alert(resData.message);
 				
 					// 수정
@@ -49,21 +59,25 @@ async function bindForm(){
 				}
 				catch (error)
 				{
-					alert(error.message);
+					alert(workError(error));
 				}
+				finally { workRequestPending = false; }
 			});
 		});
 	}
 
 	on(form, 'submit', async (e) => {
 		e.preventDefault(); 
+		if (workRequestPending) return;
 
 		const params = new URLSearchParams(location.search);
 		params.delete('id'); 
 
-		fd = new FormData(form);
-		
-		console.log(Object.fromEntries(fd));
+		const fd = new FormData(form);
+		workRequestPending = true;
+		const submitButtons = form.querySelectorAll('[type="submit"]');
+		submitButtons.forEach(button => button.disabled = true);
+		form.setAttribute('aria-busy', 'true');
 		try
 		{
 			const response = await fetch('./ajax/works.process.php', {
@@ -71,11 +85,8 @@ async function bindForm(){
 				body: fd
 			});
 			
-			if(!response.ok){
-				throw new Error('네트워크 에러가 발생하였습니다.');
-			}
 
-			const resData = await response.json();
+			const resData = await worksJson(response);
 			alert(resData.message);
 
 			// 수정
@@ -86,8 +97,9 @@ async function bindForm(){
 		}
 		catch (error)
 		{
-			alert(error.message);
+			alert(workError(error));
 		}
+		finally { workRequestPending = false; submitButtons.forEach(button => button.disabled = false); form.removeAttribute('aria-busy'); }
 		
 	});
 }
@@ -96,9 +108,12 @@ function bindPrice(){
 	const priceHook = qs('#price-hook'); 
 	const priceInput = qs('input[name=price]'); 
 
-	if(!priceHook) return; 
+	if(!priceHook || !priceInput) return;
 
-	const jsonData = priceInput.value ? JSON.parse(priceInput.value) : Array(10).fill(null).map(() => ({name: '', price: ''}));
+	let jsonData;
+	try { jsonData = priceInput.value ? JSON.parse(priceInput.value) : Array(10).fill(null).map(() => ({name: '', price: ''})); }
+	catch { return; } // Preserve legacy text rather than breaking all form handlers.
+	if (!Array.isArray(jsonData)) return;
 	if(!priceInput.value){
 		priceInput.value = JSON.stringify(jsonData);
 	}
@@ -109,10 +124,10 @@ function bindPrice(){
 		el.style.alignItems = 'center'; 
 		el.style.gap = '12px'; 
 
-		el.innerHTML = `
-			<input type="text" class="no-input--detail" placeholder="좌석을 입력해주세요." value="${name}" data-field="name"/>
-			<input type="text" class="no-input--detail" placeholder="해당 좌석에 가격을 입력해주세요." value="${price}" data-field="price"/>
-		`;
+		for (const [field, value, placeholder] of [['name', name, '좌석을 입력해주세요.'], ['price', price, '해당 좌석에 가격을 입력해주세요.']]) {
+			const input = document.createElement('input'); input.type = 'text'; input.className = 'no-input--detail';
+			input.placeholder = placeholder; input.value = String(value ?? ''); input.dataset.field = field; el.append(input);
+		}
 		
 		on(el, 'input', function(e){
 			const t = e.target; 
@@ -125,6 +140,7 @@ function bindPrice(){
 	}
 
 	jsonData.forEach((item, index) => {
+		if (!item || typeof item !== 'object') return;
 		const el = getPriceInput(item, index);
 		priceHook.append(el);
 	});
@@ -159,28 +175,30 @@ function handleCheck(){
 
 
 	async function handleBatch(){
-		if(!confirm('현재 페이지의 모든 공연들이 삭제됩니다. 정말로 삭제하시겠습니까?')) return;
+		if (workRequestPending) return;
 		const checkedIds = [...tableCheckboxes].filter(chk => chk.checked).map(chk => Number(chk.value)) || []; 
+		if (!checkedIds.length) { alert('삭제할 공연을 선택하세요.'); return; }
+		if(!confirm('선택한 공연을 삭제하시겠습니까?')) return;
+		workRequestPending = true;
 	
 		try
 		{
-			const response = fetch('./ajax/works.process.php', {
+			const response = await fetch('./ajax/works.process.php', {
 				method: 'POST', 
 				body: new URLSearchParams({
 					_method: 'BATCH_DELETE',
 					ids: JSON.stringify(checkedIds)
 				})
 			});
-			if(!response.ok){
-				throw new Error(`네트워크 에러가 발생했습니다.`);
-			}
-			const resData = await response.json();
-			console.log(resData); 
+			const resData = await worksJson(response);
+			alert(resData.message);
+			if (resData.success) location.reload();
 		}
 		catch (err)
 		{
-			alert(err.message); 
+			alert(workError(err));
 		}
+		finally { workRequestPending = false; }
 	}
 
 	on(checkAllInput, 'change', handleAllCheck);
@@ -207,7 +225,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 					fetch((window.BLUE_ADMIN_BASE ?? '/admin') + '/pages/works/upload.php', {
 						method: 'POST',
 						body: formData
-					}).then(response => response.json())
+					}).then(worksJson)
 					  .then(data => {
 						  if (data.success) {
 							  // 업로드 성공 시 에디터에 이미지 추가
@@ -216,7 +234,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 							  alert(data.message || '이미지 업로드에 실패했습니다.');
 						  }
 					  })
-					  .catch(error => console.error(error));
+					  .catch(error => alert(workError(error)));
 				}
 			} // callback
 		});
@@ -233,7 +251,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 						fetch((window.BLUE_ADMIN_BASE ?? '/admin') + '/pages/works/upload.php', {
 							method: 'POST',
 							body: formData
-						}).then(response => response.json())
+						}).then(worksJson)
 						  .then(data => {
 							  if (data.success) {
 								  // 업로드 성공 시 에디터에 이미지 추가
@@ -242,7 +260,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 								  alert(data.message || '이미지 업로드에 실패했습니다.');
 							  }
 						  })
-						  .catch(error => console.error(error));
+						  .catch(error => alert(workError(error)));
 					}
 				} // callback
 			});

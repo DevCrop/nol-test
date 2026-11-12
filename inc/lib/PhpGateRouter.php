@@ -53,7 +53,8 @@ final class PhpGateRouter
         $target = $this->resolve($relative);
         if ($target === null) self::deny();
         if (strtolower(pathinfo($target, PATHINFO_EXTENSION)) !== 'php') {
-            if (!preg_match('#^(?:resource/|uploads/)#', $relative)) self::deny();
+            $pageAsset = preg_match('#^pages/(?:board|category|design|opera|request|setting|works|log|account)/(?:js|css)/(?:[a-zA-Z0-9_-]+/)*[a-zA-Z0-9_.-]+\.(?:js|mjs|css)$#D', $relative);
+            if (!$pageAsset && !preg_match('#^(?:resource/|uploads/)#', $relative)) self::deny();
             $this->serve($target);
         }
         if (!preg_match('#^(?:index\.php|mfa\.php|pages/.+\.php|ajax/.+\.php|Controller/.+\.php|lib/login/.+\.php|lib/session/ping\.php|captcha/[^/]+\.php|inc/lib/captcha\.[^/]+\.php)$#D', $relative)) self::deny();
@@ -85,7 +86,7 @@ final class PhpGateRouter
                 $base = dirname('/index.php' . PHP_GATE_ROUTE) . '/';
                 $body = preg_replace('/<head([^>]*)>/i', '<head$1><base href="' . htmlspecialchars($base, ENT_QUOTES, 'UTF-8') . '">', $body, 1);
             }
-            return $this->rewrite($body);
+            return $this->rewriteHtml($body);
         });
         chdir(dirname($target));
         return $target;
@@ -120,7 +121,8 @@ final class PhpGateRouter
         header('Content-Type: ' . $types[$ext]);
         header('X-Content-Type-Options: nosniff');
         if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'HEAD') {
-            if (in_array($ext, ['css','js','mjs','html','htm'], true)) echo $this->rewrite((string) file_get_contents($target));
+            if (in_array($ext, ['html','htm'], true)) echo $this->rewriteHtml((string) file_get_contents($target));
+            elseif (in_array($ext, ['css','js','mjs'], true)) echo $this->rewrite((string) file_get_contents($target));
             else readfile($target);
         }
         exit;
@@ -145,12 +147,44 @@ final class PhpGateRouter
         return $url === '/' ? '/' : '/index.php' . $url;
     }
 
+    private function rewriteHtml(string $html): string
+    {
+        // Form values are content, not navigation. Preserve their exact bytes so
+        // reopening and saving a public URL never inserts the gate's /index.php.
+        $protected = [];
+        $prefix = "\x1Aphp-gate-form-";
+        while (strpos($html, $prefix) !== false) $prefix .= 'x';
+        $keep = static function (string $value) use (&$protected, $prefix): string {
+            $token = $prefix . count($protected) . "\x1A";
+            $protected[$token] = $value;
+            return $token;
+        };
+        $html = preg_replace_callback(
+            '~<textarea\b(?:[^\'"<>]|"[^"]*"|\'[^\']*\')*>[\s\S]*?</textarea\s*>|<(?:input|option)\b(?:[^\'"<>]|"[^"]*"|\'[^\']*\')*>~i',
+            static function (array $tag) use ($keep): string {
+                if (stripos($tag[0], '<textarea') === 0) return $keep($tag[0]);
+                return preg_replace_callback(
+                    '~\svalue\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]+)~i',
+                    static function (array $attribute) use ($keep): string { return $keep($attribute[0]); },
+                    $tag[0]
+                );
+            },
+            $html
+        );
+        return strtr($this->rewrite($html), $protected);
+    }
+
     private function rewrite(string $text): string
     {
         // Only application URL prefixes, never arbitrary strings / JSON / user data.
         $prefixes = 'admin|nol-gate|pages|lib/login|lib/session|ajax|Controller|resource|captcha|uploads';
-        $text = preg_replace_callback('#(["\x27\x60])(/(?:' . $prefixes . ')(?=[/"\x27\x60?]))#',
-            function (array $match): string { return $match[1] . $this->url($match[2]); }, $text);
+        $text = preg_replace_callback('#(\+\s*)?(["\x27\x60])(/(?:' . $prefixes . ')(?=[/"\x27\x60?]))#',
+            function (array $match): string {
+                // A suffix joined to BLUE_ADMIN_BASE is already rooted by that base.
+                // Rewriting it too produces /index.php/index.php/pages/... .
+                if (($match[1] ?? '') !== '') return $match[0];
+                return $match[2] . $this->url($match[3]);
+            }, $text);
         return preg_replace_callback('#url\((["\x27]?)(/(?:resource|uploads)/[^)\s"\x27]+)\1\)#',
             function (array $match): string { return 'url(' . $match[1] . $this->url($match[2]) . $match[1] . ')'; }, $text);
     }

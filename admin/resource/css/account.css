@@ -14,4 +14,30 @@
 .no-account-page .account-inline{display:inline}
 .no-account-page .account-flash,.no-account-page .security-message{padding:1.2rem 1.6rem;background:#eef8ff;color:#176b9c;margin-bottom:1.6rem}
 .no-account-page .account-flash.error,.no-account-page .account-state.locked{color:#b42318}
+.no-account-page .account-feedback{width:100%;box-sizing:border-box;background:#fff1f1;border:1px solid #f4c7c7;border-radius:.4rem;font-size:1.3rem;line-height:1.6;overflow-wrap:anywhere}
+.no-account-page .account-feedback[hidden]{display:none}
+.no-account-page .account-permissions-row,.no-account-page .account-authority-row{align-items:flex-start}
+.no-account-page .account-permissions-row>.no-admin-title,.no-account-page .account-authority-row>.no-admin-title{padding-top:1.1rem}
+.no-account-page .account-permissions{min-width:0;max-width:75%;box-sizing:border-box}
+.no-account-page .account-permissions .account-help,.no-account-page .account-authority-field .account-help{font-size:1.25rem;line-height:1.65;margin:.8rem 0 0;color:var(--muted,#667085);word-break:keep-all}
+.no-account-page .account-permissions .account-help{margin:0 0 1rem}
+.no-account-page .account-permissions__scroll{width:100%;max-width:100%;min-width:0;overflow-x:auto;overscroll-behavior-x:contain;border:1px solid var(--table-border-color,var(--border-color));border-radius:.5rem}
+.no-account-page .account-permissions__scroll:focus-visible{outline:2px solid var(--primary-color);outline-offset:2px}
+.no-account-page .account-permissions__table{width:100%;min-width:42rem;table-layout:fixed;margin:0}
+.no-account-page .account-permissions__menu{width:40%}
+.no-account-page .account-permissions__action{width:15%}
+.no-account-page .account-permissions__table thead th{padding:1rem .6rem;font-size:1.3rem}
+.no-account-page .account-permissions__table tbody th{padding:1rem 1.2rem;border-bottom:1px solid var(--table-border-color);text-align:left;vertical-align:middle;font-size:1.3rem;line-height:1.5;font-weight:400;word-break:keep-all}
+.no-account-page .account-permissions__table thead th:first-child{text-align:left;padding-left:1.2rem}
+.no-account-page .account-permissions__table tbody td{padding:.8rem .4rem}
+.no-account-page .account-permissions__table tbody tr:last-child th{border-bottom:0}
+.no-account-page .account-permissions .no-checkbox-form{position:relative;display:inline-flex;align-items:center;justify-content:center;min-width:2.4rem;min-height:2.4rem;vertical-align:middle}
+.no-account-page .account-permissions .no-checkbox-form input[type=checkbox]{display:block;position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.no-account-page .account-permissions .no-checkbox-form input:disabled{cursor:default}
+.no-account-page .account-permissions .no-checkbox-form input:disabled+span{opacity:.65}
+.no-account-page .account-permissions .no-checkbox-form input:focus-visible+span{outline:2px solid var(--primary-color);outline-offset:3px}
+.no-account-page .account-authority-field input[type=datetime-local]{width:100%;max-width:32rem;min-width:0;box-sizing:border-box;line-height:1.5}
+.no-account-page .account-authority-field textarea.no-input--detail{width:100%;max-width:56rem;min-width:0;min-height:9.6rem;box-sizing:border-box;resize:vertical;padding:1rem 1.2rem;border:1px solid var(--border-color);border-radius:.4rem;background:var(--card-background-color,#fff);color:var(--title-color);font-size:1.4rem;line-height:1.6}
+.no-account-page .account-authority-field textarea:focus-visible{outline:2px solid var(--primary-color);outline-offset:2px}
 @media(max-width:768px){.no-account-page .no-admin-column--detail .no-admin-block{flex-direction:column}.no-account-page .no-admin-column--detail .no-admin-title,.no-account-page .no-admin-column--detail .no-admin-content{width:100%;padding:0;text-align:left}.no-account-page .no-admin-title{margin-bottom:.8rem}}
+@media(max-width:768px){.no-account-page .account-permissions{max-width:100%}.no-account-page .account-permissions-row>.no-admin-title,.no-account-page .account-authority-row>.no-admin-title{padding-top:0}.no-account-page .account-permissions__table{min-width:38rem}.no-account-page .account-permissions__table tbody th{font-size:1.25rem}.no-account-page .account-permissions__table thead th{font-size:1.25rem}}

@@ -49,3 +49,4 @@ finally {
     if($sid) {$file=(session_save_path()?:sys_get_temp_dir()).'/sess_'.$sid;if(is_file($file)) unlink($file);}
 }
 qa_done();
+

@@ -1,193 +1,47 @@
-
 <?php
-include_once "../../../../inc/lib/base.class.php";
-include_once "../../../lib/admin.check.ajax.php";
-
-$pdo = DB::getInstance();
-$mode = $_POST['mode'] ?? '';
-$b_location = $_POST['b_location'] ?? ''; // b_location 기본값 설정
-
-if (in_array($mode, ['save', 'edit'], true)) {
-    try { $_POST = array_replace($_POST, \Security\BannerInput::validate($_POST)); }
-    catch (InvalidArgumentException $e) {
-        http_response_code(400);
-        echo json_encode(['result'=>'fail', 'msg'=>$e->getMessage()], JSON_UNESCAPED_UNICODE);
-        exit;
-    }
+require_once '../../../../inc/lib/base.class.php';
+require_once '../../../lib/admin.check.ajax.php';
+$pdo=DB::getInstance();$uploads_dir=$UPLOAD_DIR_BANNER;$fileColumns=['b_img','b_img_mobile','b_poster_img'];
+$files=\Security\UploadLifecycle::forTable($uploads_dir,$pdo,'nb_banner',$fileColumns);
+function bannerReply(bool $ok,string $message,int $status=200):void {
+    if(ob_get_level()>0)ob_clean();http_response_code($status);header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['result'=>$ok?'success':'fail','msg'=>$message],JSON_UNESCAPED_UNICODE);exit;
 }
-
-if ($mode === "save") {
-    try {
-        $b_loc = $_POST['b_loc'] ?? '';
-        $b_link = $_POST['b_link'] ?? '';
-        $b_target = $_POST['b_target'] ?? '';
-        $b_view = $_POST['b_view'] ?? '';
-        $b_title = $_POST['b_title'] ?? '';
-
-        $b_none_view = $_POST['b_none_view'] ?? '';
-        $b_none_limit = $_POST['b_none_limit'] ?? '';
-        $b_sdate = $_POST['b_sdate'];
-
-        $b_sdate_view = $_POST['b_sdate_view'];
-        $b_edate_view = $_POST['b_edate_view'];
-
-        $b_edate = $_POST['b_edate'];
-        $b_desc = $_POST['b_desc'] ?? '';
-        $b_contents = $_POST['content'] ?? '';
-
-        $uploads_dir = $UPLOAD_DIR_BANNER;
-
-        $uploadResult = isset($_FILES['b_img']) ? imageUpload($uploads_dir, $_FILES['b_img'], '', false) : null;
-        $savedFile = $uploadResult['saved'] ?? '';
-
-        $uploadResult2 = isset($_FILES['b_img_mobile']) ? imageUpload($uploads_dir, $_FILES['b_img_mobile'], '', false) : null;
-        $savedFile2 = $uploadResult2['saved'] ?? '';
-
-        $uploadResult3 = isset($_FILES['b_poster_img']) ? imageUpload($uploads_dir, $_FILES['b_poster_img'], '', false) : null;
-        $savedFile3 = $uploadResult3['saved'] ?? '';
-
-        // 최대 index 조회
-        $query = "SELECT IFNULL(MAX(b_idx) + 1, 1) AS maxcnt FROM nb_banner WHERE sitekey = :sitekey AND b_loc = :b_loc AND b_location = :b_location";
-        $stmt = $pdo->prepare($query);
-        $stmt->execute(['sitekey' => $NO_SITE_UNIQUE_KEY, 'b_loc' => $b_loc, 'b_location' => $b_location]);
-        $data = $stmt->fetch(PDO::FETCH_ASSOC);
-        $maxcnt = $data['maxcnt'] ?? 1;
-
-        // 배너 추가
-		$query = "INSERT INTO nb_banner 
-			(sitekey, b_loc, b_img, b_img_mobile, b_poster_img, b_link, b_target, b_view, b_title, b_idx, 
-			b_none_limit, b_none_view, b_sdate, b_edate, b_sdate_view, b_edate_view, b_rdate, b_desc, b_contents, b_location) 
-		VALUES 
-			(:sitekey, :b_loc, :b_img, :b_img_mobile, :b_poster_img, :b_link, :b_target, :b_view, :b_title, :b_idx, 
-			:b_none_limit, :b_none_view, :b_sdate, :b_edate, :b_sdate_view, :b_edate_view, NOW(), :b_desc, :b_contents, :b_location)";
-
-        $stmt = $pdo->prepare($query);
-
-		$result = $stmt->execute([
-			'sitekey' => $NO_SITE_UNIQUE_KEY,
-			'b_loc' => $b_loc,
-			'b_img' => $savedFile,
-			'b_img_mobile' => $savedFile2,
-			'b_poster_img' => $savedFile3,
-			'b_link' => $b_link,
-			'b_target' => $b_target,
-			'b_view' => $b_view,
-			'b_title' => $b_title,
-			'b_idx' => $maxcnt,
-			'b_none_limit' => $b_none_limit,
-			'b_none_view' => $b_none_view, // ✅ 바인딩 추가
-			'b_sdate' => $b_sdate,
-			'b_edate' => $b_edate,
-			'b_sdate_view' => $b_sdate_view,
-			'b_edate_view' => $b_edate_view,
-			'b_desc' => $b_desc,
-			'b_contents' => $b_contents,
-			'b_location' => $b_location,
-		]);
-
-
-        echo json_encode(["result" => $result ? "success" : "fail", "msg" => $result ? "정상적으로 등록되었습니다." : "처리 중 문제가 발생하였습니다. [Error-DB]"]);
-    } catch (Exception $e) {
-        echo json_encode(["result" => "fail", "msg" => "Error: " . blue_safe_error($e)]);
+if(($_SERVER['REQUEST_METHOD']??'GET')!=='POST')bannerReply(false,'POST 요청만 허용됩니다.',405);
+$mode=(string)($_POST['mode']??'');
+try {
+    if(!in_array($mode,['save','edit','delete'],true))throw new InvalidArgumentException('잘못된 요청입니다.');
+    $current=[];$no=0;
+    if($mode!=='save'){
+        $no=filter_var($_POST['no']??null,FILTER_VALIDATE_INT);if(!$no||$no<1)bannerReply(false,'정보를 찾을 수 없습니다.',404);
+        $stmt=$pdo->prepare('SELECT * FROM nb_banner WHERE no=? AND sitekey=?');$stmt->execute([$no,$NO_SITE_UNIQUE_KEY]);$current=$stmt->fetch(PDO::FETCH_ASSOC);
+        if(!$current)bannerReply(false,'정보를 찾을 수 없습니다.',404);
     }
-
-} elseif ($mode === "edit") {
-    $no = $_POST['no'] ?? '';
-    $b_loc = $_POST['b_loc'] ?? '';
-    $b_link = $_POST['b_link'] ?? '';
-    $b_target = $_POST['b_target'] ?? '';
-    $b_view = $_POST['b_view'] ?? '';
-    $b_title = $_POST['b_title'] ?? '';
-    $b_idx = $_POST['b_idx'] ?? '';
-    $b_none_view = $_POST['b_none_view'] ?? '';
-    $b_none_limit = $_POST['b_none_limit'] ?? '';
-    $b_sdate = $_POST['b_sdate'];
-    $b_edate = $_POST['b_edate'];
-    $b_sdate_view = $_POST['b_sdate_view'];
-    $b_edate_view = $_POST['b_edate_view'];
-    $b_desc = $_POST['b_desc'] ?? '';
-    $b_contents = $_POST['content'] ?? '';
-
-		/// 기존 데이터 조회
-	$query = "SELECT b_img, b_img_mobile, b_poster_img FROM nb_banner WHERE no = :no";
-	$stmt = $pdo->prepare($query);
-	$stmt->execute(['no' => $no]);
-	$data = $stmt->fetch(PDO::FETCH_ASSOC);
-
-	if (!$data) {
-		echo json_encode(["result" => "fail", "msg" => "정보를 찾을 수 없습니다."]);
-		exit;
-	}
-
-	$uploads_dir = $UPLOAD_DIR_BANNER;
-
-	// 새 이미지 업로드 처리
-	$uploadResult = isset($_FILES['b_img']) && $_FILES['b_img']['error'] === UPLOAD_ERR_OK 
-		? imageUpload($uploads_dir, $_FILES['b_img'], '', false) 
-		: null;
-	$savedFile = $uploadResult['saved'] ?? $data['b_img']; // 기존 이미지 유지
-
-	$uploadResult2 = isset($_FILES['b_img_mobile']) && $_FILES['b_img_mobile']['error'] === UPLOAD_ERR_OK
-		? imageUpload($uploads_dir, $_FILES['b_img_mobile'], '', false)
-		: null;
-	$savedFile2 = $uploadResult2['saved'] ?? $data['b_img_mobile']; // 기존 이미지 유지
-
-	// ✅ 업데이트 쿼리 실행 전에 기존 파일 삭제 조건 분기 처리
-	$query = "UPDATE nb_banner SET 
-				b_loc = :b_loc, b_img = :b_img, b_img_mobile = :b_img_mobile,
-				b_link = :b_link, b_target = :b_target, b_view = :b_view, 
-				b_title = :b_title, b_idx = :b_idx, b_none_limit = :b_none_limit, 
-				b_none_view = :b_none_view, b_sdate = :b_sdate, b_edate = :b_edate, 
-				b_sdate_view = :b_sdate_view, b_edate_view = :b_edate_view, b_desc = :b_desc, 
-				b_contents = :b_contents, b_location = :b_location 
-			  WHERE no = :no";
-
-	$stmt = $pdo->prepare($query);
-	$result = $stmt->execute([
-		'b_loc' => $b_loc, 
-		'b_img' => $savedFile, 
-		'b_img_mobile' => $savedFile2, 
-		'b_link' => $b_link, 
-		'b_target' => $b_target, 
-		'b_view' => $b_view,
-		'b_title' => $b_title, 
-		'b_idx' => $b_idx, 
-		'b_none_limit' => $b_none_limit, 
-		'b_none_view' => $b_none_view, 
-		'b_sdate' => $b_sdate,
-		'b_edate' => $b_edate,
-		'b_sdate_view' => $b_sdate_view,
-		'b_edate_view' => $b_edate_view,
-		'b_desc' => $b_desc, 
-		'b_contents' => $b_contents,
-		'b_location' => $b_location, 
-		'no' => $no
-	]);
-
-	// ✅ 기존 파일 삭제 (업로드 성공 시에만)
-	if ($result) {
-		if ($uploadResult && $savedFile !== $data['b_img'] && !empty($data['b_img'])) {
-			$old = \Security\UploadGuard::pathInside($uploads_dir, (string)$data['b_img']);
-			if ($old !== null) unlink($old);
-		}
-		if ($uploadResult2 && $savedFile2 !== $data['b_img_mobile'] && !empty($data['b_img_mobile'])) {
-			$old = \Security\UploadGuard::pathInside($uploads_dir, (string)$data['b_img_mobile']);
-			if ($old !== null) unlink($old);
-		}
-	}
-
-	echo json_encode(["result" => $result ? "success" : "fail", "msg" => $result ? "정상적으로 수정되었습니다." : "처리 중 문제가 발생하였습니다. [Error-DB]"]);
-
-} elseif ($mode === "delete") {
-    $no = $_POST['no'] ?? '';
-
-    $query = "DELETE FROM nb_banner WHERE no = :no";
-    $stmt = $pdo->prepare($query);
-    $result = $stmt->execute(['no' => $no]);
-
-    echo json_encode(["result" => $result ? "success" : "fail", "msg" => $result ? "정상적으로 삭제되었습니다." : "삭제 중 오류 발생"]);
+    if($mode==='delete'){
+        $stmt=$pdo->prepare('DELETE FROM nb_banner WHERE no=? AND sitekey=?');$stmt->execute([$no,$NO_SITE_UNIQUE_KEY]);
+        foreach($fileColumns as $column)$files->retire($current[$column]??null);
+        $files->commit();bannerReply(true,'정상적으로 삭제되었습니다.');
+    }
+    $input=array_replace($_POST,\Security\BannerInput::validate($_POST));
+    $values=['b_loc'=>(string)($input['b_loc']??''),'b_link'=>$input['b_link'],'b_target'=>$input['b_target'],'b_view'=>(string)($input['b_view']??''),'b_title'=>trim((string)($input['b_title']??'')),
+        'b_none_limit'=>$input['b_none_limit'],'b_none_view'=>$input['b_none_view'],'b_sdate'=>$input['b_sdate'],'b_edate'=>$input['b_edate'],'b_sdate_view'=>$input['b_sdate_view'],'b_edate_view'=>$input['b_edate_view'],
+        'b_desc'=>(string)($input['b_desc']??''),'b_contents'=>(string)($input['content']??''),'b_location'=>(string)($input['b_location']??'')];
+    if($values['b_title']===''||$values['b_loc']==='')throw new InvalidArgumentException('배너 제목과 노출 위치를 입력하세요.');
+    if(isset($input['b_idx'])&&!is_scalar($input['b_idx']))throw new InvalidArgumentException('노출 순위를 확인하세요.');
+    $rank=trim((string)($input['b_idx']??''));
+    if($rank!==''){$values['b_idx']=filter_var($rank,FILTER_VALIDATE_INT,['options'=>['min_range'=>0,'max_range'=>2147483647]]);if($values['b_idx']===false)throw new InvalidArgumentException('노출 순위를 확인하세요.');}
+    elseif($mode==='save'){$stmt=$pdo->prepare('SELECT IFNULL(MAX(b_idx)+1,1) FROM nb_banner WHERE sitekey=? AND b_loc=?');$stmt->execute([$NO_SITE_UNIQUE_KEY,$values['b_loc']]);$values['b_idx']=(int)$stmt->fetchColumn();}
+    else $values['b_idx']=(int)$current['b_idx'];
+    foreach($fileColumns as $column){
+        $result=isset($_FILES[$column])?imageUpload($uploads_dir,$_FILES[$column],'',false,['jpg','jpeg','png','gif','webp']):null;$saved=(string)($result['saved']??'');
+        if($saved!==''){$values[$column]=$saved;$files->track($saved);if($mode==='edit')$files->retire($current[$column]??null);}
+        elseif($mode==='save')$values[$column]='';
+    }
+    if($mode==='save'){$values['sitekey']=$NO_SITE_UNIQUE_KEY;$columns=array_keys($values);$sql='INSERT INTO nb_banner (`'.implode('`,`',$columns).'`,b_rdate) VALUES (:'.implode(',:',$columns).',NOW())';}
+    else{$sql='UPDATE nb_banner SET '.implode(',',array_map(static function($column){return '`'.$column.'`=:'.$column;},array_keys($values))).' WHERE no=:no AND sitekey=:sitekey';$values['no']=$no;$values['sitekey']=$NO_SITE_UNIQUE_KEY;}
+    $stmt=$pdo->prepare($sql);$stmt->execute($values);$files->commit();bannerReply(true,$mode==='save'?'정상적으로 등록되었습니다.':'정상적으로 수정되었습니다.');
+}catch(Throwable $e){
+    $files->rollback();
+    if($e instanceof InvalidArgumentException||($e instanceof RuntimeException&&!($e instanceof PDOException)))bannerReply(false,$e->getMessage(),400);
+    error_log('Banner operation failed: '.blue_safe_error($e));bannerReply(false,'요청을 처리할 수 없습니다. 다시 시도하세요.',500);
 }
-
-?>
-
-

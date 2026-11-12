@@ -3,6 +3,14 @@
 <html lang="ko">
 <?php
 
+$boardText = static function ($value): string {
+    return htmlspecialchars(html_entity_decode((string) $value, ENT_QUOTES | ENT_HTML5, 'UTF-8'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+};
+$boardAuthor = static function ($value): string {
+    $name = html_entity_decode((string) $value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    return htmlspecialchars(\Security\PiiMask::name($name), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+};
+
 $depthnum = 1;
 $pagenum = 2;
 
@@ -87,6 +95,9 @@ try {
     $stmt->execute();
 
     $arrResultSet = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($arrResultSet as $displayedPost) {
+        \Security\PrivacyLogger::record('view', 'board', (int) $displayedPost['no'], html_entity_decode((string) $displayedPost['write_name'], ENT_QUOTES | ENT_HTML5, 'UTF-8'), '게시판 작성자 목록 열람');
+    }
     $rnumber = $totalCnt - ($listCurPage - 1) * $listRowCnt;
     $searchParam = http_build_query([
         'board_no' => $board_no,
@@ -300,17 +311,17 @@ include_once "../../inc/admin.js.php";
                                                         </div>
                                                     </td>
                                                     <td><?= $rnumber-- ?></td>
-                                                    <td><?= htmlspecialchars_decode($v['board_name']) ?></td>
+                                                    <td><?= $boardText($v['board_name']) ?></td>
                                                     <td><?= $v['is_notice'] == "Y" ? "<span class='no-btn no-btn--notice'> 공지 </span>" : "" ?></td>
 													<td>
 														<span class="no-btn <?= ($v['is_view'] === 'Y') ? 'no-btn--notice' : ' no-btn--check'; ?>">
 															<?= ($v['is_view'] === 'Y') ? '노출' : '숨김'; ?>
 														</span>
 													</td>
-                                                    <td><a href="./board.view.php?no=<?= $v['no'] ?>&<?= $searchParam ?>"><?= htmlspecialchars_decode($v['title']) ?></a></td>
-                                                    <td><?= htmlspecialchars_decode($v['write_name']) ?></td>
-                                                    <td><?= htmlspecialchars_decode($v['regdate']) ?></td>
-                                                    <td><?= htmlspecialchars_decode($v['read_cnt']) ?></td>
+                                                    <td><a href="./board.view.php?no=<?= $v['no'] ?>&<?= $searchParam ?>"><?= $boardText($v['title']) ?></a></td>
+                                                    <td data-pii-lock><?= $boardAuthor($v['write_name']) ?></td>
+                                                    <td><?= $boardText($v['regdate']) ?></td>
+                                                    <td><?= $boardText($v['read_cnt']) ?></td>
                                                     <td>
 														 <div class="no-table-role">
                                                             <span class="no-role-btn">

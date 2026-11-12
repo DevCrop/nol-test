@@ -16,23 +16,15 @@ $csrf = htmlspecialchars(\Security\Csrf::token(), ENT_QUOTES, 'UTF-8');
 </head><body class="no-sub-body"><div class="no-sub-wrap">
 <header class="no-login-header"><h1 class="no-login-logo"><img src="/resource/images/admin/logo.png" alt="나인원랩스"></h1></header>
 <main id="no-main"><div class="no-login-wrap"><div class="no-login-content">
-<div class="no-login-top"><h2 class="no-login-title">이메일 인증</h2><p class="no-login-desc"><?php if ($sent): ?><?=htmlspecialchars(\Security\Mfa::maskedEmail(), ENT_QUOTES, 'UTF-8')?>로 보낸<br>6자리 인증번호를 입력하세요.<?php else: ?>계정에 등록된 이메일을 입력하세요.<br>해당 주소로 인증번호를 보내드립니다.<?php endif; ?></p></div>
+<div class="no-login-top"><h2 class="no-login-title">이메일 인증</h2><p class="no-login-desc"><?php if ($sent): ?><?=htmlspecialchars(\Security\Mfa::maskedEmail(), ENT_QUOTES, 'UTF-8')?>로 보낸<br>6자리 인증번호를 입력하세요.<?php else: ?>등록된 <?=htmlspecialchars(\Security\Mfa::maskedEmail(), ENT_QUOTES, 'UTF-8')?>로<br>인증번호를 보내지 못했습니다. 다시 요청해 주세요.<?php endif; ?></p></div>
 <?php if ($error !== ''): ?><p class="no-login-error show" role="alert"><?=htmlspecialchars($error, ENT_QUOTES, 'UTF-8')?></p><?php endif; ?>
-<?php if (!$sent): ?>
-<form method="post" action="<?=blue_admin_base()?>/lib/login/mfa.email.php" autocomplete="off">
-<input type="hidden" name="_csrf" value="<?=$csrf?>">
-<div class="no-login-control"><div class="no-auth-field"><label for="mfa_email">이메일</label><div class="no-auth-input"><i class="bx bxs-envelope" aria-hidden="true"></i><input type="email" id="mfa_email" name="mfa_email" placeholder="name@example.com" required maxlength="190" autocomplete="email"></div></div></div>
-<div class="no-login-bot"><div class="no-form-btn"><button type="submit" class="no-btn--submit">인증번호 받기</button></div><small><a href="<?=blue_admin_base()?>/index.php">로그인으로</a></small></div>
-</form>
-<?php else: ?>
 <form method="post" action="<?=blue_admin_base()?>/lib/login/mfa.process.php" autocomplete="off">
 <input type="hidden" name="_csrf" value="<?=$csrf?>">
 <div class="no-mfa-timer" aria-live="polite">인증 유효시간 <strong id="mfa-countdown" data-seconds="<?=max(0,(int)$_SESSION['mfa_pending']['expires']-time())?>">--:--</strong></div>
 <div class="no-login-control"><div class="no-auth-field"><label for="code">인증번호</label><div class="no-auth-input"><i class="bx bxs-key" aria-hidden="true"></i><input id="code" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" placeholder="6자리 인증번호" required></div></div></div>
-<div class="no-login-bot"><div class="no-form-btn"><button class="no-btn--submit" type="submit">확인</button></div></div>
+<div class="no-login-bot"><div class="no-form-btn"><button class="no-btn--submit" type="submit" <?=$sent ? '' : 'disabled'?>>확인</button></div></div>
 </form>
-<form method="post" action="<?=blue_admin_base()?>/lib/login/mfa.resend.php" class="no-mfa-resend"><input type="hidden" name="_csrf" value="<?=$csrf?>"><button type="submit">인증번호 다시 받기</button><a href="<?=blue_admin_base()?>/index.php">로그인으로</a></form>
-<?php endif; ?>
+<form method="post" action="<?=blue_admin_base()?>/lib/login/mfa.resend.php" class="no-mfa-resend"><input type="hidden" name="_csrf" value="<?=$csrf?>"><button type="submit"><?=$sent ? '인증번호 다시 받기' : '인증번호 받기'?></button><a href="<?=blue_admin_base()?>/index.php">로그인으로</a></form>
 </div></div></main><footer class="no-login-footer"><span>Copyright © nineonelabs.co.kr All rights reserved.</span></footer></div>
 <script>
 (() => {

@@ -38,7 +38,8 @@ final class TemporaryAccountService
             return ['id'=>$id,'uid'=>$row['uid'],'temporary_password'=>$plain,'expires_at'=>$deadline];
         }catch(\Throwable $e){if($this->db->inTransaction())$this->db->rollBack();throw $e;}
     }
-    public function change(int $id,string $token,string $old,string $password,string $confirm): void
+    /** Returns a server-only continuation token for a temporary-password transition. */
+    public function change(int $id,string $token,string $old,string $password,string $confirm): ?string
     {
         AccountValidator::password($password,$confirm);$hash=password_hash($password,PASSWORD_DEFAULT);
         $ownsTransaction = !$this->db->inTransaction();
@@ -52,8 +53,10 @@ final class TemporaryAccountService
             if(empty($row['password_must_change']) && !$matches($old))throw new \RuntimeException('현재 비밀번호가 올바르지 않습니다.');
             if($matches($password))throw new \RuntimeException('기존 비밀번호와 다른 비밀번호를 입력하세요.');
             if(stripos($password,(string)$row['uid'])!==false)throw new \RuntimeException('비밀번호에 아이디를 포함할 수 없습니다.');
-            $this->db->prepare("UPDATE nb_admin SET upwd=?,password_changed_at=NOW(),password_must_change=0,temporary_password_expires_at=NULL,login_token=NULL,updated_at=NOW() WHERE no=? AND sitekey='BLUESQ'")->execute([$hash,$id]);
+            $continuation = !empty($row['password_must_change']) ? bin2hex(random_bytes(32)) : null;
+            $this->db->prepare("UPDATE nb_admin SET upwd=?,password_changed_at=NOW(),password_must_change=0,temporary_password_expires_at=NULL,login_token=?,updated_at=NOW() WHERE no=? AND sitekey='BLUESQ'")->execute([$hash,$continuation,$id]);
             if ($ownsTransaction) $this->db->commit();
+            return $continuation;
         }catch(\Throwable $e){if($this->db->inTransaction())$this->db->rollBack();throw $e;}
     }
     private function locked(int $id): array

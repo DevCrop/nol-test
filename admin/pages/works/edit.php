@@ -20,16 +20,10 @@ function escape($value) {
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 
-$id = $_GET['id'] ?? null; 
-if (!$id) {
-    echo "<script>
-        alert('정보를 찾을 수 없습니다.');
-        history.back();
-    </script>";
-    exit;
-}
-
-$data = DB::query("select * from nb_works where id = {$id}");
+try { $id=\Security\WorksInput::id($_GET['id']??null); }
+catch (RuntimeException $e) { http_response_code(404); exit('공연 정보를 찾을 수 없습니다.'); }
+$statement=$db->prepare('SELECT * FROM nb_works WHERE id=?');$statement->execute([$id]);$data=$statement->fetchAll(PDO::FETCH_ASSOC);
+if(!$data){http_response_code(404);exit('공연 정보를 찾을 수 없습니다.');}
 
 $depthnum = 6;
 $pagenum = 1;
@@ -267,7 +261,7 @@ include_once "../../inc/admin.js.php";
 								<div class="no-admin-block">
 									<h3 class="no-admin-title"><label for="price">좌석 별 가격</label></h3>
 									<div class="no-admin-content">
-										<textarea name="price"  id="price"><?=$data[0]['price']?></textarea>
+										<textarea name="price" id="price"><?=escape($data[0]['price'] ?? '')?></textarea>
 									</div>
 								</div>
 
@@ -369,7 +363,7 @@ include_once "../../inc/admin.js.php";
                                     </h3>
                                     <div class="no-admin-content">
                                         <div class="no-admin-check">
-                                            <textarea name="contents" id="contents"><?=$data[0]['contents']?></textarea>
+                                            <textarea name="contents" id="contents"><?=escape($data[0]['contents'] ?? '')?></textarea>
                                         </div>
                                     </div>
                                 </div>	

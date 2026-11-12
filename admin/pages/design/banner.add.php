@@ -359,7 +359,7 @@
 
                                 <div class="no-items-center center">
                                     <a href="./banner.list.php" class="no-btn no-btn--big no-btn--normal">목록</a>
-                                    <a href="javascript:void(0);" class="no-btn no-btn--big no-btn--main" onClick="doRegSave();">수정</a>
+                                    <a href="javascript:void(0);" class="no-btn no-btn--big no-btn--main" onClick="doRegSave();">등록</a>
                                 </div>
                             </div>
                         </div>

@@ -1,4 +1,6 @@
 <?php
+$menuViewer = \Security\AuthSession::currentAccount();
+$menuAllowed = static function (string $menu) use ($menuViewer): bool { return \Security\AdminAcl::allows($menuViewer, $menu); };
 // 초기화
 $gnbActive = array_fill(1, 10, "");
 $pageActive = [
@@ -55,6 +57,7 @@ switch ($depthnum) {
     <div class="no-sidebar-menu">
         <nav class="no-sidebar-menu__inner">
             <ul class="no-menu-list">
+                <?php if ($menuAllowed('board')): ?>
                 <li class="no-menu-item <?=$gnbActive[1]?>">
                     <span class="no-menu-link">
                         <span class="no-menu-icon"><i class="bx bx-list-ul"></i></span>
@@ -70,7 +73,9 @@ switch ($depthnum) {
                         </li>
                     </ul>
                 </li>
+                <?php endif; ?>
 
+                <?php if ($menuAllowed('banner') || $menuAllowed('popup')): ?>
                 <li class="no-menu-item <?=$gnbActive[2]?>">
                     <span class="no-menu-link">
                         <span class="no-menu-icon"><i class="bx bx-color"></i></span>
@@ -78,40 +83,50 @@ switch ($depthnum) {
                         <span class="no-menu-arrow"><i class="bx bx-chevron-down"></i></span>
                     </span>
                     <ul class="no-menu-sub">
+                        <?php if ($menuAllowed('banner')): ?>
                         <li class="no-menu-item">
                             <a href="<?=$NO_IS_SUBDIR?><?=blue_admin_base()?>/pages/design/banner.list.php" class="no-menu-link <?=$pageActive['design'][0]?>">
                                 <span class="no-menu-bullet"><span class="no-menu-bullet-dot"></span></span>
                                 <span class="no-menu-title">배너 관리</span>
                             </a>
                         </li>
+                        <?php endif; ?>
+                        <?php if ($menuAllowed('popup')): ?>
                         <li class="no-menu-item">
                             <a href="<?=$NO_IS_SUBDIR?><?=blue_admin_base()?>/pages/design/popup.list.php" class="no-menu-link <?=$pageActive['design'][1]?>">
                                 <span class="no-menu-bullet"><span class="no-menu-bullet-dot"></span></span>
                                 <span class="no-menu-title">팝업 관리</span>
                             </a>
                         </li>
+                        <?php endif; ?>
                     </ul>
                 </li>
+                <?php endif; ?>
 					
 
+                <?php if ($menuAllowed('opera')): ?>
 				<li class="no-menu-item <?=$gnbActive[5]?>">
-					<a href="<?=$NO_IS_SUBDIR?><?=blue_admin_base()?>/pages/opera/" class="no-menu-link <?=$gnbActive[5]?>">
+					<a href="<?=$NO_IS_SUBDIR?><?=blue_admin_base()?>/pages/opera/index.php" class="no-menu-link <?=$gnbActive[5]?>">
 						<span class="no-menu-icon"><i class='bx bx-glasses-alt'></i></span>
 						<span class="no-menu-title">오페라글라스 링크</span>
 					</a>
 				</li>
+                <?php endif; ?>
 	
 
+                <?php if ($menuAllowed('works')): ?>
 				<li class="no-menu-item <?=$gnbActive[6]?>">
-					<a href="<?=$NO_IS_SUBDIR?><?=blue_admin_base()?>/pages/works/" class="no-menu-link <?=$gnbActive[6]?>">
+					<a href="<?=$NO_IS_SUBDIR?><?=blue_admin_base()?>/pages/works/index.php" class="no-menu-link <?=$gnbActive[6]?>">
 						<span class="no-menu-icon"><i class='bx bxs-party'></i></span>
 						<span class="no-menu-title">What's ON</span>
 					</a>
 				</li>
+                <?php endif; ?>
 
 
 
-				<li class="no-menu-item <?=$gnbActive_3?>">
+                <?php if ($menuAllowed('rental')): ?>
+				<li class="no-menu-item <?=$gnbActive[3]?>">
 					  <span class="no-menu-link">
 							<span class="no-menu-icon"><i class="bx bx-phone-call"></i></span>
 							<span class="no-menu-title">대관</span>
@@ -132,8 +147,10 @@ switch ($depthnum) {
 							</li>
 						</ul>
 				</li>
+                <?php endif; ?>
 				
 
+                <?php if ($menuAllowed('setting')): ?>
                 <li class="no-menu-item <?=$gnbActive[4]?>">
                     <span class="no-menu-link">
                         <span class="no-menu-icon"><i class="bx bx-cog"></i></span>
@@ -141,12 +158,6 @@ switch ($depthnum) {
                         <span class="no-menu-arrow"><i class="bx bx-chevron-down"></i></span>
                     </span>
                     <ul class="no-menu-sub">
-                        <li class="no-menu-item">
-                            <a href="<?=$NO_IS_SUBDIR?><?=blue_admin_base()?>/pages/account/password.php" class="no-menu-link <?=basename($_SERVER['SCRIPT_NAME']) === 'password.php' ? 'active' : ''?>">
-                                <span class="no-menu-bullet"><span class="no-menu-bullet-dot"></span></span>
-                                <span class="no-menu-title">비밀번호 변경</span>
-                            </a>
-                        </li>
                         <li class="no-menu-item">
                             <a href="<?=$NO_IS_SUBDIR?><?=blue_admin_base()?>/pages/setting/site.config.php" class="no-menu-link <?=$pageActive['setting'][1]?>">
                                 <span class="no-menu-bullet"><span class="no-menu-bullet-dot"></span></span>
@@ -161,12 +172,15 @@ switch ($depthnum) {
                         </li>
                     </ul>
                 </li>
+                <?php endif; ?>
+                <?php if ($menuAllowed('statistics')): ?>
                 <li class="no-menu-item <?=$gnbActive[5]?>">
 					<a href="https://analytics.naver.com/summary/dashboard.html" class="no-menu-link <?=$gnbActive[6]?>" target="_blank">
 						<span class="no-menu-icon"><i class="bx bx-bar-chart-square"></i></span>
 						<span class="no-menu-title">접속통계</span>
 					</a>
 				</li>
+                <?php endif; ?>
 <?php
 $accountMenu = require __DIR__ . '/../config/account-menu.php';
 $viewer = \Security\AuthSession::currentAccount();

@@ -34,22 +34,52 @@ final class AuthSession
             }
             header('Location: ' . blue_admin_url('/admin/pages/account/password.php')); exit;
         }
+        AdminAcl::enforce($row);
+    }
+
+    /** Continue the same fully authenticated login after its temporary credential changes. */
+    public static function continueAfterPasswordChange(int $no, string $token): array
+    {
+        if ($no < 1 || (int)($_SESSION['no_adm_login_no'] ?? 0) !== $no || empty($_SESSION['no_adm_login_token']) || $token === '') {
+            throw new \RuntimeException('인증 세션이 없습니다. 다시 로그인하세요.');
+        }
+        $row = AdminAccount::findByNo($no);
+        if (!$row || !hash_equals((string)($row['login_token'] ?? ''), $token)
+            || (string)($_SESSION['no_adm_login_uid'] ?? '') !== (string)$row['uid'] || self::passwordDue($row)) {
+            throw new \RuntimeException('계정 정보가 변경되었습니다. 다시 로그인하세요.');
+        }
+        AdminAccount::assertLoginAllowed($row);
+        if (session_status() !== PHP_SESSION_ACTIVE || headers_sent() || !session_regenerate_id(true)) {
+            throw new \RuntimeException('인증 세션을 갱신하지 못했습니다. 다시 로그인하세요.');
+        }
+        // Discard previous CSRF/MFA/flash state; the old cookie and DB token cannot be reused.
+        $_SESSION = [
+            'no_adm_login_no' => $no, 'no_adm_login_uid' => (string)$row['uid'],
+            'no_adm_login_uname' => (string)$row['uname'], 'no_adm_login_token' => $token,
+            'no_adm_last_activity' => time(), 'no_adm_password_change_required' => false,
+        ];
+        Csrf::token();
+        self::$currentAccount = $row;
+        return $row;
     }
 
     public static function logout(): void
     {
         self::$currentAccount = [];
         $no = (int) ($_SESSION['no_adm_login_no'] ?? 0); $token = (string) ($_SESSION['no_adm_login_token'] ?? '');
-        if ($no && $token !== '') {
-            $stmt = \DB::getInstance()->prepare('UPDATE nb_admin SET login_token = NULL WHERE no = ? AND login_token = ?');
-            $stmt->execute([$no, $token]);
+        try {
+            if ($no && $token !== '') {
+                $stmt = \DB::getInstance()->prepare('UPDATE nb_admin SET login_token = NULL WHERE no = ? AND login_token = ?');
+                $stmt->execute([$no, $token]);
+            }
+        } finally {
+            $_SESSION = [];
+            if (ini_get('session.use_cookies')) {
+                $p = session_get_cookie_params();
+                setcookie(session_name(), '', time() - 3600, $p['path'], $p['domain'], $p['secure'], $p['httponly']);
+            }
+            session_destroy();
         }
-        $_SESSION = [];
-        if (ini_get('session.use_cookies')) {
-            $p = session_get_cookie_params();
-            setcookie(session_name(), '', time() - 3600, $p['path'], $p['domain'], $p['secure'], $p['httponly']);
-        }
-        session_destroy();
     }
 
     public static function deny(string $message): void

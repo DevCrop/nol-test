@@ -1,206 +1,54 @@
-
-
-
-
-
-function doRegSave(){
-
-
-	if($("#b_loc").val() == ""){
-		alert("배너 노출 위치를 선택해주세요");
-		$("#b_loc").focus();
-		return;
-	}
-
-	if($("#b_title").val() == ""){
-		alert("배너 제목을 입력해주세요");
-		$("#b_title").focus();
-		return;
-	}
-		
-	if($("#b_img").val() == ""){
-		alert("배너 이미지를 선택 등록해주세요");
-		$("#b_img").focus();
-		return;
-	}
-
-	if($("#b_none_limit").val() == "N"){
-		
-		if($("#b_sdate").val() == "" || $("#b_edate").val() == ""){
-			alert("노출 기간을 선택해주세요.");
-			$("#b_sdate").focus();
-			return;
-		}
-	
-	}
-
-	$("#mode").val("save");
-
-	//에디터 적용
-    submitContents();
-
-	var params = jQuery("#frm").serialize();
-	
-	// Get form
-	var form = $('#frm')[0];
-
-	// Create an FormData object 
-	var data = new FormData(form);
-
-	$.ajax({
-		type: "POST",
-		enctype: 'multipart/form-data',
-		url:"./ajax/banner.process.php",
-		data: data,
-		processData: false,
-		contentType: false,
-		cache: false,
-		success: function (data) {
-
-			var jsonData = $.parseJSON(data);
-
-			if(jsonData.result == "fail"){
-				alert(jsonData.msg);
-			}else if(jsonData.result == "success"){
-				alert(jsonData.msg);
-				location.href = './banner.list.php';
-			}
-
-		},
-		error: function (e) {
-
-		 
-
-		},
-		complete : function() {
-			$("#process-loading").hide();
-		}
-	});
-
-
-
-
+/* Keep the legacy inline handlers while sharing one request state per screen. */
+var designPending = false;
+function designSend(data, multipart) {
+    if (designPending) return;
+    designPending = true;
+    $('#frm').attr('aria-busy', 'true');
+    $.ajax({
+        type: 'POST', url: './ajax/banner.process.php', data: data,
+        dataType: 'json', cache: false,
+        processData: !multipart, contentType: multipart ? false : 'application/x-www-form-urlencoded; charset=UTF-8',
+        success: function (response) {
+            alert(response.msg || '처리 결과를 확인할 수 없습니다.');
+            if (response.result === 'success') location.href = './banner.list.php';
+        },
+        error: function (xhr) {
+            alert(xhr.responseJSON && (xhr.responseJSON.msg || xhr.responseJSON.message) || '처리 중 문제가 발생했습니다. 다시 시도해주세요.');
+        },
+        complete: function () {
+            designPending = false;
+            $('#frm').removeAttr('aria-busy');
+            $('#process-loading').hide();
+        }
+    });
+}
+function designRequired(selector, message) {
+    if (!String($(selector).val() || '').trim()) { alert(message); $(selector).focus(); return false; }
+    return true;
+}
+function designPeriod(flag, start, end) {
+    if ($('input[name="' + flag + '"]:checked').val() !== 'N') return true;
+    var from = $(start).val(), to = $(end).val();
+    if (!from || !to) { alert('노출 기간을 선택해주세요.'); $(from ? end : start).focus(); return false; }
+    if (from > to) { alert('종료일은 시작일 이후로 선택해주세요.'); $(end).focus(); return false; }
+    return true;
+}
+function doDelete(no) {
+    if (designPending || !confirm('정말 삭제하시겠습니까?')) return;
+    designSend({ mode: 'delete', no: no || $('#no').val() }, false);
 }
 
-
-function doEditSave(){
-	
-	if($("#b_loc").val() == ""){
-		alert("배너 노출 위치를 선택해주세요");
-		$("#b_loc").focus();
-		return;
-	}
-
-	if($("#b_title").val() == ""){
-		alert("배너 제목을 입력해주세요");
-		$("#b_title").focus();
-		return;
-	}
-		/*
-	if($("#b_img").val() == ""){
-		alert("배너 이미지를 선택 등록해주세요");
-		$("#b_img").focus();
-		return;
-	}*/
-
-	if($("#b_none_limit").val() == "N"){
-		
-		if($("#b_sdate").val() == "" || $("#b_edate").val() == ""){
-			alert("노출 기간을 선택해주세요.");
-			$("#b_sdate").focus();
-			return;
-		}
-	
-	}
-
-	$("#mode").val("edit");
-
-	//에디터 적용
-    submitContents();
-
-	var params = jQuery("#frm").serialize();
-	
-	
-	// Get form
-	var form = $('#frm')[0];
-
-	// Create an FormData object 
-	var data = new FormData(form);
-
-	$.ajax({
-		type: "POST",
-		enctype: 'multipart/form-data',
-		url:"./ajax/banner.process.php",
-		data: data,
-		processData: false,
-		contentType: false,
-		cache: false,
-		success: function (data) {
-
-			var jsonData = $.parseJSON(data);
-
-			if(jsonData.result == "fail"){
-				alert(jsonData.msg);
-			}else if(jsonData.result == "success"){
-				alert(jsonData.msg);
-				location.href = './banner.list.php';
-			}
-
-		},
-		error: function (e) {
-
-
-		},
-		complete : function() {
-			
-		}
-	});
-
-
-
+function bannerSave(mode) {
+    if (designPending) return;
+    if (!designRequired('#b_loc', '배너 노출 위치를 선택해주세요.') ||
+        !designRequired('#b_title', '배너 제목을 입력해주세요.') ||
+        (mode === 'save' && !designRequired('#b_img', '배너 이미지를 선택해주세요.')) ||
+        !designPeriod('b_none_limit', '#b_sdate', '#b_edate') ||
+        !designPeriod('b_none_view', '#b_sdate_view', '#b_edate_view')) return;
+    $('#mode').val(mode);
+    if (typeof submitContents === 'function') submitContents();
+    designSend(new FormData($('#frm')[0]), true);
 }
-
-
-
-function doDelete(no){
-
-	var con = confirm("정말 삭제하시겠습니까?");
-	
-	var param = "";
-	if(no){
-		param = "no="+no+"&mode=delete";
-	}else{
-		param = "no="+$("#no").val()+"&mode=delete";
-	}
-
-	if(con){
-	
-		$.ajax({
-			type:"POST",
-			url:"./ajax/banner.process.php",
-			data:param,
-			cache: false,
-			dataType:"html",
-			success:function(data){
-			
-				var jsonData = $.parseJSON(data);
-
-				if(jsonData.result == "fail"){
-					alert(jsonData.msg);
-				}else if(jsonData.result == "success"){
-					alert(jsonData.msg);
-					location.href = './banner.list.php';
-				}
-			},
-			error:function(a,s){
-				alert("처리중 문제가 발생하였습니다.");
-				return;
-			}
-		});
-	
-	
-	}
-
-
-}
+function doRegSave() { bannerSave('save'); }
+function doEditSave() { bannerSave('edit'); }
 

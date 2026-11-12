@@ -230,6 +230,7 @@ include_once "../../inc/admin.js.php";
                                     <div class="no-admin-content">
                                         <label for="is_notice" class="no-items-center">
                                             <div class="no-checkbox-form">
+                                                <input type="hidden" name="is_notice" value="N" />
                                                 <input type="checkbox" name="is_notice" id="is_notice" class="no-input--detail" value="Y" />
                                                 <span><i class="bx bxs-check-square"></i></span>
                                             </div>

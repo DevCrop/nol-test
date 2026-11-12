@@ -27,8 +27,9 @@ $db = \DB::getInstance();
 $no = 0;
 try {
     $uid = 'arch_' . bin2hex(random_bytes(4));
-    $db->prepare("INSERT INTO nb_admin (sitekey,uid,upwd,uname,email,active_status,role_code,password_changed_at,last_login_at,created_at) VALUES ('BLUESQ',?,?,?,?,'Y','admin',NOW(),NOW(),NOW())")
-        ->execute([$uid, password_hash('Fixture!234', PASSWORD_DEFAULT), 'QA', $uid . '@example.com']);
+    $grants=json_encode(\Security\AdminAcl::normalize(['board'=>['view'=>true]]));
+    $db->prepare("INSERT INTO nb_admin (sitekey,uid,upwd,uname,email,active_status,role_code,password_changed_at,last_login_at,created_at,menu_permissions) VALUES ('BLUESQ',?,?,?,?,'Y','admin',NOW(),NOW(),NOW(),?)")
+        ->execute([$uid, password_hash('Fixture!234', PASSWORD_DEFAULT), 'QA', $uid . '@example.com',$grants]);
     $no = (int) $db->lastInsertId();
     $repository = new \Security\PdoAccountRepository($db, 'BLUESQ');
     $row = $repository->findByNo($no);

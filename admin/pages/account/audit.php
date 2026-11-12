@@ -1,11 +1,20 @@
 <?php
 require_once '../../../inc/lib/base.class.php';
 \Security\AdminAccount::requireSuper();
-$depthnum = 8; $pagenum = 1;
-$stmt = DB::getInstance()->prepare('SELECT created_at, actor_uid, actor_ip, action, entity, target_label, detail_json FROM nb_admin_audit WHERE sitekey = ? ORDER BY no DESC LIMIT 200');
-$stmt->execute(['BLUESQ']); $rows = (array) $stmt->fetchAll(PDO::FETCH_ASSOC);
+$depthnum=8; $pagenum=1; $adminLogStyles=true;
+$logKind='audit'; $logTitle='작업 이력';
+$logPath=blue_admin_base().'/pages/account/audit.php';
+try { $reader=new \Security\AdminLogReader(DB::getInstance(),$logKind); $logData=$reader->read($_GET); }
+catch (Throwable $error) {
+    error_log('Admin log read failed');
+    $logData=['filters'=>['from'=>'','to'=>'','entity'=>'','action'=>'','q'=>'','perpage'=>20],'errors'=>['기록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.'],'rows'=>[],'total'=>0,'page'=>1,'pages'=>1,'start'=>0,'end'=>0];
+}
+$e=static function($value):string{return htmlspecialchars((string)$value,ENT_QUOTES,'UTF-8');};
 include_once '../../inc/admin.title.php'; include_once '../../inc/admin.css.php'; include_once '../../inc/admin.js.php';
-$e = static function ($v): string { return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8'); };
-$actionLabel = ['create' => '생성', 'update' => '수정', 'delete' => '삭제'];
 ?>
-</head><body class="no-account-page"><div class="no-wrap"><?php include_once '../../inc/admin.header.php'; ?><main class="no-app no-container"><?php include_once '../../inc/admin.drawer.php'; ?><section class="no-content"><div class="no-toolbar"><div class="no-toolbar-container no-flex-stack"><div class="no-page-indicator"><h1 class="no-page-title">작업 이력</h1><div class="no-breadcrumb-container"><ul class="no-breadcrumb-list"><li class="no-breadcrumb-item"><span>계정 및 권한</span></li><li class="no-breadcrumb-item"><span>작업 이력</span></li></ul></div></div></div></div><div class="no-content-container"><div class="no-card"><div class="no-card-body"><div class="no-table-responsive"><table class="no-table"><thead><tr><th>일시</th><th>작업자</th><th>IP</th><th>작업</th><th>대상</th><th>내용</th></tr></thead><tbody><?php foreach ($rows as $row): ?><tr><td><?=$e($row['created_at'])?></td><td><?=$e($row['actor_uid'] ?: '-')?></td><td><?=$e($row['actor_ip'])?></td><td><?=$e($actionLabel[$row['action']] ?? $row['action'])?></td><td><?=$e($row['entity'] . ($row['target_label'] ? ' · ' . $row['target_label'] : ''))?></td><td><?php $authorityLines=($row['entity']==='account')?\AccountAccessPolicy::auditLines(json_decode((string)($row['detail_json']??''),true)?:[],[\Security\PiiMask::class,'identifier'],[\Security\PiiMask::class,'name']):[]; ?><?php if($authorityLines): ?><details><summary>계정·권한 변경 상세</summary><?=implode('<br>',array_map($e,$authorityLines))?></details><?php else: ?><?=$e($row['detail_json'] ?: '-')?><?php endif; ?></td></tr><?php endforeach; ?></tbody></table><?php if (!$rows): ?><p>기록이 없습니다.</p><?php endif; ?></div></div></div></div></section></main><?php include_once '../../inc/admin.footer.php'; ?></div></body></html>
+</head><body class="no-account-page no-admin-log-page"><div class="no-wrap">
+<?php include_once '../../inc/admin.header.php'; ?>
+<main class="no-app no-container"><?php include_once '../../inc/admin.drawer.php'; ?>
+<section class="no-content"><div class="no-toolbar"><div class="no-toolbar-container no-flex-stack"><div class="no-page-indicator"><h1 class="no-page-title"><?=$e($logTitle)?></h1><div class="no-breadcrumb-container"><ul class="no-breadcrumb-list"><li class="no-breadcrumb-item"><span>계정 및 권한</span></li><li class="no-breadcrumb-item"><span><?=$e($logTitle)?></span></li></ul></div></div></div></div>
+<div class="no-content-container"><?php include '../../inc/log.view.php'; ?></div>
+</section></main><?php include_once '../../inc/admin.footer.php'; ?></div></body></html>

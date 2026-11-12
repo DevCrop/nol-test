@@ -6,8 +6,13 @@ $db = DB::getInstance();
 
 if (!$popupClosed) {
     // 데이터베이스에서 팝업 데이터 가져오기
-    $sql = "SELECT * FROM nb_popup WHERE p_view = 'Y' ORDER BY p_idx ASC"; 
-    $stmt = $db->query($sql);
+    // This shared responsive slider has no active PC/mobile selector in the admin UI.
+    // Keep legacy p_loc values compatible; apply the actual site and schedule controls.
+    $sql = "SELECT * FROM nb_popup WHERE sitekey = :site AND p_view = 'Y'
+        AND (p_none_limit = 'Y' OR (p_sdate <= :start_day AND p_edate >= :end_day))
+        ORDER BY p_idx ASC, no ASC";
+    $stmt = $db->prepare($sql);
+    $stmt->execute(['site' => $NO_SITE_UNIQUE_KEY, 'start_day' => date('Y-m-d'), 'end_day' => date('Y-m-d')]);
     $popups = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $popupCount = count($popups); // 팝업 개수 가져오기
 
@@ -40,9 +45,16 @@ if (!$popupClosed) {
 						<?php foreach ($popups as $index => $popup): ?>
 							<li class="swiper-slide" data-index="<?= $index ?>">
 								<figure class="img-box">
-									<a href="<?= htmlspecialchars($popup['p_link'], ENT_QUOTES, 'UTF-8'); ?>" target="<?= $popup['p_target'] === '_none' ? '_self' : '_blank' ?>">
-										<img src="<?= htmlspecialchars('/uploads/popup/' . $popup['p_img'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?= htmlspecialchars($popup['p_title'], ENT_QUOTES, 'UTF-8'); ?>">
-									</a>
+                                    <?php
+                                    $popupLink = \Security\SafeLink::normalize((string)($popup['p_link'] ?? ''));
+                                    $popupTarget = (string)($popup['p_target'] ?? '');
+                                    $popupLinked = $popupLink !== '' && in_array($popupTarget, ['_self', '_blank'], true);
+                                    ?>
+                                    <?php if ($popupLinked): ?>
+                                    <a href="<?= htmlspecialchars($popupLink, ENT_QUOTES, 'UTF-8'); ?>" target="<?= $popupTarget ?>"<?= $popupTarget === '_blank' ? ' rel="noopener noreferrer"' : '' ?>>
+                                    <?php endif; ?>
+                                        <img src="<?= htmlspecialchars('/uploads/popup/' . basename((string)$popup['p_img']), ENT_QUOTES, 'UTF-8'); ?>" alt="<?= htmlspecialchars($popup['p_title'], ENT_QUOTES, 'UTF-8'); ?>">
+                                    <?php if ($popupLinked): ?></a><?php endif; ?>
 								</figure>
 							</li>
 						<?php endforeach; ?>

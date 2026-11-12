@@ -10,9 +10,11 @@ $pagenum = 1;
 $search_word = $_REQUEST['search_word'] ?? '';
 $category = $_REQUEST['category'] ?? '';
 $skin = $_REQUEST['skin'] ?? '';
+$_view = in_array($_POST['b_view'] ?? $_GET['b_view'] ?? '', ['Y','N'], true) ? ($_POST['b_view'] ?? $_GET['b_view']) : '';
 
 $mainqry = "WHERE a.sitekey = :sitekey";
 $params = [':sitekey' => $NO_SITE_UNIQUE_KEY];
+if ($_view !== '') { $mainqry .= ' AND a.view_yn = :view_yn'; $params[':view_yn'] = $_view; }
 
 if ($search_word) {
     $mainqry .= " AND REPLACE(a.title, ' ', '') LIKE :search_word";
@@ -131,7 +133,7 @@ include_once "../../inc/admin.js.php";
                                         <div class="no-radio-form no-list">
                                             <label for="input1">
                                                 <div class="no-radio-box">
-                                                    <input type="radio" name="b_view" id="input1" value="" <?= $_loc == "" ? 'checked' : '' ?> />
+                                                    <input type="radio" name="b_view" id="input1" value="" <?= $_view == "" ? 'checked' : '' ?> />
                                                     <span><i class="bx bx-radio-circle-marked"></i></span>
                                                 </div>
                                                 <span class="no-radio-text">전체</span>

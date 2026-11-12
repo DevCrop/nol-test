@@ -1,12 +1,13 @@
 document.addEventListener("DOMContentLoaded", function () {
   if (window.angular) return false;
 
-  const wrapper = document
-    .querySelector("#code_block-36-88")
-    .closest(".ct-div-block")
-    .querySelector(".swiper");
+  const anchor = document.querySelector("#code_block-36-88");
+  const container = anchor && anchor.closest(".ct-div-block");
+  const wrapper = container && container.querySelector(".swiper");
+  if (!wrapper) return;
 
   const swiperWrapper = wrapper.querySelector(".swiper-wrapper");
+  if (!swiperWrapper || swiperWrapper.children.length === 0) return;
   const slides = swiperWrapper.children;
 
   // 현재 슬라이드 개수 확인 (기본 3개)

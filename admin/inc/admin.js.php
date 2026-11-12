@@ -10,7 +10,8 @@
 <script type="text/javascript" src="<?=$NO_IS_SUBDIR?><?=blue_admin_base()?>/resource/js/script.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>" defer></script>
 <script type="text/javascript" src="<?=$NO_IS_SUBDIR?><?=blue_admin_base()?>/resource/js/form.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>" defer></script>
 <script type="text/javascript" src="<?=$NO_IS_SUBDIR?><?=blue_admin_base()?>/resource/js/theme.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>" defer></script>
-<script type="text/javascript" src="<?=$NO_IS_SUBDIR?><?=blue_admin_base()?>/resource/js/security.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>&auth=20261021" defer></script>
+<script src="<?=blue_admin_base()?>/resource/js/AdminAjaxRequest.js?v=<?=filemtime(__DIR__.'/../resource/js/AdminAjaxRequest.js')?>" defer></script>
+<script type="text/javascript" src="<?=$NO_IS_SUBDIR?><?=blue_admin_base()?>/resource/js/security.js?c=<?=filemtime(__DIR__.'/../resource/js/security.js')?>" defer></script>
 
 
 <!-- <script type="text/javascript" src="<?=$NO_IS_SUBDIR?>/resource/js/html5shiv.js?v=<?=$STATIC_FRONT_JS_MODIFY_DATE?>"></script>
@@ -40,5 +41,5 @@
 <script type="text/javascript" src="<?=$NO_IS_SUBDIR?>/resource/vendor/smarteditor2/smarteditor2.js" charset="utf-8"></script>
 <script src="<?=blue_admin_base()?>/resource/js/private-page.js?v=20261021" defer></script>
 <?php if (strpos((string)($_SERVER['SCRIPT_NAME']??''),'/admin/pages/account/')===0): ?>
-<script type="module" src="<?=blue_admin_base()?>/resource/js/account-credentials.js?v=20261027"></script>
+<script type="module" src="<?=blue_admin_base()?>/resource/js/account-credentials.js?v=<?=filemtime(__DIR__.'/../resource/js/account-credentials.js')?>"></script>
 <?php endif; ?>

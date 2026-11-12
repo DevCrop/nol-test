@@ -59,7 +59,9 @@ try {
 } catch (Throwable $e) {
     if(isset($db) && $db->inTransaction())$db->rollBack();
     if ($credentialMode) {
-        http_response_code($e instanceof PDOException ? 500 : 400);
+        // Gabia replaces HTTP 400 bodies with its HTML error document.
+        // Domain validation stays a JSON success:false response; real failures remain 500.
+        http_response_code($e instanceof RuntimeException && !($e instanceof PDOException) ? 200 : 500);
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(['success'=>false,'message'=>$e instanceof RuntimeException && !($e instanceof PDOException) ? $e->getMessage() : '계정 작업을 처리할 수 없습니다.']); exit;
     }

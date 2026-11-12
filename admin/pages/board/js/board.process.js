@@ -1,3 +1,11 @@
+var legacyAdminPending = false;
+function legacyAdminAjax(options) {
+    return window.BlueAdminAjax.send(options, {
+        get pending() { return legacyAdminPending; },
+        set pending(value) { legacyAdminPending = value; }
+    });
+}
+
 
 /*
 $(document).ready(function () {
@@ -222,343 +230,68 @@ function removeAttributes(dom) {
 		*/
     }
 }
-async function doRegSave() {
-    if ($('#board_no').val() == '') {
-        alert('글을 등록하시려는 게시판을 선택해주세요');
-        $('#board_no').focus();
-        return;
-    }
-
-    if ($('#title').val() == '') {
-        alert('제목을 입력해주세요');
-        $('#title').focus();
-        return;
-    }
-
-    if ($('#wirte_name').val() == '') {
-        alert('작성자 이름을 입력해주세요');
-        $('#wirte_name').focus();
-        return;
-    }
-
-	$('#mode').val('save'); 
-    const formElement = $('#frm');
-    var fd = new FormData(formElement[0]);
-    const content = fd.get('contents');
-
-
-    const domParser = new DOMParser();
-    const parsedDOM = domParser.parseFromString(content, 'text/html');
-	const parentElement = document.createElement('div');
-	parentElement.innerHTML = content;
-	sanitizeStyleAttributes(parentElement);
-
-    const images = parentElement.querySelectorAll('img');
-
-    if (images && images.length > 0) {
-        for (const img of images) {
-            if (!img.src.startsWith('data:image')) continue;
-
-            const response = await fetch(img.src);
-            const blob = await response.blob();
-            const ext = blob.type.split('/')[1];
-
-            const uploadFd = new FormData();
-            uploadFd.append('_method', 'post');
-            uploadFd.append('extension', ext);
-            uploadFd.append('file', blob, `image.${ext}`);
-
-            const uploadResponse = await fetch('./ajax/upload.php', {
-                method: 'POST',
-                body: uploadFd,
-            });
-            const result = await uploadResponse.json();
-            img.setAttribute('src', result.filename);
-        }
-    }
-
-    const serializer = new XMLSerializer();
-	
-	// console.log(parsedDOM);
-
-    //const domString = serializer.serializeToString(parsedDOM);
-    const domString = parentElement.outerHTML;
-	fd.set('contents', domString);
-    fd.set('mode', 'save');
-	console.log(domString);
-
-
+async function boardSave(mode) {
+    if (legacyAdminPending) return;
+    if ($('#board_no').val() == '') { alert('글을 등록하시려는 게시판을 선택해주세요'); $('#board_no').focus(); return; }
+    if ($('#title').val() == '') { alert('제목을 입력해주세요'); $('#title').focus(); return; }
+    if ($('#write_name').val() == '') { alert('작성자 이름을 입력해주세요'); $('#write_name').focus(); return; }
+    legacyAdminPending = true;
     try {
-        const response = await fetch('./ajax/board.process.php', {
-            method: 'POST',
-            body: fd,
-        });
-        const jsonData = await response.json();
-
-        if (jsonData.result === 'fail') {
-            alert(jsonData.msg);
-        } else {
-            alert(jsonData.msg);
-            location.href = './board.list.php';
-        }
-    } catch (err) {
-        console.log(err);
-    }
-}
-
-/*
-async function doEditSave() {
-    if ($('#board_no').val() == '') {
-        alert('글을 등록하시려는 게시판을 선택해주세요');
-        $('#board_no').focus();
-        return;
-    }
-
-    if ($('#title').val() == '') {
-        alert('제목을 입력해주세요');
-        $('#title').focus();
-        return;
-    }
-
-    if ($('#wirte_name').val() == '') {
-        alert('작성자 이름을 입력해주세요');
-        $('#wirte_name').focus();
-        return;
-    }
-
-    $('#mode').val('edit');
-
-    const formElement = $('#frm');
-    const fd = new FormData(formElement[0]);
-    const content = fd.get('contents');
-
-
-	//return; 
-
-    const domParser = new DOMParser();
-    //const parsedDOM = domParser.parseFromString(content, 'text/html');
-	const parentElement = document.createElement('div');
-	parentElement.innerHTML = content;
-	sanitizeStyleAttributes(parentElement);
-
-    //removeAttributes(parsedDOM);
-
-    const images = parentElement.querySelectorAll('img');
-
-    if (images && images.length > 0) {
-        for (const img of images) {
+        $('#mode').val(mode);
+        const fd = new FormData($('#frm')[0]);
+        const parentElement = document.createElement('div');
+        parentElement.innerHTML = fd.get('contents') || '';
+        sanitizeStyleAttributes(parentElement);
+        for (const img of parentElement.querySelectorAll('img')) {
             if (!img.src.startsWith('data:image')) continue;
-
-            // Fetch the image blob from the base64 data
-            const response = await fetch(img.src);
-            const blob = await response.blob();
+            const source = await fetch(img.src);
+            if (!source.ok) throw new Error('이미지를 읽지 못했습니다.');
+            const blob = await source.blob();
             const ext = blob.type.split('/')[1];
-
-            // Create a new FormData for the image upload
             const uploadFd = new FormData();
             uploadFd.append('_method', 'post');
             uploadFd.append('extension', ext);
-            uploadFd.append('file', blob, `image.${ext}`);
-
-            // Upload the image and get the result
-            const uploadResponse = await fetch('./ajax/upload.php', {
-                method: 'POST',
-                body: uploadFd,
-            });
+            uploadFd.append('file', blob, 'image.' + ext);
+            const uploadResponse = await fetch('./ajax/upload.php', {method:'POST', body:uploadFd});
             const result = await uploadResponse.json();
-
-            // Replace the image src with the uploaded file URL
+            if (!uploadResponse.ok || !result.success || !result.filename) throw new Error('이미지 업로드에 실패했습니다.');
             img.setAttribute('src', result.filename);
         }
-    }
-
-    const serializer = new XMLSerializer();
-    //const domString = serializer.serializeToString(parsedDOM);
-	const domString = parentElement.outerHTML;
-
-	
-	// console.log(`contents : `, content); 
-	// console.log(`parentElement : `, parentElement); 
-	// console.log(`domString: `, domString);  
-
-    fd.set('contents', domString);
-    fd.set('mode', 'edit');
-	fd.set('category_no', $('#category_no').val());
-
-    // AJAX request to save the edited content
-    $.ajax({
-        type: 'POST',
-        enctype: 'multipart/form-data',
-        url: './ajax/board.process.php',
-        data: fd,
-        processData: false,
-        contentType: false,
-        cache: false,
-        success: function (data) {
-            var jsonData = $.parseJSON(data);
-
-            if (jsonData.result == 'fail') {
-                alert(jsonData.msg);
-            } else if (jsonData.result == 'success') {
-                alert(jsonData.msg);
-                location.href = './board.list.php';
-            }
-        },
-        error: function (e) {
-            console.log('Error occurred:', e);
-        },
-        complete: function () {},
-    });
-}*/
-
-async function doEditSave() {
-  if ($('#board_no').val() == '') {
-    alert('글을 등록하시려는 게시판을 선택해주세요');
-    $('#board_no').focus();
-    return;
-  }
-
-  if ($('#title').val() == '') {
-    alert('제목을 입력해주세요');
-    $('#title').focus();
-    return;
-  }
-
-  // 🔧 오타 수정: write_name
-  if ($('#write_name').val() == '') {
-    alert('작성자 이름을 입력해주세요');
-    $('#write_name').focus();
-    return;
-  }
-
-  $('#mode').val('edit');
-
-  const formElement = $('#frm');
-  const fd = new FormData(formElement[0]);
-  const content = fd.get('contents');
-
-  const domParser = new DOMParser();
-  const parentElement = document.createElement('div');
-  parentElement.innerHTML = content;
-  sanitizeStyleAttributes(parentElement);
-
-  const images = parentElement.querySelectorAll('img');
-  if (images && images.length > 0) {
-    for (const img of images) {
-      if (!img.src.startsWith('data:image')) continue;
-      const response = await fetch(img.src);
-      const blob = await response.blob();
-      const ext = blob.type.split('/')[1];
-
-      const uploadFd = new FormData();
-      uploadFd.append('_method', 'post');
-      uploadFd.append('extension', ext);
-      uploadFd.append('file', blob, `image.${ext}`);
-
-      const uploadResponse = await fetch('./ajax/upload.php', { method: 'POST', body: uploadFd });
-      const result = await uploadResponse.json();
-      img.setAttribute('src', result.filename);
-    }
-  }
-
-  const serializer = new XMLSerializer();
-  const domString = parentElement.outerHTML;
-
-  fd.set('contents', domString);
-  fd.set('mode', 'edit');
-  fd.set('category_no', $('#category_no').val());
-
-  $.ajax({
-    type: 'POST',
-    enctype: 'multipart/form-data',
-    url: './ajax/board.process.php',
-    data: fd,
-    processData: false,
-    contentType: false,
-    cache: false,
-    success: function (data) {
-      var jsonData = $.parseJSON(data);
-
-      if (jsonData.result == 'fail') {
-        alert(jsonData.msg);
-      } else if (jsonData.result == 'success') {
-        alert(jsonData.msg);
-
-        // ✅ 현재 페이지의 쿼리에서 필요한 것만 유지해서 리스트로 복귀
-        const src = new URLSearchParams(window.location.search);
-        const keepKeys = ['board_no', 'page', 'sdate', 'edate'];
-        const out = new URLSearchParams();
-        keepKeys.forEach(k => { if (src.has(k)) out.set(k, src.get(k)); });
-
-        const qs = out.toString();
-        location.href = './board.list.php' + (qs ? ('?' + qs) : '');
-      }
-    },
-    error: function (e) {
-      console.log('Error occurred:', e);
-    },
-    complete: function () {}
-  });
-}
-
-
-
-async function doDelete(no) {
-    var con = confirm('정말 삭제하시겠습니까?');
-
-    var param = '';
-    if (no) {
-        param = 'no=' + no + '&mode=delete';
-    } else {
-        param = 'no=' + $('#no').val() + '&mode=delete';
-    }
-
-    const formElement = $('#frm');
-    const fd = new FormData(formElement[0]);
-    const content = fd.get('contents');
-
-    const domParser = new DOMParser();
-    const parsedDOM = domParser.parseFromString(content, 'text/html');
-	sanitizeStyleAttributes(parsedDOM);
-    const images = parsedDOM.querySelectorAll('img');
-
-    if (images && images.length > 0) {
-        for (const img of images) {
-            const response = await fetch('./ajax/upload.php', {
-                method: 'POST',
-                body: new URLSearchParams({ _method: 'delete', link: img.getAttribute('src') }),
-            });
-            const result = await response.json();
-            console.log(result);
+        fd.set('contents', parentElement.outerHTML);
+        fd.set('mode', mode);
+        if (mode === 'edit') fd.set('category_no', $('#category_no').val());
+        const response = await fetch('./ajax/board.process.php', {method:'POST', body:fd});
+        const result = await response.json();
+        if (!response.ok || !result || result.result !== 'success') {
+            alert(result && result.msg || '저장하지 못했습니다. 다시 시도해주세요.'); return;
         }
-    }
+        alert(result.msg);
+        const out = new URLSearchParams();
+        if (mode === 'edit') {
+            const src = new URLSearchParams(window.location.search);
+            ['board_no','page','sdate','edate'].forEach(key => {if (src.has(key)) out.set(key,src.get(key));});
+        }
+        location.href = './board.list.php' + (out.toString() ? '?' + out.toString() : '');
+    } catch (error) { alert('저장 중 문제가 발생했습니다. 입력 내용을 확인한 후 다시 시도해주세요.'); }
+    finally { legacyAdminPending = false; }
+}
+async function doRegSave() { return boardSave('save'); }
+async function doEditSave() { return boardSave('edit'); }
 
-    if (con) {
-        $.ajax({
-            type: 'POST',
-            url: './ajax/board.process.php',
-            data: param,
-            cache: false,
-            dataType: 'html',
-            success: function (data) {
-                var jsonData = $.parseJSON(data);
-
-                if (jsonData.result == 'fail') {
-                    alert(jsonData.msg);
-                } else if (jsonData.result == 'success') {
-                    alert(jsonData.msg);
-                    location.href = './board.list.php';
-                }
-            },
-            error: function (a, s) {
-                alert('처리중 문제가 발생하였습니다.');
-                return;
-            },
-        });
-    }
+function doDelete(no) {
+    if (legacyAdminPending || !confirm('정말 삭제하시겠습니까?')) return;
+    legacyAdminAjax({
+        type:'POST', url:'./ajax/board.process.php',
+        data:{mode:'delete',no:no || $('#no').val()},
+        success:function (data) {
+            alert(data.msg || '처리 결과를 확인할 수 없습니다.');
+            if (data.result === 'success') location.href='./board.list.php';
+        }
+    });
 }
 
 function doDeleteArray() {
+    if (legacyAdminPending) return;
     if ($('.no-chk').is(':checked') == false) {
         alert('대상을 선택해주세요');
         return;
@@ -577,7 +310,7 @@ function doDeleteArray() {
         // Create an FormData object
         var data = new FormData(form);
 
-        $.ajax({
+        legacyAdminAjax({
             type: 'POST',
             enctype: 'multipart/form-data',
             url: './ajax/board.process.php',
@@ -586,7 +319,7 @@ function doDeleteArray() {
             contentType: false,
             cache: false,
             success: function (data) {
-                var jsonData = $.parseJSON(data);
+                var jsonData = data;
 
                 if (jsonData.result == 'fail') {
                     alert(jsonData.msg);
@@ -622,16 +355,16 @@ function doGetBoardManageInfo(v) {
 function doGetBoardField(v) {
     // console.log('[BoardProcess]', 'doGetBoardField');
 	console.log('doGetBoardField()');
-    param = 'board_no=' + v + '&mode=board.field';
+    var param = 'board_no=' + v + '&mode=board.field';
 
-    $.ajax({
+    legacyAdminAjax({
         type: 'POST',
         url: './ajax/board.process.php',
         data: param,
         cache: false,
-        dataType: 'html',
+        dataType: 'json',
         success: function (data) {
-            var jsonData = $.parseJSON(data);
+            var jsonData = data;
 
             console.log(jsonData);
 
@@ -676,16 +409,16 @@ function doGetBoardField(v) {
 
 function doCategoryView(v) {
 	console.log('doCategoryView()');
-    param = 'board_no=' + v + '&mode=board.category';
+    var param = 'board_no=' + v + '&mode=board.category';
 
-    $.ajax({
+    legacyAdminAjax({
         type: 'POST',
         url: './ajax/board.process.php',
         data: param,
         cache: false,
-        dataType: 'html',
+        dataType: 'json',
         success: function (data) {
-            var jsonData = $.parseJSON(data);
+            var jsonData = data;
             if (jsonData.result == 'fail') {
                 alert(jsonData.msg);
             } else if (jsonData.result == 'success') {
@@ -718,16 +451,16 @@ function doCategoryView(v) {
 }
 
 function doCategoryDepthView(v) {
-    param = 'board_no=' + v + '&mode=category.depth';
+    var param = 'board_no=' + v + '&mode=category.depth';
 
-    $.ajax({
+    legacyAdminAjax({
         type: 'POST',
         url: './ajax/board.process.php',
         data: param,
         cache: false,
-        dataType: 'html',
+        dataType: 'json',
         success: function (data) {
-            var jsonData = $.parseJSON(data);
+            var jsonData = data;
             if (jsonData.result == 'fail') {
                 alert(jsonData.msg);
             } else if (jsonData.result == 'success') {
@@ -751,20 +484,21 @@ function doCategoryDepthView(v) {
 }
 
 function doCopy(no) {
+    if (legacyAdminPending) return;
     var con = confirm('게시글을 복사하시겠습니까? 같은 게시판에 복사됩니다.');
 
     var param = '';
     param = 'no=' + no + '&mode=board.copy';
 
     if (con) {
-        $.ajax({
+        legacyAdminAjax({
             type: 'POST',
             url: './ajax/board.process.php',
             data: param,
             cache: false,
-            dataType: 'html',
+            dataType: 'json',
             success: function (data) {
-                var jsonData = $.parseJSON(data);
+                var jsonData = data;
 
                 if (jsonData.result == 'fail') {
                     alert(jsonData.msg);

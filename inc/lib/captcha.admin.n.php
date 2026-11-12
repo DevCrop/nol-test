@@ -33,8 +33,10 @@ for ($x = 5; $x <= 99; $x += 20) {
 $_SESSION['captcha_secure'] = $digit;
 
 // 이미지 출력 및 정리
+// The PHP gate loads legacy bootstrap files before this binary endpoint.
+// Discard their buffered whitespace so the PNG signature is the first byte.
+if (ob_get_level() > 0) ob_clean();
 header('Content-Type: image/png');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 imagepng($image);
 imagedestroy($image);
-
-?>

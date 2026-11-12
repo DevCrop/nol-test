@@ -1,0 +1,13 @@
+import fs from 'node:fs';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
+const ready=[],editors=[],alerts=[];
+const document={querySelectorAll:()=>[]};
+const field={length:0,val:()=>'',focus(){},selectmenu(){}};
+const $=value=>value===document?{ready:fn=>ready.push(fn)}:value==='#contents'?{length:1,summernote:options=>editors.push(options)}:field;
+const context=vm.createContext({$,document,window:{BlueAdminAjax:{send(){}}},alert:m=>alerts.push(m)});
+vm.runInContext(fs.readFileSync(new URL('../admin/pages/board/js/board.process.js',import.meta.url),'utf8'),context);
+assert.equal(typeof context.doEditSave,'function');console.log('PASS delivered board script defines global doEditSave');
+ready[0]();assert.equal(editors.length,1);assert.equal(editors[0].lang,'ko-KR');assert.ok(editors[0].toolbar.length>0);console.log('PASS ready callback initializes Korean Summernote toolbar');
+await context.doEditSave();assert.equal(alerts.length,1);assert.match(alerts[0],/게시판을 선택/);console.log('PASS save handler executes form validation');
+console.log('3 PASS / 0 FAIL');

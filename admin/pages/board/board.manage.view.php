@@ -167,7 +167,7 @@ include_once "../../inc/admin.js.php";
                             renderRadioGroup("secret_yn", $data['secret_yn'], "비밀글 사용여부");
                             renderRadioGroup("comment_yn", $data['comment_yn'], "댓글 사용여부");
                             renderRadioGroup("category_yn", $data['category_yn'], "카테고리 사용여부");
-                            renderRadioGroup("depth_category_yn", $data['depth_category_yn'], "카테고리 분류 사용여부");
+                            renderRadioGroup("depth_category_yn", $data['depth_category_yn'] ?? 'N', "카테고리 분류 사용여부");
                             renderRadioGroup("fileattach_yn", $data['fileattach_yn'], "파일첨부 사용여부");
                             ?>
 

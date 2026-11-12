@@ -58,10 +58,10 @@
                 <input type="hidden" id="mode" name="mode" value="edit">
                 <input type="hidden" id="no" name="no" value="<?= htmlspecialchars($data['no']) ?>">
 
-                <input type="hidden" id="depth1" value="<?= htmlspecialchars($data['depth1']) ?>">
-                <input type="hidden" id="depth2" value="<?= htmlspecialchars($data['depth2']) ?>">
-                <input type="hidden" id="depth3" value="<?= htmlspecialchars($data['depth3']) ?>">
-                <input type="hidden" id="depth4" value="<?= htmlspecialchars($data['depth4']) ?>">
+                <input type="hidden" id="depth1" value="<?= htmlspecialchars((string) ($data['depth1'] ?? -1), ENT_QUOTES, 'UTF-8') ?>">
+                <input type="hidden" id="depth2" value="<?= htmlspecialchars((string) ($data['depth2'] ?? -1), ENT_QUOTES, 'UTF-8') ?>">
+                <input type="hidden" id="depth3" value="<?= htmlspecialchars((string) ($data['depth3'] ?? -1), ENT_QUOTES, 'UTF-8') ?>">
+                <input type="hidden" id="depth4" value="<?= htmlspecialchars((string) ($data['depth4'] ?? -1), ENT_QUOTES, 'UTF-8') ?>">
 
                 <section class="no-content">
                     <!-- Page Title -->
@@ -148,7 +148,7 @@
                                                 <label for="extra<?= $i ?>"><?= htmlspecialchars($extra_field) ?></label>
                                             </h3>
                                             <div class="no-admin-content">
-                                                <input type="text" name="extra<?= $i ?>" id="extra<?= $i ?>" value="<?= htmlspecialchars($data['extra' . $i]) ?>" class="no-input--detail" placeholder="<?= htmlspecialchars($extra_field) ?>" />
+                                                <input type="text" name="extra<?= $i ?>" id="extra<?= $i ?>" value="<?= htmlspecialchars(htmlspecialchars_decode((string) ($data['extra' . $i] ?? ''), ENT_QUOTES), ENT_QUOTES, 'UTF-8') ?>" class="no-input--detail" placeholder="<?= htmlspecialchars($extra_field) ?>" />
                                             </div>
                                         </div>
                                 <?php } } ?>
@@ -192,7 +192,7 @@
 								<div class="no-admin-block">
                                     <h3 class="no-admin-title"><label for="write_name">작성자</label></h3>
                                     <div class="no-admin-content">
-                                        <input type="text" name="write_name" id="write_name" value="<?= htmlspecialchars($NO_ADM_NAME) ?>" placeholder="사이트관리자" class="no-input--detail" />
+                                            <input type="text" name="write_name" id="write_name" value="<?= htmlspecialchars(htmlspecialchars_decode((string) ($data['write_name'] ?? ''), ENT_QUOTES), ENT_QUOTES, 'UTF-8') ?>" placeholder="사이트관리자" class="no-input--detail" />
                                     </div>
                                 </div>
 								<div class="no-admin-block no-admin-pos">
@@ -219,7 +219,7 @@
                                 <div class="no-admin-block">
                                     <h3 class="no-admin-title"><label for="direct_url">링크 URL</label></h3>
                                     <div class="no-admin-content">
-                                        <input type="text" name="direct_url" id="direct_url" placeholder="링크 URL" class="no-input--detail" />
+                                        <input type="text" name="direct_url" id="direct_url" value="<?= htmlspecialchars(htmlspecialchars_decode((string) ($data['direct_url'] ?? ''), ENT_QUOTES), ENT_QUOTES, 'UTF-8') ?>" placeholder="링크 URL" class="no-input--detail" />
                                     </div>
                                 </div>
 
@@ -228,7 +228,8 @@
                                     <div class="no-admin-content">
                                         <label for="is_notice" class="no-items-center">
                                             <div class="no-checkbox-form">
-                                                <input type="checkbox" name="is_notice" id="is_notice" class="no-input--detail" value="Y" />
+                                                <input type="hidden" name="is_notice" value="N" />
+                                                <input type="checkbox" name="is_notice" id="is_notice" class="no-input--detail" value="Y" <?= ($data['is_notice'] ?? 'N') === 'Y' ? 'checked' : '' ?> />
                                                 <span><i class="bx bxs-check-square"></i></span>
                                             </div>
                                             <span class="no-admin-info no-mt">공지사항으로 등록하면 게시판 상단에 고정됩니다.</span>
@@ -268,7 +269,7 @@
                                         <!-- file control -->
                                         <?php if($data['thumb_image']){?>
                                         <div class="no-board-thumb">
-                                            <a href="/inc/lib/board.file.download.php?no=<?=$data['no']?>&fld=thumb">
+                                            <a href="<?=blue_admin_base()?>/pages/board/board.file.download.php?no=<?=$data['no']?>&fld=thumb">
                                                 <?=$data['thumb_image']?>
                                             </a>
                                             <label class="no-thumb-check">
@@ -309,7 +310,7 @@
                                                     </div>
                                                     <?php if (!empty($data['file_attach_' . $i])) { ?>
                                                         <div class="no-board-thumb">
-                                                            <a href="/inc/lib/board.file.download.php?no=<?= htmlspecialchars($data['no']) ?>&fld=attach<?= $i ?>">
+                                                            <a href="<?=blue_admin_base()?>/pages/board/board.file.download.php?no=<?= htmlspecialchars($data['no']) ?>&fld=attach<?= $i ?>">
                                                                 <?= htmlspecialchars($data['file_attach_origin_' . $i]) ?>
                                                             </a>
                                                             <label class="no-thumb-check">

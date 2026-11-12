@@ -7,16 +7,6 @@ if (!\Security\Csrf::valid((string) ($_POST['_csrf'] ?? ''))) {
     http_response_code(403); echo json_encode(['result' => 'fail', 'msg' => '잘못된 요청입니다.']); exit;
 }
 
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-
-
-require  $_SERVER['DOCUMENT_ROOT'] . '/inc/lib/PHPMailer_new/src/Exception.php';
-require  $_SERVER['DOCUMENT_ROOT'] . '/inc/lib/PHPMailer_new/src/PHPMailer.php';
-require  $_SERVER['DOCUMENT_ROOT'] . '/inc/lib/PHPMailer_new/src/SMTP.php';
-
-
-
 // POST 데이터 가져오기 및 보안 처리
 $performance_name = xss_clean($_POST['performance_name']);
 $organization_name = xss_clean($_POST['organization_name']);
@@ -55,11 +45,20 @@ if (count($_FILES) > 10) {
 }
 
 $filePaths = [];
+$persisted = false;
+register_shutdown_function(static function () use (&$filePaths, &$persisted, $uploadDir): void {
+    if ($persisted) return;
+    foreach ($filePaths as $name) {
+        if (basename($name) !== $name || !preg_match('/^file_[a-zA-Z0-9_.]+$/D', $name)) continue;
+        $path = $uploadDir.'/'.$name;
+        if (is_file($path)) unlink($path);
+    }
+});
 $fileOriginNames = [];
 $maxFileSize = 20 * 1024 * 1024; // 20MB
 
 foreach ($_FILES as $key => $file) {
-    if (preg_match('/^file_\d+$/', $key) && $file['error'] == UPLOAD_ERR_OK) {
+    if (preg_match('/^file_[1-5]$/D', $key) && $file['error'] == UPLOAD_ERR_OK) {
         $fileTmpName = $file['tmp_name'];
         $originalName = basename($file['name']);
         try { [$fileExt] = \Security\UploadGuard::attachment($file, $maxFileSize); }
@@ -93,12 +92,6 @@ $targetEmails = [];
 foreach (array_filter(array_map('trim', explode(',', (string) blue_env('REQUEST_NOTIFY_EMAILS', '')))) as $address) {
     if (filter_var($address, FILTER_VALIDATE_EMAIL)) $targetEmails[] = ['name' => '블루스퀘어 담당자', 'mail' => $address];
 }
-$from = (string) blue_env('SMTP_FROM', blue_env('SMTP_USER', ''));
-$fromname = mb_encode_mimeheader('블루스퀘어', 'UTF-8', 'B'); // 한글 깨짐 방지
-$username = (string) blue_env('SMTP_USER', '');
-$password = (string) blue_env('SMTP_PASS', '');
-$subject = mb_encode_mimeheader("대관신청이 접수되었습니다.", 'UTF-8', 'B'); // 제목 인코딩
-
 $content = "
     <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; border: 1px solid #ddd; border-radius: 10px; padding: 20px; background-color: #f9f9f9;'>
         <h2 style='text-align: center; color: #333; margin-bottom: 20px;'>🎭 문의하기 접수 내용</h2>
@@ -144,120 +137,23 @@ $content = "
 $failedMails = [];
 
 
-// Gmail을 이용하여 메일 발송
-function sendEmail($to, $toName, $from, $fromName, $username, $password, $content, $subject) {
-    $mail = new PHPMailer(true);
-	  try {
-			$mail->isSMTP();
-			$mail->Host = (string) blue_env('SMTP_HOST', 'smtp.gmail.com');
-			$mail->SMTPAuth = true;
-			$mail->Username = $username;
-			$mail->Password = $password;
-			$mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-			$mail->Port = (int) blue_env('SMTP_PORT', 587);
-			$mail->Timeout = 10;
-
-			$mail->setFrom($from, $fromName); // 발신자 이름 올바르게 인코딩
-			$mail->addAddress($to, mb_encode_mimeheader($toName, 'UTF-8', 'B')); // 수신자 이름도 인코딩
-			$mail->isHTML(true);
-			$mail->Subject = $subject;
-			$mail->Body = $content;
-
-			$mail->send();
-			return true;
-		} catch (Exception $e) {
-			error_log("메일 전송 실패: " . $mail->ErrorInfo);
-			return false;
-		}
-}
-
-// 이메일 발송 실행
-foreach ($targetEmails as $mailInfo) {
-    if (!sendEmail($mailInfo['mail'], $mailInfo['name'], $from, $fromname, $username, $password, $content, $subject)) {
-        $failedMails[] = $mailInfo['mail'];
-    }
-}
-
-// DB 저장
+// Persist before notifying: failed storage must never produce a receipt email.
 try {
-    $pdo = DB::getInstance();
-
-    $stmt = $pdo->prepare("
-        INSERT INTO nb_request (
-			sitekey,
-			performance_name,
-			organization_name,
-			manager_name,
-			phone,
-			email,
-			contents,
-			file_1,
-			file_2,
-			file_3,
-			file_4,
-			file_5,
-			file_1_origin,
-			file_2_origin,
-			file_3_origin,
-			file_4_origin,
-			file_5_origin,
-			regdate
-		)
-		VALUES (
-			:sitekey,
-			:performance_name,
-			:organization_name,
-			:manager_name,
-			:phone,
-			:email,
-			:contents,
-			:file_1,
-			:file_2,
-			:file_3,
-			:file_4,
-			:file_5,
-			:file_1_origin,
-			:file_2_origin,
-			:file_3_origin,
-			:file_4_origin,
-			:file_5_origin,
-			NOW()
-		)
-    ");
-
-	$stmt->execute([
-		':sitekey' => $NO_SITE_UNIQUE_KEY,
-		':performance_name' => $performance_name,
-		':organization_name' => $organization_name,
-		':manager_name' => $manager_name,
-		':phone' => $phone,
-		':email' => $email,
-		':contents' => $contents,
-		':file_1' => $filePaths['file_1'] ?? null,
-		':file_2' => $filePaths['file_2'] ?? null,
-		':file_3' => $filePaths['file_3'] ?? null,
-		':file_4' => $filePaths['file_4'] ?? null,
-		':file_5' => $filePaths['file_5'] ?? null,
-		':file_1_origin' => $fileOriginNames['file_1'] ?? null,
-		':file_2_origin' => $fileOriginNames['file_2'] ?? null,
-		':file_3_origin' => $fileOriginNames['file_3'] ?? null,
-		':file_4_origin' => $fileOriginNames['file_4'] ?? null,
-		':file_5_origin' => $fileOriginNames['file_5'] ?? null,
-	]);
-
-
-    echo json_encode([
-        'result' => 'success',
-        'msg' => '정상적으로 등록되었습니다. 담당자가 확인 후 연락드리겠습니다.',
-        'failedMails' => $failedMails
-    ]);
-} catch (PDOException $e) {
-    error_log('Rental request database failure');
-    http_response_code(500);
-    echo json_encode([
-        'result' => "fail",
-        "msg" => "처리 중 문제가 발생하였습니다. 관리자에게 문의해주세요.",
-        "error" => 'Internal server error.'
-    ]);
+    $service = new \Security\RentalRequestService(DB::getInstance(), $NO_SITE_UNIQUE_KEY);
+    $service->create(compact('performance_name', 'organization_name', 'manager_name', 'phone', 'email', 'contents'), $filePaths, $fileOriginNames);
+    $persisted = true;
+    $transport = new \Security\SmtpMailTransport();
+    foreach ($targetEmails as $mailInfo) {
+        try {
+            $transport->send($mailInfo['mail'], ['subject' => '대관신청이 접수되었습니다.', 'html' => $content, 'text' => trim(strip_tags($content))]);
+        } catch (Throwable $mailError) {
+            error_log('Rental request notification delivery failed');
+            $failedMails[] = $mailInfo['mail'];
+        }
+    }
+    echo json_encode(['result' => 'success', 'msg' => '정상적으로 등록되었습니다. 담당자가 확인 후 연락드리겠습니다.', 'failedMails' => $failedMails]);
+} catch (Throwable $e) {
+    error_log('Rental request persistence failed');
+    if (http_response_code() < 400) http_response_code(500);
+    echo json_encode(['result' => 'fail', 'msg' => '처리 중 문제가 발생하였습니다. 관리자에게 문의해주세요.']);
 }
-?>
