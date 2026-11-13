@@ -5,13 +5,6 @@ function getJSON($path){
   return json_decode(file_get_contents($path), true);
 }
 
-function show($stuff){
-  echo "<pre>";
-  var_dump($stuff);
-  echo "</pre>";
-}
-
-
 function getLordIcon($src, $trigger = 'hover') {
     $basePath = '/resource/vendor/lordicon/json/';
     $fullSrc = $basePath . ltrim($src, '/');

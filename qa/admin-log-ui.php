@@ -41,7 +41,11 @@ try{
   foreach(['action','entity']as $field){[$status,$bad]=logUiGet($kind,[$field=>"x' OR 1=1 --",'q'=>$tag]);qa_expect($status===200&&logUiRows($bad)===0&&strpos($bad,'검색 조건을 확인한 후')!==false,$kind.' '.$field.' allowlist rejects SQL payload');}
   [$status,$literal]=logUiGet($kind,['q'=>$tag.'literal%_!']);qa_expect($status===200&&logUiTotal($literal)===1,$kind.' LIKE wildcard search remains literal');
   [$status,$sql]=logUiGet($kind,['q'=>"' OR 1=1 --"]);qa_expect($status===200&&logUiTotal($sql)===0,$kind.' search SQL payload cannot broaden results');
-  qa_expect(strpos($html,'<script>BAD</script>')===false&&strpos($html,'&lt;script&gt;BAD&lt;/script&gt;')!==false,$kind.' stored actor/script is escaped');
+  $xp=logUiDom($html);$actorNode=$xp->query('//td[@data-label="작업자 / 접속 IP"]/strong')->item(0);$rawActor=$tag.'<script>BAD</script>';
+  qa_expect($actorNode&&$actorNode->textContent===\Security\PiiMask::identifier($rawActor)&&strpos($html,$rawActor)===false&&strpos($html,htmlspecialchars($rawActor,ENT_QUOTES,'UTF-8'))===false&&strpos($html,'<script>BAD</script>')===false,$kind.' actor ID is masked without raw actor value or executable markup');
+  qa_expect($xp->query('//div[contains(@class,"admin-log-results")][@data-pii-lock]')->length===1&&$xp->query('//div[contains(@class,"admin-log-results")]/preceding-sibling::form')->length===1,$kind.' copy lock covers result card and preserves separate editable filters');
+  $rawReader=new \Security\AdminLogReader($db,$kind);$exactActor=$rawReader->read(['q'=>$rawActor]);
+  qa_expect($exactActor['total']===1&&$exactActor['rows'][0]['actor_uid']===$rawActor,$kind.' stored actor ID and exact search remain unmasked');
   qa_expect(strpos($html,'admin-log-badge--')!==false&&strpos($html,'admin-logs.css')!==false,$kind.' badge and scoped responsive CSS served');
   [$status,$regular]=logUiGet($kind,['q'=>$tag],$sids['admin']);qa_expect($status===403&&strpos($regular,$tag.'_target')===false,$kind.' ordinary administrator denied before data');
  }
@@ -50,6 +54,16 @@ try{
  [$status,$html]=logUiGet('access',['q'=>$tag]);foreach(['열람','다운로드','입력','변경','삭제']as $word)qa_expect(strpos($html,$word)!==false,'privacy action Korean label '.$word);
  $reader=new \Security\AdminLogReader($db,'audit');$one=$reader->read(['q'=>$tag,'perpage'=>100]);qa_expect((int)$one['rows'][0]['no']===$stamp[204]&&(int)$one['rows'][99]['no']===$stamp[105],'stable no-desc ordering even at identical timestamps');
  $data=$reader->read(['q'=>[$tag]]);qa_expect(!empty($data['errors'])&&!$data['rows'],'non-scalar query rejected');
+ foreach(['audit','access']as $kind){
+  $marker=$tag.'_actorlabels';
+  if($kind==='audit'){
+   foreach(['','비회원']as $label)$audit->execute(['BLUESQ',$actors[0],$label,'127.0.0.1','create','nb_board',0,$marker,'{}','2026-11-10 00:00:00']);
+  }else{
+   foreach(['','비회원']as $label)$access->execute(['BLUESQ',$actors[0],$label,'127.0.0.1','view','request',0,'홍*동',$marker,'','2026-11-10 00:00:00']);
+  }
+  [$status,$html]=logUiGet($kind,['q'=>$marker]);$xp=logUiDom($html);$labels=[];foreach($xp->query('//td[@data-label="작업자 / 접속 IP"]/strong')as $node)$labels[]=$node->textContent;sort($labels);
+  $expectedLabels=['비회원','작업자 정보 없음'];sort($expectedLabels);qa_expect($status===200&&$labels===$expectedLabels,$kind.' missing actor and non-member labels preserve meaning');
+ }
 }catch(Throwable $e){qa_expect(false,get_class($e).': '.$e->getMessage());}
 finally{
  if($actors)foreach(['nb_admin_audit','nb_admin_privacy_access']as $table){$s=$db->prepare('DELETE FROM '.$table.' WHERE actor_no IN('.implode(',',array_fill(0,count($actors),'?')).')');$s->execute($actors);}

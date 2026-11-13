@@ -1,7 +1,4 @@
-<?php include_once "../../../inc/lib/base.class.php"; ?>
-<!DOCTYPE html>
-<html lang="ko">
-<?php
+<?php include_once "../../../inc/lib/base.class.php";
 
     $depthnum = 1;
     $pagenum = 2;
@@ -19,23 +16,28 @@
     $searchParam = htmlspecialchars(http_build_query(['board_no'=>$board_no, 'page'=>$page, 'sdate'=>$sdate, 'edate'=>$edate]), ENT_QUOTES, 'UTF-8');
 
     // 게시글 정보 가져오기
-    $query = "SELECT a.* FROM nb_board a WHERE a.no = :no";
+    $query = "SELECT a.* FROM nb_board a WHERE a.no = :no AND a.sitekey = :sitekey";
     $stmt = $pdo->prepare($query);
-    $stmt->execute([':no' => $no]);
+    $stmt->execute([':no' => $no, ':sitekey' => $NO_SITE_UNIQUE_KEY]);
     $data = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$data) {
+        http_response_code(404);
         die("정보를 찾을 수 없습니다");
     }
 
+    (new \Security\BoardPrivacyService($pdo,$NO_SITE_UNIQUE_KEY))->record('view',(int)$data['no'],(string)$data['write_name'],'게시글 상세: 작성자 정보 열람');
+
     // 게시판 관리 정보 가져오기
     $boardManage_info = getBoardManageInfoByNo($data['board_no']);
-
+?>
+<!DOCTYPE html>
+<html lang="ko">
+<?php
     include_once "../../inc/admin.title.php";
     include_once "../../inc/admin.css.php";
     include_once "../../inc/admin.js.php";
 ?>
-
 </head>
 
 <body>
@@ -44,7 +46,7 @@
         <?php include_once "../../inc/admin.header.php"; ?>
 
         <!-- Main -->
-        <main class="no-app no-container">
+        <main class="no-app no-container" data-pii-lock>
             <!-- Drawer -->
             <?php include_once "../../inc/admin.drawer.php"; ?>
 

@@ -1,7 +1,4 @@
-<?php include_once "../../../inc/lib/base.class.php"; ?>
-<!DOCTYPE html>
-<html lang="ko">
-<?php
+<?php include_once "../../../inc/lib/base.class.php";
 
 try {
     $db = DB::getInstance();
@@ -11,25 +8,32 @@ try {
 
     $no = $_REQUEST['no'];
 
-    $query = "SELECT a.no, a.board_no, a.user_no, a.category_no, a.comment_cnt, a.title, a.contents, a.regdate, 
+    $query = "SELECT a.no, a.sitekey, a.board_no, a.user_no, a.category_no, a.comment_cnt, a.title, a.contents, a.regdate, 
               a.read_cnt, a.thumb_image, a.is_admin_writed, a.is_notice, a.is_secret, a.secret_pwd, 
               a.write_name, a.isFile, file_attach_1, file_attach_origin_1, file_attach_2, file_attach_origin_2, 
               file_attach_3, file_attach_origin_3, file_attach_4, file_attach_origin_4, file_attach_5, 
               file_attach_origin_5
               FROM nb_board a
-              WHERE a.no = :no";
+              WHERE a.no = :no AND a.sitekey = :sitekey";
 
     $stmt = $db->prepare($query);
-    $stmt->execute(['no' => $no]);
+    $stmt->execute(['no' => $no, 'sitekey' => $NO_SITE_UNIQUE_KEY]);
     $data = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$data) {
         throw new Exception("정보를 찾을 수 없습니다");
     }
 
+    $privacy = new \Security\BoardPrivacyService($db,$NO_SITE_UNIQUE_KEY);
+    $privacy->record('view',(int)$data['no'],(string)$data['write_name'],'게시글 댓글 화면: 작성자 정보 열람');
+    $stmt = $db->prepare('SELECT no,sitekey,parent_no,write_name,regdate,contents FROM nb_board_comment WHERE parent_no=? AND sitekey=? ORDER BY no DESC');
+    $stmt->execute([(int)$data['no'],$NO_SITE_UNIQUE_KEY]);
+    $comments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach($comments as $comment)$privacy->record('view',(int)$data['no'],(string)$comment['write_name'],'댓글 작성자 정보 열람 #'.(int)$comment['no']);
     $board_no = $data['board_no'];
     $board_info = getBoardInfoByNo($board_no);
 
+    echo '<!DOCTYPE html><html lang="ko">';
     include_once "../../inc/admin.title.php";
     include_once "../../inc/admin.css.php";
     include_once "../../inc/admin.js.php";
@@ -46,7 +50,7 @@ try {
         <?php include_once "../../inc/admin.header.php"; ?>
 
         <!-- Main -->
-        <main class="no-app no-container">
+        <main class="no-app no-container" data-pii-lock>
             <!-- Drawer -->
             <?php include_once "../../inc/admin.drawer.php"; ?>
 
@@ -181,21 +185,7 @@ try {
                                 </div>
                                 <!-- admin-block -->
 
-                                <?php
-                                try {
-                                    $query = "SELECT a.no, a.sitekey, a.parent_no, a.write_name, a.regdate, a.contents
-                                              FROM nb_board_comment a
-                                              WHERE a.parent_no = :no AND a.sitekey = '$NO_SITE_UNIQUE_KEY'
-                                              ORDER BY a.no DESC";
-                                    $stmt = $db->prepare($query);
-                                    $stmt->execute(['no' => $no]);
-                                    $comments = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                                } catch (Exception $e) {
-                                    echo "<p>댓글을 불러오는 중 오류가 발생했습니다: " . htmlspecialchars(blue_safe_error($e)) . "</p>";
-                                    $comments = [];
-                                }
 
-                                ?>
 
                                 <div class="no-admin-block">
                                     <h3 class="no-admin-title">
@@ -206,8 +196,8 @@ try {
                                             <?php foreach ($comments as $v): ?>
                                             <li class="no-cmt-item">
                                                 <div class="no-cmt-item__info">
-                                                    <span><?= $v['write_name'] ?></span>
-                                                    <span><?=(new DateTime($regdate))->format('Y-m-d')?></span>
+                                                    <span><?= htmlspecialchars(\Security\PiiMask::name((string)$v['write_name']),ENT_QUOTES,'UTF-8') ?></span>
+                                                    <span><?=(new DateTime((string)$v['regdate']))->format('Y-m-d')?></span>
                                                 </div>
                                                 <div class="no-cmt-item__content"><?=$v['contents']?></div>
                                                 <div class="no-cmt-item-btn">

@@ -14,7 +14,7 @@ final class AuditLogger
         self::$capturing = true;
     }
 
-    public static function record(string $action, string $entity, int $targetNo = 0, string $label = '', array $detail = []): void
+    public static function record(string $action, string $entity, int $targetNo = 0, string $label = '', array $detail = [], bool $required = false): void
     {
         if (!in_array($action, ['create', 'update', 'delete'], true)) return;
         $detail = self::scrub($detail);
@@ -25,6 +25,7 @@ final class AuditLogger
             }
             $encodedDetail=$detail?json_encode($detail,JSON_UNESCAPED_UNICODE):null;
             if($entity==='account' && $detail && (!is_string($encodedDetail)||strlen($encodedDetail)>8000))throw new \RuntimeException('계정 변경 이력을 저장하지 못했습니다.');
+            if($required && $detail && (!is_string($encodedDetail)||strlen($encodedDetail)>65535))throw new \RuntimeException('변경 이력을 저장하지 못했습니다.');
             $stmt = \DB::getInstance()->prepare('INSERT INTO nb_admin_audit (sitekey, actor_no, actor_uid, actor_ip, action, entity, target_no, target_label, detail_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())');
             $stmt->execute(['BLUESQ', (int) ($_SESSION['no_adm_login_no'] ?? 0), (string) ($_SESSION['no_adm_login_uid'] ?? ''), ClientIp::get(), $action, substr($entity, 0, 64), $targetNo, mb_substr($label, 0, 255), $encodedDetail]);
             if ($entity === 'account' && $targetNo > 0) {
@@ -32,7 +33,7 @@ final class AuditLogger
                 PrivacyLogger::record($action, 'admin_account', $targetNo, $subject, '관리자 계정 ' . (['create'=>'입력','update'=>'변경','delete'=>'삭제'][$action]), (string)($detail['change_reason'] ?? ''));
             }
         } catch (\Throwable $e) {
-            if ($entity === 'account') throw new \RuntimeException('계정 변경 이력을 저장하지 못했습니다.', 0, $e);
+            if ($entity === 'account' || $required) throw new \RuntimeException('변경 이력을 저장하지 못했습니다. 다시 시도해 주세요.', 0, $e);
             error_log('[audit] write failed');
         }
     }

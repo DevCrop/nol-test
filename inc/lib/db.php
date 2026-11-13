@@ -18,7 +18,8 @@ class DB {
 
         try {
 			$dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=" . DB_CHAR;
-			$conn = new PDO($dsn, DB_USER, DB_PASS);
+			require_once __DIR__ . '/classes/Security/AuditedConnection.php';
+			$conn = new \Security\AuditedConnection($dsn, DB_USER, DB_PASS);
 			$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             require_once __DIR__ . '/classes/Security/AuditedStatement.php';
             require_once __DIR__ . '/classes/Security/AuditLogger.php';

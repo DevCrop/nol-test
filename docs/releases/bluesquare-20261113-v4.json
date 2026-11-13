@@ -1,0 +1,36 @@
+{
+  "version": "bluesquare-v4-20261113",
+  "runtime": "PHP7.4.33/MySQL8",
+  "scope": "BlueSquare only",
+  "qa": {
+    "full_regression": {
+      "pass": 860,
+      "fail": 0
+    },
+    "focused_included_in_full": {
+      "board_privacy": 29,
+      "board_existing": 28,
+      "log_UI": 52,
+      "log_view": 10
+    },
+    "baseline_missing_records": 2
+  },
+  "deployment": "user reports uploaded; public HTTP confirmed; authenticated v4 confirmation pending",
+  "runtime_checksums": {
+    "inc/lib/classes/Security/BoardPrivacyService.php": "8cc53220e906cc04cb0dd09cd21622a151d5fa7543f64b4836624b893d3b90c0",
+    "admin/pages/board/ajax/board.process.php": "977b6f29dd73f60555d35eebf4d9aaa86e321a6aedd0801995b12b135e6cce15",
+    "admin/pages/board/ajax/board.comment.process.php": "9ef0c0ee8bf71585c7bae6a2f301c7e1364701c0ae1324f44a14949cddd26324",
+    "admin/pages/board/board.view.php": "86c1dd57117cee8f3b549a0ca5e477e4ccdbbd5836287c8863f7d4d7668f18f9",
+    "admin/pages/board/board.comment.view.php": "329c34deeaea857a0d0ee7b90ee50d7ffe9fe864078e0655f61f9cae7dcf6895",
+    "admin/inc/log.view.php": "76c2fe91b5ee84c7664157101229987b3d9fc37dc51ba0e08efb3e6e8123fdca"
+  },
+  "private_values_or_rows_included": false,
+  "cleanup_in_repository_only": 190,
+  "remaining": [
+    "authenticated live QA",
+    "office IP and roles",
+    "test-IP removal",
+    "server vendor cleanup deferred",
+    "privacy policy and customer operations"
+  ]
+}

@@ -8,13 +8,13 @@ foreach (['transport-policy.php', 'deployment-preflight.php'] as $deploymentScri
     passthru(escapeshellarg(PHP_BINARY).' '.escapeshellarg(__DIR__.'/'.$deploymentScript), $status);
     if ($status !== 0) $failed++;
 }
-foreach (['php-lint.php','php-router-http.php','active-crud.php','security-unit.php','legacy-font-content.php','pii-legacy-names.php','architecture.php','mfa-mail-template.php'] as $script) {
+foreach (['php-lint.php','password-policy-boundaries.php','php-router-http.php','active-crud.php','security-unit.php','legacy-font-content.php','pii-legacy-names.php','architecture.php','mfa-mail-template.php'] as $script) {
     echo "\n=== {$script} ===\n";
     passthru(escapeshellarg(PHP_BINARY).' -d short_open_tag=1 '.escapeshellarg(__DIR__.'/'.$script), $status);
     if ($status !== 0) $failed++;
 }
 if (getenv('APP_ENV')==='development') {
-    foreach (['admin-save-regressions.php','admin-pages-http.php','main-banner.php','popup-public-regressions.php','php-router-form-values.php','request-title-output.php','statistics-readonly.php','design-crud-regressions.php','board-crud-regressions.php','admin-log-ui.php','rental-privacy-mutations.php','account-privacy-actions.php','works-audit-targets.php','download-response-http.php'] as $regression) {
+    foreach (['admin-save-regressions.php','admin-pages-http.php','main-banner.php','popup-public-regressions.php','php-router-form-values.php','request-title-output.php','statistics-readonly.php','design-crud-regressions.php','board-crud-regressions.php','board-privacy-regressions.php','log-privacy-view.php','admin-log-ui.php','rental-privacy-mutations.php','account-privacy-actions.php','works-audit-targets.php','download-response-http.php'] as $regression) {
         passthru(escapeshellarg(PHP_BINARY).' '.escapeshellarg(__DIR__.'/'.$regression),$status);
         if($status!==0)$failed++;
     }
