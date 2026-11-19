@@ -44,10 +44,11 @@ $out = [];
 foreach ($rows as $row) {
     $action = (string) ($row['action'] ?? '');
     $ent = (string) ($row['entity'] ?? '');
+    $actor = trim((string) ($row['actor_uid'] ?? ''));
     $out[] = [
         'no' => (int) ($row['no'] ?? 0),
         'created_at' => (string) ($row['created_at'] ?? ''),
-        'actor_uid' => (string) ($row['actor_uid'] ?? ''),
+        'actor_uid' => $actor === '비회원' ? $actor : PiiMask::identifier($actor),
         'actor_ip' => (string) ($row['actor_ip'] ?? ''),
         'action' => $action,
         'action_label' => AuditLogger::actionLabel($action),

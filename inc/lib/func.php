@@ -245,12 +245,15 @@ function imageUpload($path, $upfile, $origin_file = '', $return_origin = false, 
 
 function imageDelete(string $path): bool
 {
-    // Check if path is provided and if file exists
-    if ($path && file_exists($path)) {
-        return unlink($path); // Return the result of the unlink operation directly
-    }
+    global $UPLOAD_DIR_BOARD, $UPLOAD_DIR_BANNER, $UPLOAD_DIR_POPUP;
+    require_once dirname(__DIR__, 2) . '/nol-gate/lib/upload.guard.php';
 
-    return false; // Return false if the file doesn't exist or path is empty
+    $path = str_replace('\\', '/', $path);
+    $directory = dirname($path);
+    if (!in_array($directory, [$UPLOAD_DIR_BOARD, $UPLOAD_DIR_BANNER, $UPLOAD_DIR_POPUP], true)) {
+        return false;
+    }
+    return no_upload_guard_path($directory, $path) !== null && unlink($path);
 }
 
 

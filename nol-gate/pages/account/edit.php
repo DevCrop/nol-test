@@ -44,7 +44,7 @@ include_once "../../inc/admin.js.php";
 
 </head>
 
-<body data-page="account">
+<body class="no-account-form-page" data-page="account">
     <div class="no-wrap">
         <?php include_once "../../inc/admin.header.php"; ?>
 
@@ -151,7 +151,7 @@ include_once "../../inc/admin.js.php";
 
                                 <!-- 이메일 -->
                                 <div class="no-admin-block">
-                                    <h3 class="no-admin-title"><label for="email">이메일</label></h3>
+                                    <h3 class="no-admin-title"><label for="email">인증 이메일</label></h3>
                                     <div class="no-admin-content">
                                         <input type="email" name="email" id="email" class="no-input--detail"
                                             value="<?= htmlspecialchars($account['email'] ?? '') ?>"
@@ -161,7 +161,7 @@ include_once "../../inc/admin.js.php";
 
                                 <!-- 휴대폰 -->
                                 <div class="no-admin-block">
-                                    <h3 class="no-admin-title"><label for="phone">휴대폰</label></h3>
+                                    <h3 class="no-admin-title"><label for="phone">연락처 <span class="no-account-form__optional">(선택)</span></label></h3>
                                     <div class="no-admin-content">
                                         <input type="tel" name="phone" id="phone" class="no-input--detail"
                                             value="<?= htmlspecialchars($account['phone'] ?? '') ?>" data-phone="true"

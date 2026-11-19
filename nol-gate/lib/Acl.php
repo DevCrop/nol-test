@@ -94,6 +94,17 @@ class Acl
         return AclModel::fetch($adminNo);
     }
 
+    public function landingPath(): string
+    {
+        $menus = require dirname(__DIR__) . '/config/menu.config.php';
+        foreach ($menus as $menu) {
+            if ($this->allows($menu['key'], 'view')) {
+                return $menu['url'] ?? $menu['subs'][0]['url'];
+            }
+        }
+        return 'setting/pwd.php';
+    }
+
     public function guard(): void
     {
         if (empty($_SESSION['no_adm_login_uid'])) {
@@ -125,11 +136,8 @@ class Acl
             exit;
         }
 
-        global $role;
-        if ($role instanceof Role) {
-            $role->redirectWithError('권한이 없습니다.');
-        }
         http_response_code(403);
+        header('Content-Type: text/plain; charset=UTF-8');
         echo '권한이 없습니다.';
         exit;
     }

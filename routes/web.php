@@ -764,13 +764,6 @@ $router->group(['prefix' => '/customer'], function ($r) {
     $r->get('/directions',   fn() => render('pages.customer.directions'))->name('customer.directions');    // 오시는길
 });
 
-$router->group(['prefix' => '/info'], function ($r) {
-    $r->get('/usage', fn() => render('pages.info.usage'))->name('info.usage');                           // 이용 안내
-    $r->get('/patient-rights', fn() => render('pages.info.patient-rights'))->name('info.patient-rights'); // 환자 권리 장전
-    $r->get('/noncovered', fn() => render('pages.info.noncovered'))->name('info.noncovered');             // 비급여수가
-    $r->get('/certificates-fee', fn() => render('pages.info.certificates'))->name('info.certificates');   // 제증명수수료
-});
-
 $router->group(['prefix' => '/legal'], function ($r) {
     // 개인정보처리방침
     $r->get('/privacy', function (Request $req, Response $res) {

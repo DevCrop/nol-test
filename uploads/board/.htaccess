@@ -1,0 +1,14 @@
+<IfModule mod_authz_core.c>
+    <FilesMatch "(?i)\.(php\d*|phtml|phar|cgi|pl|py|jsp|asp|aspx|shtml|htaccess|htpasswd)$">
+        Require all denied
+    </FilesMatch>
+</IfModule>
+<IfModule !mod_authz_core.c>
+    <FilesMatch "(?i)\.(php\d*|phtml|phar|cgi|pl|py|jsp|asp|aspx|shtml|htaccess|htpasswd)$">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+</IfModule>
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>

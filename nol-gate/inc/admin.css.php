@@ -16,13 +16,14 @@
 <link rel="stylesheet" href="<?=$NO_IS_SUBDIR?>/resource/vendor/filter-multi-select/filter-multi-select.css"> -->
 
 <link rel="stylesheet" href="<?=$NO_ADMIN_RESOURCE_BASE?>/css/style.css?c=<?=$STATIC_ADMIN_CSS_MODIFY_DATE?>"/>
+<link rel="stylesheet" href="<?=$NO_ADMIN_RESOURCE_BASE?>/css/admin-ui.css?v=<?=filemtime($NO_ADMIN_PATH . '/resource/css/admin-ui.css')?>"/>
 <?php if (!empty($adminAuditStyles)): ?>
-<link rel="stylesheet" href="<?=$NO_ADMIN_RESOURCE_BASE?>/css/audit-ui.css?v=20261020"/>
+<link rel="stylesheet" href="<?=$NO_ADMIN_RESOURCE_BASE?>/css/audit-ui.css?v=<?=filemtime($NO_ADMIN_PATH . '/resource/css/audit-ui.css')?>"/>
 <?php endif; ?>
 <?php if (!empty($adminAccountPreviewStyles)): ?>
 <link rel="stylesheet" href="<?=$NO_ADMIN_RESOURCE_BASE?>/css/account-preview.css?v=20261020-copy-alert"/>
 <?php endif; ?>
 <!-- fontello -->
 <?php if (!empty($adminCredentialStyles)): ?>
-<link rel="stylesheet" href="<?=$NO_ADMIN_RESOURCE_BASE?>/css/account-credentials.css?v=20261021"/>
+<link rel="stylesheet" href="<?=$NO_ADMIN_RESOURCE_BASE?>/css/account-credentials.css?v=20261119"/>
 <?php endif; ?>

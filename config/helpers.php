@@ -138,6 +138,19 @@ if (!function_exists('safe_asset_url')) {
     }
 }
 
+if (!function_exists('sanitize_stored_board_html')) {
+    function sanitize_stored_board_html($value): string
+    {
+        $content = (string) $value;
+        // Older board edits stored the whole rich-text fragment as entities.
+        if (!preg_match('/<\/?[a-z][a-z0-9:-]*(?:\s|\/?>)/i', $content)
+            && preg_match('/&lt;\/?[a-z][a-z0-9:-]*(?:\s|\/?&gt;)/i', $content)) {
+            $content = htmlspecialchars_decode($content, ENT_QUOTES);
+        }
+        return sanitize_html_fragment($content);
+    }
+}
+
 if (!function_exists('sanitize_html_fragment')) {
     function sanitize_html_fragment($html, array $allowedTags = [], array $allowedAttributes = []): string
     {
@@ -200,7 +213,11 @@ if (!function_exists('sanitize_html_fragment')) {
                     $parent = $node->parentNode;
                     if ($parent instanceof DOMNode) {
                         while ($node->firstChild) {
-                            $parent->insertBefore($node->firstChild, $node);
+                            $child = $node->firstChild;
+                            $sanitizeNode($child);
+                            if ($child->parentNode === $node) {
+                                $parent->insertBefore($child, $node);
+                            }
                         }
                         $parent->removeChild($node);
                     }

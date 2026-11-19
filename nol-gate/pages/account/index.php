@@ -165,14 +165,11 @@ $adminCredentialStyles = true;
                                                     </span>
 
                                                 </td>
-                                                <td>
+                                                <td class="no-account-list-actions">
+                                                    <div class="account-actions">
                                                     <?php if (!$isSelf && !empty($row['must_change_password'])): ?>
                                                     <button type="button" class="no-btn no-btn--sm no-btn--notice" data-reissue-temporary="<?= $rowNo ?>" title="기존 임시 비밀번호는 다시 조회할 수 없습니다.">재발급</button>
                                                     <?php endif; ?>
-                                                    <div class="no-table-role">
-                                                        <span class="no-role-btn"><i
-                                                                class="bx bx-dots-vertical-rounded"></i></span>
-                                                        <div class="no-table-action">
                                                             <a href="edit.php?no=<?= $rowNo ?>"
                                                                 class="no-btn no-btn--sm no-btn--normal">권한 및 수정</a>
                                                             <?php if ($lock === ''): ?>
@@ -189,7 +186,6 @@ $adminCredentialStyles = true;
                                                                 삭제
                                                             </button>
                                                             <?php endif; ?>
-                                                        </div>
                                                     </div>
                                                 </td>
                                             </tr>

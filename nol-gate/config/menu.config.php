@@ -65,7 +65,6 @@ return [
         'icon'  => 'fa-gear',
         'subs'  => [
             ['title' => '사이트 정보', 'url' => 'setting/index.php'],
-            ['title' => '비밀번호 변경', 'url' => 'setting/pwd.php'],
             ['title' => '페이지별 SEO', 'url' => 'setting/seo.php'],
             ['title' => '개인정보처리방침 관리', 'url' => 'privacy/index.php'],
         ],

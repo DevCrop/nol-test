@@ -2,16 +2,12 @@
 require_once dirname(__DIR__, 3) . "/inc/lib/base.class.php";
 require_once dirname(__DIR__) . "/mfa.php";
 
-$fail = static function (string $message, string $to = '../../mfa.php'): void {
-    echo "<script>alert(" . json_encode($message) . "); location.href=" . json_encode($to) . ";</script>";
-    exit;
-};
-
 try {
     Mfa::verify((string) ($_POST['mfa_code'] ?? ''));
-} catch (Throwable $e) {
-    $to = strpos($e->getMessage(), '다시 로그인') !== false ? '../../index.php' : '../../mfa.php';
-    $fail($e->getMessage(), $to);
+} catch (Throwable $error) {
+    $_SESSION['mfa_error'] = Mfa::noticeFor($error, '인증번호를 확인할 수 없습니다. 다시 시도하세요.');
+    header('Location: ../../mfa.php');
+    exit;
 }
 
 require_once dirname(__DIR__) . "/PasswordChangeGate.php";

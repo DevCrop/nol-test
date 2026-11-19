@@ -50,14 +50,15 @@ const menuFunc = () => {
 
     const toggleUserMenu = () => {
         const userMenu = $('.no-nav-list');
-        userMenu.toggleClass('on');
-        menuToggleBtn.toggleClass('active');
+        const expanded = !userMenu.hasClass('on');
+        userMenu.toggleClass('on', expanded);
+        menuToggleBtn.toggleClass('active', expanded).attr('aria-expanded', String(expanded));
     };
 
     const removeUserMenu = () => {
         const userMenu = $('.no-nav-list');
         userMenu.removeClass('on');
-        menuToggleBtn.removeClass('active');
+        menuToggleBtn.removeClass('active').attr('aria-expanded', 'false');
     };
 
     const removeModalWhenWindowClicked = (e) => {
@@ -70,6 +71,12 @@ const menuFunc = () => {
         removeUserMenu();
     };
     $(window).click(removeModalWhenWindowClicked);
+    $(document).on('keydown', (event) => {
+        if (event.key === 'Escape' && menuToggleBtn.attr('aria-expanded') === 'true') {
+            removeUserMenu();
+            menuToggleBtn.trigger('focus');
+        }
+    });
 
     roleBtn.click(toggleModal);
     menuToggleBtn.click(toggleUserMenu);

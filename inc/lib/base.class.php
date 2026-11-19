@@ -1,45 +1,7 @@
 <?php
 
-if (!function_exists('no_render_internal_error')) {
-    function no_render_internal_error(string $message = 'Internal Server Error', int $statusCode = 500): void
-    {
-        if (PHP_SAPI !== 'cli') {
-            if (!headers_sent()) {
-                http_response_code($statusCode);
-                header('Content-Type: text/plain; charset=UTF-8');
-            }
-        }
+require_once __DIR__ . '/error.bootstrap.php';
 
-        echo $message;
-        exit;
-    }
-}
-
-if (!function_exists('no_handle_unhandled_exception')) {
-    function no_handle_unhandled_exception(Throwable $e): void
-    {
-        error_log('[unhandled] ' . $e->getMessage());
-        no_render_internal_error('Internal Server Error', http_response_code() === 503 ? 503 : 500);
-    }
-}
-
-if (!function_exists('no_handle_fatal_error')) {
-    function no_handle_fatal_error(): void
-    {
-        $error = error_get_last();
-        if ($error === null) {
-            return;
-        }
-
-        $fatalTypes = [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR];
-        if (!in_array($error['type'] ?? 0, $fatalTypes, true)) {
-            return;
-        }
-
-        error_log('[fatal] ' . ($error['message'] ?? 'Unknown fatal error'));
-        no_render_internal_error();
-    }
-}
 // 프로젝트 루트 경로 찾기 (src/autoload.php 파일을 찾을 때까지 상위 디렉토리 탐색)
 $projectRoot = null;
 $currentDir = __DIR__; // inc/lib
@@ -183,17 +145,6 @@ AdminRequest::requireAuthentication($NO_ADMIN_PATH);
 // 현재 도메인 기반 라이선스 키 생성 (호스트 없으면 빈 문자열 처리)
 $NO_CURRENT_URL = $_SERVER['HTTP_HOST'] ?? '';
 $NO_MAKE_KEY = hash("sha256", $NO_CURRENT_URL . ($NO_SITE_UNIQUE_KEY ?? ''));
-
-// 에러 표시(운영 전환 시 display_errors 0 권장)
-error_reporting(E_ALL & ~(E_NOTICE | E_USER_NOTICE | E_WARNING | E_COMPILE_WARNING | E_CORE_WARNING | E_USER_WARNING | E_DEPRECATED | E_USER_DEPRECATED));
-ini_set('display_errors', $isDevelopmentEnv ? '1' : '0');
-ini_set('display_startup_errors', $isDevelopmentEnv ? '1' : '0');
-ini_set('log_errors', '1');
-
-if (!$isDevelopmentEnv && PHP_SAPI !== 'cli') {
-    set_exception_handler('no_handle_unhandled_exception');
-    register_shutdown_function('no_handle_fatal_error');
-}
 
 // 현재 스크립트/경로 정보
 $EX_FILENAME = explode("/", $_SERVER['SCRIPT_FILENAME'] ?? '');

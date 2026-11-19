@@ -1,7 +1,7 @@
 import { AccountController } from "./Controller/AccountController.js?v=20261027";
-import { AuditController } from "./Controller/AuditController.js?v=20261027";
-import { PrivacyAccessController } from "./Controller/PrivacyAccessController.js?v=20261020";
-import { PrivacyCopyLock } from "./utils/PrivacyCopyLock.js";
+import { AuditController } from "./Controller/AuditController.js?v=20261119";
+import { PrivacyAccessController } from "./Controller/PrivacyAccessController.js?v=20261119-privacy";
+import { PrivacyCopyLock } from "./utils/PrivacyCopyLock.js?v=20261119";
 import { InquiryDownloadReason } from "./utils/InquiryDownloadReason.js";
 import { SettingController } from "./Controller/SettingController.js";
 import { SeoController } from "./Controller/SeoController.js";
@@ -25,11 +25,13 @@ document.addEventListener("DOMContentLoaded", () => {
       break;
 
     case "audit":
+      new PrivacyCopyLock(document.querySelector("[data-pii-log-results]")).init();
       const auditController = new AuditController();
       auditController.init();
       break;
 
     case "privacy-access":
+      new PrivacyCopyLock(document.querySelector("[data-pii-log-results]")).init();
       const privacyAccessController = new PrivacyAccessController();
       privacyAccessController.init();
       break;

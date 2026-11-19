@@ -1,0 +1,90 @@
+/* BlueSquare layout for the shared administrator navigation and password forms. */
+.no-header .no-header__right { gap: .8rem; }
+.no-header .no-session-timer {
+    gap: .4rem;
+    width: auto;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--body-color);
+    font-variant-numeric: tabular-nums;
+}
+.no-header .no-session-timer strong { margin: 0; color: inherit; font-size: inherit; }
+.no-header .no-session-timer.is-warning { color: #d73535; font-weight: 700; }
+.no-header .no-header-menu-btn { border: 0; border-radius: 1.235rem; background-color: var(--main-background); }
+.no-header .no-header-menu-btn i { font-size: 2.6rem; }
+.no-header .no-header-menu-btn:is(:hover, .active) { background-color: var(--primary-light); }
+.no-header .no-header-actions__link { padding: 1rem 1.3rem; border-radius: 0; white-space: nowrap; }
+.no-header .no-header-actions__link i { font-size: 2rem; }
+
+.no-account-form-page .no-admin-column--detail .no-admin-title {
+    width: 25%;
+    padding-right: 2rem;
+    font-size: 1.4rem;
+    font-weight: 400;
+}
+.no-password-change-page .no-admin-content,
+.no-account-form-page .no-admin-column--detail .no-admin-content { min-width: 0; }
+.no-password-change-page input.no-input--detail,
+.no-account-form-page input.no-input--detail {
+    width: 100%;
+    max-width: 100%;
+    min-height: 4rem;
+    border: 1px solid var(--border-color);
+    border-radius: .4rem;
+    padding: .8rem 1.2rem;
+    background-color: var(--card-background-color, #fff);
+    color: var(--title-color);
+    box-sizing: border-box;
+}
+.no-password-change-page .security-help {
+    width: 100%;
+    margin: .8rem 0;
+    font-size: 1.3rem;
+    line-height: 1.5;
+    color: var(--muted, #667085);
+}
+.no-password-change-page .security-message {
+    width: 100%;
+    padding: 1.2rem 1.6rem;
+    margin-bottom: 1.6rem;
+    background: #fff1f0;
+    color: #b42318;
+    border-radius: .4rem;
+}
+.no-password-change-page .security-message[hidden] { display: none; }
+.no-password-change-page .security-actions .no-btn { width: auto; min-width: 10rem; padding-inline: 2rem; }
+.no-password-change-page .security-actions .no-btn:disabled,
+.no-password-required-page button[type=submit]:disabled { opacity: .65; cursor: progress; }
+
+.no-account-list-actions .account-actions { display: flex; justify-content: center; gap: .6rem; flex-wrap: wrap; }
+.no-password-required-page .no-login-top { margin-bottom: 2rem; padding-bottom: 2rem; }
+.no-password-required-page .no-login-title { font-size: 2.8rem; font-weight: 600; line-height: 1.35; letter-spacing: -.04em; }
+.no-password-required-page .no-login-desc { max-width: 32rem; margin: 0 auto; word-break: keep-all; }
+.no-password-required-page .no-mfa-timer { margin: 0 0 2.4rem; font-size: 1.3rem; border-radius: .8rem; }
+.no-password-required-page .no-login-control { gap: 2.4rem; }
+.no-password-required-page .no-auth-help { margin: .8rem 0 0; font-size: 1.2rem; line-height: 1.65; color: #667085; word-break: keep-all; }
+.no-password-required-page .no-login-error {
+    display: block;
+    margin: 1.8rem 0 0;
+    padding: 1.2rem 1.4rem;
+    border-radius: .8rem;
+    background: #fff1f0;
+    color: #b42318;
+    font-size: 1.3rem;
+    line-height: 1.6;
+    word-break: keep-all;
+}
+.no-password-required-page .no-login-error[hidden] { display: none; }
+.no-password-required-page .no-password-return { margin-top: 1.2rem; text-align: center; }
+
+@media (max-width: 768px) {
+    .no-header .no-nav-list { width: 16rem; padding: 1.3rem 0; border-radius: .4rem; }
+    .no-header .no-header-actions__link { padding: .7rem 1.4rem; }
+    .no-account-form-page .no-admin-column--detail .no-admin-title { width: 100%; padding-right: 0; }
+}
+
+@media (max-width: 520px) {
+    .no-password-required-page .no-login-title { font-size: 2.4rem; }
+}

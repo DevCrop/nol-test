@@ -133,8 +133,17 @@ try { TemporaryPassword::assertUsable($data); AccountAccessPolicy::assertAllowed
 catch (RuntimeException $e) { $sendLoginError($e->getMessage()); }
 
 if (Mfa::enabled()) {
-    try { Mfa::begin($data); }
-    catch (RuntimeException $e) { $sendLoginError($e->getMessage()); }
+    unset($_SESSION['mfa_error']);
+    try {
+        Mfa::begin($data);
+    } catch (Throwable $error) {
+        $sendLoginError(Mfa::noticeFor($error, '인증을 시작할 수 없습니다. 다시 로그인하세요.'));
+    }
+    try {
+        Mfa::sendInitial();
+    } catch (Throwable $error) {
+        $_SESSION['mfa_error'] = Mfa::noticeFor($error, Mfa::DELIVERY_ERROR);
+    }
     header('Location: ../../mfa.php');
     exit;
 }

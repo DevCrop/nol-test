@@ -3,6 +3,7 @@
 require_once dirname(__DIR__) . '/Model/AccountModel.php';
 require_once __DIR__ . '/AuthSession.php';
 require_once __DIR__ . '/PasswordExpiry.php';
+require_once __DIR__ . '/Acl.php';
 
 class PasswordChangeGate
 {
@@ -97,7 +98,8 @@ class PasswordChangeGate
         if ($state['reason'] !== null) {
             return $pages . '/setting/pwd.php';
         }
-        return $pages . '/board/board.list.php';
+        $acl = Acl::forAdmin($no, (int) ($_SESSION['no_adm_login_role_id'] ?? 0) === 1);
+        return $pages . '/' . $acl->landingPath();
     }
 
     public function markResetByAdmin(int $targetId, int $actorId): void

@@ -2,36 +2,38 @@
 include_once "../../../inc/lib/base.class.php";
 require_once dirname(__DIR__, 2) . "/lib/PrivacyAccessLogger.php";
 require_once dirname(__DIR__, 2) . "/lib/PiiMask.php";
+require_once dirname(__DIR__, 2) . '/lib/upload.guard.php';
 
 try {
     $db = DB::getInstance();
 } catch (Exception $e) {
-    echo "<script>alert('처리할 수 없습니다.'); history.back();</script>";
-    exit;
+    no_render_internal_error('대관 신청을 조회할 수 없습니다. 잠시 후 다시 시도해 주세요.', 503);
 }
 
 $no = isset($_GET['no']) ? (int)$_GET['no'] : 0;
 if ($no <= 0) {
-    echo "<script>alert('잘못된 접근입니다.'); history.back();</script>";
-    exit;
+    no_render_internal_error('대관 신청 번호를 확인해 주세요.', 400);
 }
 
-$stmt = $db->prepare("SELECT * FROM nb_request WHERE no = :no");
-$stmt->execute([':no' => $no]);
+$stmt = $db->prepare("SELECT * FROM nb_request WHERE no = :no AND sitekey = :sitekey");
+$stmt->execute([':no' => $no, ':sitekey' => $NO_SITE_UNIQUE_KEY]);
 $data = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$data) {
-    echo "<script>alert('해당 대관 신청을 찾을 수 없습니다.'); history.back();</script>";
-    exit;
+    no_render_internal_error('해당 대관 신청을 찾을 수 없습니다.', 404);
 }
 
-PrivacyAccessLogger::record(
-    'view',
-    'inquiry',
-    (int) $no,
-    (string) ($data['name'] ?? ''),
-    '대관 신청 열람'
-);
+try {
+    PrivacyAccessLogger::record(
+        'view',
+        'inquiry',
+        (int) $no,
+        (string) ($data['name'] ?? ''),
+        '대관 신청 열람'
+    );
+} catch (RuntimeException $e) {
+    no_render_internal_error($e->getMessage(), 503);
+}
 
 $pageName = "대관 신청 상세";
 
@@ -187,16 +189,10 @@ if (empty($attachedFiles) && !empty($data['contents'])) {
                                         <?php
                                             $serverFile = (string)$fileInfo['server'];
                                             $originalFile = (string)$fileInfo['original'];
-                                            $safeServerFile = basename($serverFile);
-                                            $filePath = '/uploads/request/' . $safeServerFile;
-                                            $fileExists = is_file($NO_PROJECT_ROOT . $filePath);
-
-                                            $downloadUrl = './download.php?no=' . (int)$no;
-                                            if (!empty($fileInfo['slot'])) {
-                                                $downloadUrl .= '&slot=' . (int)$fileInfo['slot'];
-                                            } else {
-                                                $downloadUrl .= '&file=' . urlencode($safeServerFile);
-                                            }
+                                            $safeServerFile = basename(str_replace('\\', '/', $serverFile));
+                                            $fileExists = $safeServerFile !== '' && !empty($fileInfo['slot'])
+                                                && no_upload_guard_path($UPLOAD_DIR_REQUEST, $UPLOAD_DIR_REQUEST . '/' . $safeServerFile) !== null;
+                                            $downloadUrl = './download.php';
 
                                             $fileExt = strtolower(pathinfo($originalFile, PATHINFO_EXTENSION));
                                         ?>
@@ -258,7 +254,7 @@ if (empty($attachedFiles) && !empty($data['contents'])) {
                 </div>
             </section>
         </main>
-        <form id="pii-download-form" method="POST" action="./download.php" hidden>
+        <form id="pii-download-form" method="POST" action="./download.php" data-native-download hidden>
             <input type="hidden" name="no" value="">
             <input type="hidden" name="slot" value="">
             <input type="hidden" name="file" value="">

@@ -5,10 +5,15 @@ require_once __DIR__ . '/MfaEmail.php';
 
 class Mfa
 {
+    public const DELIVERY_ERROR = '인증 메일을 보내지 못했습니다. 잠시 후 다시 요청하세요.';
     public static function enabled(): bool { return defined('MFA_ENABLED') && MFA_ENABLED === true; }
     public static function codeLength(): int { return 6; }
     public static function ttlSeconds(): int { return defined('MFA_TTL_SECONDS') ? max(60, (int) MFA_TTL_SECONDS) : 900; }
     public static function ttlMinutes(): int { return max(1, (int) ceil(self::ttlSeconds() / 60)); }
+    private static function resendCooldownSeconds(): int
+    {
+        return defined('MFA_RESEND_SECONDS') ? max(30, (int) MFA_RESEND_SECONDS) : 30;
+    }
     public static function pending(): ?array { $p = $_SESSION['mfa_pending'] ?? null; return is_array($p) ? $p : null; }
     public static function sent(array $p): bool { return !empty($p['code_hash']); }
     public static function maskEmail(string $email): string
@@ -28,7 +33,7 @@ class Mfa
             'credential_version' => hash('sha256', (string) $admin['upwd']),
             'authority_version' => AccountAccessPolicy::version($admin),
             'code_hash' => '', 'expires' => time() + self::ttlSeconds(),
-            'attempts' => 0, 'email_attempts' => 0, 'sent_at' => 0,
+            'attempts' => 0, 'email_attempts' => 0, 'sent_at' => 0, 'attempted_at' => 0,
         ];
     }
     public static function bindEmail(string $inputEmail): array
@@ -42,6 +47,21 @@ class Mfa
         }
         return static::issue($p);
     }
+    public static function sendInitial(): void
+    {
+        $pending = self::requirePending();
+        if (!self::sent($pending)) {
+            static::issue();
+        }
+    }
+
+    public static function noticeFor(Throwable $error, string $fallback): string
+    {
+        return $error instanceof RuntimeException && !($error instanceof PDOException)
+            ? $error->getMessage()
+            : $fallback;
+    }
+
     private static function requirePending(): array
     {
         $p = self::pending();
@@ -70,14 +90,21 @@ class Mfa
     public static function issue(array $unused = []): array
     {
         $p = self::requirePending();
-        if (time() - (int) $p['sent_at'] < 30) throw new RuntimeException('잠시 후 다시 요청하세요.');
+        $lastAttempt = max((int) $p['sent_at'], (int) ($p['attempted_at'] ?? 0));
+        if (time() - $lastAttempt < self::resendCooldownSeconds()) throw new RuntimeException('잠시 후 다시 요청하세요.');
         $row = self::currentAccount($p);
         $code = (string) random_int(100000, 999999);
         $message = MfaEmail::compose('놀씨어터', $code, (int) $p['expires']);
         $outbox = ['to' => trim((string) $row['email']), 'subject' => $message['subject'],
             'body' => $message['text'], 'html' => $message['html'], 'skip' => false];
         // Keep the session lock through delivery: parallel resends cannot bypass cooldown.
-        static::deliver($outbox);
+        $_SESSION['mfa_pending']['attempted_at'] = time();
+        try {
+            static::deliver($outbox);
+        } catch (Throwable $error) {
+            error_log('[mfa] delivery failed');
+            throw new RuntimeException(self::DELIVERY_ERROR, 0, $error);
+        }
         $_SESSION['mfa_pending']['code_hash'] = password_hash($code, PASSWORD_DEFAULT);
         $_SESSION['mfa_pending']['sent_at'] = time();
         // Resends never reset expiry or attempts; plaintext codes are not persisted.
@@ -85,15 +112,13 @@ class Mfa
     }
     public static function resend(): void
     {
-        $p = self::requirePending();
-        if (!self::sent($p)) throw new RuntimeException('이메일을 먼저 입력하세요.');
         static::issue();
     }
     private static function maxAttempts(): int { return defined('MFA_MAX_ATTEMPTS') ? max(1, (int) MFA_MAX_ATTEMPTS) : 5; }
     public static function verify(string $inputCode): void
     {
         $p = self::requirePending();
-        if (!self::sent($p)) throw new RuntimeException('이메일을 먼저 입력하세요.');
+        if (!self::sent($p)) throw new RuntimeException('인증번호를 먼저 발송해 주세요.');
         if (!preg_match('/^[0-9]{6}$/D', $inputCode) || !password_verify($inputCode, $p['code_hash'])) {
             $_SESSION['mfa_pending']['attempts'] = (int) $p['attempts'] + 1;
             if ($_SESSION['mfa_pending']['attempts'] >= self::maxAttempts()) self::clear();

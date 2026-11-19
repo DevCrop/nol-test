@@ -6,7 +6,8 @@ require_once __DIR__ . '/PiiMask.php';
 
 class PrivacyAccessLogger
 {
-    public const ACTIONS = ['view', 'download'];
+    public const ACTIONS = ['view', 'download', 'create', 'update', 'delete'];
+    public const ENTITIES = ['inquiry' => '대관신청', 'admin_account' => '관리자 계정'];
 
     /**
      * 개인정보 출력 전에 호출. 기록을 보장하지 못하면 공개를 중단한다.
@@ -21,7 +22,7 @@ class PrivacyAccessLogger
             $recorded = PrivacyAccessModel::insert([
                 'sitekey' => (string) $NO_SITE_UNIQUE_KEY,
                 'actor_no' => (int) ($_SESSION['no_adm_login_no'] ?? 0),
-                'actor_uid' => (string) ($_SESSION['no_adm_login_uid'] ?? ''),
+                'actor_uid' => (string) ($_SESSION['no_adm_login_uid'] ?? '비회원'),
                 'actor_ip' => (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
                 'action' => $action,
                 'entity' => $entity,
@@ -35,13 +36,13 @@ class PrivacyAccessLogger
         } catch (Throwable $e) {
             error_log('[privacy-access] recording failed');
             http_response_code(503);
-            throw new RuntimeException('개인정보 열람 기록을 저장할 수 없습니다. 잠시 후 다시 시도하세요.');
+            throw new RuntimeException('개인정보 처리기록을 저장할 수 없습니다. 잠시 후 다시 시도하세요.');
         }
     }
 
     public static function actionLabel(string $action): string
     {
-        $map = ['view' => '열람', 'download' => '다운로드'];
+        $map = ['view' => '열람', 'download' => '다운로드', 'create' => '입력', 'update' => '변경', 'delete' => '삭제'];
         return $map[$action] ?? $action;
     }
 

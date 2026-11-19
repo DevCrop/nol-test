@@ -423,25 +423,31 @@
         window.rentalFormFiles.forEach((h) => {
           n.append("files[]", h);
         });
-      let a = await (
-        await fetch("/module/request.rental.php", { method: "POST", body: n })
-      ).json();
-      if (a.success) {
+      const response = await fetch("/module/request.rental.php", { method: "POST", body: n });
+      if (response.status === 413) {
+        alert("첨부파일 용량이 너무 큽니다. 파일 용량을 줄인 뒤 다시 시도해 주세요.");
+        return;
+      }
+
+      if (response.redirected || !response.headers.get("Content-Type")?.toLowerCase().startsWith("application/json")) {
+        alert("대관 신청 서버에서 응답을 받지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        return;
+      }
+
+      const a = await response.json();
+      if (response.ok && a?.success === true) {
         (alert(a.message), location.reload());
       } else {
         let h =
-          a.errors && a.errors.length > 0
+          Array.isArray(a?.errors) && a.errors.length > 0
             ? a.errors.join(`
 `)
-            : a.message ||
+            : a?.message ||
               "\uC2E0\uCCAD \uCC98\uB9AC \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.";
         alert(h);
       }
-    } catch (n) {
-      (console.error("Error:", n),
-        alert(
-          "\uC2E0\uCCAD \uCC98\uB9AC \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574\uC8FC\uC138\uC694.",
-        ));
+    } catch {
+      alert("대관 신청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       ((t.disabled = !1),
         (t.querySelector(".no-button__text").textContent = s));
@@ -494,13 +500,14 @@
           <i class="fa-regular fa-file"></i>
         </div>
         <div class="no-form-file-upload__item-info">
-          <div class="no-form-file-upload__item-name">${d.name}</div>
+          <div class="no-form-file-upload__item-name"></div>
           <div class="no-form-file-upload__item-size">${m}</div>
         </div>
         <button type="button" class="no-form-file-upload__item-delete" data-index="${c}">
           <i class="fa-solid fa-xmark"></i>
         </button>
       `),
+            (l.querySelector(".no-form-file-upload__item-name").textContent = d.name),
             t.appendChild(l));
         }));
     }

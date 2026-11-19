@@ -7,6 +7,8 @@
 ob_start();
 require_once __DIR__ . '/../inc/lib/base.class.php';
 ob_end_clean();
+require_once __DIR__ . '/../nol-gate/lib/upload.guard.php';
+require_once __DIR__ . '/../nol-gate/lib/PrivacyAccessLogger.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -79,9 +81,6 @@ if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
 if ($content === '') {
     $errors[] = '내용을 입력해주세요.';
 }
-if ($content !== '' && preg_match('/<[^>]*>/', $content)) {
-    $errors[] = '내용에는 HTML 태그를 사용할 수 없습니다.';
-}
 if ($captcha === '') {
     $errors[] = '보안문자를 입력해주세요.';
 }
@@ -103,102 +102,76 @@ if (!empty($errors)) {
     exit;
 }
 
-$uploadedFiles = [];
-if (!empty($_FILES['files']['name'][0])) {
-    $allowedExtensions = ['zip', 'xls', 'xlsx', 'pdf', 'ppt', 'pptx', 'doc', 'docx', 'hwp'];
-    $maxFileSize = 20 * 1024 * 1024;
-    $maxFiles = 5;
-    $fileCount = count($_FILES['files']['name']);
+$allowedExtensions = ['zip', 'xls', 'xlsx', 'pdf', 'ppt', 'pptx', 'doc', 'docx', 'hwp'];
+$maxFileSize = 20 * 1024 * 1024;
+$files = $_FILES['files'] ?? ['error' => []];
+$pending = [];
+if (!is_array($files['error'] ?? null)) {
+    $errors[] = '첨부파일 정보를 확인할 수 없습니다.';
+} else {
+    $fileErrors = array_filter($files['error'], static function ($code) {
+        return $code !== UPLOAD_ERR_NO_FILE;
+    });
+    if (count($fileErrors) > 5) {
+        $errors[] = '첨부파일은 최대 5개까지 가능합니다.';
+    } else {
+        foreach ($fileErrors as $index => $code) {
+            $name = (string) ($files['name'][$index] ?? '');
+            $tmpPath = (string) ($files['tmp_name'][$index] ?? '');
+            $size = (int) ($files['size'][$index] ?? 0);
+            $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
 
-    if ($fileCount > $maxFiles) {
-        $errors[] = "첨부파일은 최대 {$maxFiles}개까지 가능합니다.";
-    }
-
-    for ($i = 0; $i < $fileCount; $i++) {
-        if ($_FILES['files']['error'][$i] !== UPLOAD_ERR_OK) {
-            continue;
+            if ($code === UPLOAD_ERR_INI_SIZE || $code === UPLOAD_ERR_FORM_SIZE || $size > $maxFileSize) {
+                $errors[] = '파일당 20MB 이하만 첨부할 수 있습니다.';
+                continue;
+            }
+            if ($code === UPLOAD_ERR_PARTIAL) {
+                $errors[] = '첨부파일 전송이 완료되지 않았습니다. 다시 선택해 주세요.';
+                continue;
+            }
+            if ($code !== UPLOAD_ERR_OK || !is_uploaded_file($tmpPath)) {
+                $errors[] = '첨부파일을 받지 못했습니다. 다시 선택해 주세요.';
+                continue;
+            }
+            if (!in_array($ext, $allowedExtensions, true)) {
+                $errors[] = '첨부 가능한 파일은 ZIP, XLS, XLSX, PDF, PPT, PPTX, DOC, DOCX, HWP입니다.';
+                continue;
+            }
+            [$valid, $error] = no_upload_guard_check($name, $ext, $tmpPath, $size, $maxFileSize);
+            if (!$valid) {
+                $errors[] = $error;
+                continue;
+            }
+            $pending[] = ['original' => $name, 'temp' => $tmpPath, 'ext' => $ext];
         }
-
-        $fileName = $_FILES['files']['name'][$i];
-        $fileSize = $_FILES['files']['size'][$i];
-        $fileTmp = $_FILES['files']['tmp_name'][$i];
-        $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-
-        if (!in_array($fileExt, $allowedExtensions, true)) {
-            $errors[] = "{$fileName}은(는) 허용되지 않는 파일 형식입니다.";
-            continue;
-        }
-
-        if ($fileSize > $maxFileSize) {
-            $errors[] = "{$fileName}은(는) 20MB 이하 파일만 업로드 가능합니다.";
-            continue;
-        }
-
-        $uploadDir = rtrim($UPLOAD_DIR_REQUEST, '/\\') . '/';
-        if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true)) {
-            $errors[] = '업로드 디렉터리 생성에 실패했습니다.';
-            continue;
-        }
-
-        if (!is_writable($uploadDir)) {
-            $errors[] = '업로드 디렉터리에 쓰기 권한이 없습니다.';
-            continue;
-        }
-
-        $newFileName = date('YmdHis') . '_' . uniqid() . '.' . $fileExt;
-        $uploadPath = $uploadDir . $newFileName;
-
-        if (!file_exists($fileTmp)) {
-            $errors[] = "{$fileName}: 임시 파일을 찾을 수 없습니다.";
-            continue;
-        }
-
-        if (move_uploaded_file($fileTmp, $uploadPath)) {
-            $uploadedFiles[] = [
-                'server' => $newFileName,
-                'original' => $fileName
-            ];
-            continue;
-        }
-
-        $errorCode = $_FILES['files']['error'][$i];
-        $errorMsg = "{$fileName} 업로드에 실패했습니다.";
-
-        switch ($errorCode) {
-            case UPLOAD_ERR_INI_SIZE:
-            case UPLOAD_ERR_FORM_SIZE:
-                $errorMsg = "{$fileName}: 파일 크기가 너무 큽니다.";
-                break;
-            case UPLOAD_ERR_PARTIAL:
-                $errorMsg = "{$fileName}: 파일이 일부만 업로드되었습니다.";
-                break;
-            case UPLOAD_ERR_NO_FILE:
-                $errorMsg = "{$fileName}: 파일이 업로드되지 않았습니다.";
-                break;
-            case UPLOAD_ERR_NO_TMP_DIR:
-                $errorMsg = "{$fileName}: 임시 폴더가 없습니다.";
-                break;
-            case UPLOAD_ERR_CANT_WRITE:
-                $errorMsg = "{$fileName}: 파일 쓰기에 실패했습니다.";
-                break;
-            case UPLOAD_ERR_EXTENSION:
-                $errorMsg = "{$fileName}: PHP 확장에 의해 업로드가 중단되었습니다.";
-                break;
-        }
-
-        $errors[] = $errorMsg;
     }
 }
 
-if (!empty($errors)) {
+if ($errors) {
     echo json_encode([
         'success' => false,
-        'message' => implode(' ', $errors)
+        'message' => implode(' ', $errors),
+        'errors' => $errors,
     ]);
     exit;
 }
 
+$uploadedFiles = [];
+$uploadDir = rtrim($UPLOAD_DIR_REQUEST, '/\\') . '/';
+
 try {
+    PrivacyAccessModel::requireTransactionalRental($db);
+    if ($pending && !is_dir($uploadDir) && !@mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
+        throw new RuntimeException('Rental upload directory unavailable');
+    }
+    foreach ($pending as $file) {
+        $serverName = bin2hex(random_bytes(16)) . '.' . $file['ext'];
+        if (!@move_uploaded_file($file['temp'], $uploadDir . $serverName)) {
+            throw new RuntimeException('Rental attachment storage failed');
+        }
+        $uploadedFiles[] = ['server' => $serverName, 'original' => $file['original']];
+    }
+
     $venueName = $venue === 'woori-card' ? '우리카드홀' : '우리투자증권홀';
     $fullContent = "대관구분\n{$venueName}\n\n";
     $fullContent .= "공연명\n{$performanceName}\n\n";
@@ -218,6 +191,7 @@ try {
     $orgFile4 = isset($uploadedFiles[3]) ? $uploadedFiles[3]['original'] : null;
     $orgFile5 = isset($uploadedFiles[4]) ? $uploadedFiles[4]['original'] : null;
 
+    $db->beginTransaction();
     $stmt = $db->prepare("
         INSERT INTO nb_request
         (sitekey, venue, name, phone, email, company, performance_name, rental_start_date, rental_end_date, contents, file_1, file_2, file_3, file_4, file_5, org_file_1, org_file_2, org_file_3, org_file_4, org_file_5, regdate)
@@ -247,13 +221,26 @@ try {
         ':org_file_5' => $orgFile5,
     ]);
 
+    $requestNo = (int) $db->lastInsertId();
+    PrivacyAccessLogger::record('create', 'inquiry', $requestNo, $contactName, '대관 신청 등록');
+    $db->commit();
+
     unset($_SESSION['captcha_secure']);
 
     echo json_encode([
         'success' => true,
         'message' => '대관 신청이 완료되었습니다. 감사합니다.'
     ]);
-} catch (Exception $e) {
+} catch (Throwable $e) {
+    if ($db->inTransaction()) {
+        $db->rollBack();
+    }
+    foreach ($uploadedFiles as $file) {
+        if (!@unlink($uploadDir . $file['server'])) {
+            error_log('[rental] failed to remove temporary attachment');
+        }
+    }
+    error_log('[rental] submission persistence failed');
     echo json_encode([
         'success' => false,
         'message' => '요청 처리 중 오류가 발생했습니다. 다시 시도해주세요.'

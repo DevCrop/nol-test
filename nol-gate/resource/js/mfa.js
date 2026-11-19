@@ -3,7 +3,8 @@
   if (!timer) return;
 
   const output = timer.querySelector("[data-mfa-countdown]");
-  const submit = document.querySelector('[data-mfa-form] [type="submit"]');
+  const form = document.querySelector("[data-mfa-form]");
+  const submit = form?.querySelector('[type="submit"]');
   const expiresAt = Number(timer.dataset.mfaExpires) * 1000;
 
   const format = (seconds) => {
@@ -15,7 +16,7 @@
     const seconds = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
     output.textContent = seconds > 0 ? format(seconds) : "만료됨";
     timer.classList.toggle("is-expired", seconds === 0);
-    if (submit) submit.disabled = seconds === 0;
+    if (submit) submit.disabled = seconds === 0 || form.dataset.mfaSent !== 'true';
     return seconds;
   };
 

@@ -3,7 +3,7 @@ require_once dirname(__DIR__) . '/lib/GroupedOrder.php';
 
 class PopupModel
 {
-    public static function insert($data)
+    public static function insert($data): int
     {
         $db = DB::getInstance();
         $sql = "
@@ -20,25 +20,30 @@ class PopupModel
             )
         ";
         $order = new GroupedOrder($db, 'nb_popups');
-        return $order->locked(function () use ($db, $sql, $data, $order) {
-        $stmt = $db->prepare($sql);
-        $result = $stmt->execute([
-            ':title'        => $data['title'],
-            ':popup_type'   => $data['popup_type'] ?? 1,
-            ':popup_path'   => $data['popup_path'],
-            ':has_link'     => $data['has_link'],
-            ':link_url'     => $data['link_url'],
-            ':sort_no'      => $data['sort_no'],
-            ':is_active'    => $data['is_active'],
-            ':description'  => $data['description'],
-            ':start_at'     => $data['start_at'],
-            ':end_at'       => $data['end_at'],
-            ':popup_image'  => $data['popup_image'],
-            ':is_unlimited' => $data['is_unlimited'],
-            ':is_target'    => $data['is_target'],
-        ]);
-        if ($result) $order->head(['popup_path'=>$data['popup_path']], (int)$db->lastInsertId());
-        return $result;
+        return $order->locked(function () use ($db, $sql, $data, $order): int {
+            $stmt = $db->prepare($sql);
+            $result = $stmt->execute([
+                ':title'        => $data['title'],
+                ':popup_type'   => $data['popup_type'] ?? 1,
+                ':popup_path'   => $data['popup_path'],
+                ':has_link'     => $data['has_link'],
+                ':link_url'     => $data['link_url'],
+                ':sort_no'      => $data['sort_no'],
+                ':is_active'    => $data['is_active'],
+                ':description'  => $data['description'],
+                ':start_at'     => $data['start_at'],
+                ':end_at'       => $data['end_at'],
+                ':popup_image'  => $data['popup_image'] ?? null,
+                ':is_unlimited' => $data['is_unlimited'],
+                ':is_target'    => $data['is_target'],
+            ]);
+            if (!$result) {
+                return 0;
+            }
+
+            $id = (int) $db->lastInsertId();
+            $order->head(['popup_path' => $data['popup_path']], $id);
+            return $id;
         });
     }
 

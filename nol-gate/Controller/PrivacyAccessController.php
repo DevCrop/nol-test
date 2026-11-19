@@ -28,7 +28,7 @@ $action = (string) ($_POST['action'] ?? '');
 $entity = (string) ($_POST['entity'] ?? '');
 $filters = [
     'action' => in_array($action, PrivacyAccessLogger::ACTIONS, true) ? $action : '',
-    'entity' => in_array($entity, ['inquiry', 'admin_account'], true) ? $entity : '',
+    'entity' => isset(PrivacyAccessLogger::ENTITIES[$entity]) ? $entity : '',
     'keyword' => function_exists('mb_substr') ? mb_substr($keyword, 0, 100) : substr($keyword, 0, 100),
 ];
 $total = PrivacyAccessModel::count((string) $NO_SITE_UNIQUE_KEY, $filters);
@@ -41,10 +41,11 @@ $rows = PrivacyAccessModel::list((string) $NO_SITE_UNIQUE_KEY, $offset, $perpage
 $out = [];
 foreach ($rows as $row) {
     $action = (string) ($row['action'] ?? '');
+    $actor = trim((string) ($row['actor_uid'] ?? ''));
     $out[] = [
         'no' => (int) ($row['no'] ?? 0),
         'created_at' => (string) ($row['created_at'] ?? ''),
-        'actor_uid' => (string) ($row['actor_uid'] ?? ''),
+        'actor_uid' => $actor === '비회원' ? $actor : PiiMask::identifier($actor),
         'actor_ip' => (string) ($row['actor_ip'] ?? ''),
         'action' => $action,
         'action_label' => PrivacyAccessLogger::actionLabel($action),

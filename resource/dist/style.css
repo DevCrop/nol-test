@@ -11459,3 +11459,17 @@ html[data-theme="light"]
   }
 }
 /*# sourceMappingURL=/resource/dist/style.css.map */
+
+
+/* 공연장 복수 담당자 연락처: 좁은 화면에서는 링크 단위로 줄바꿈 */
+.rental-contact-links {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.5em;
+  min-width: 0;
+}
+.rental-contact-links a {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

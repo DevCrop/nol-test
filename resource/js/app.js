@@ -232,9 +232,19 @@ async function handleRentalFormSubmit(e) {
       body: formData,
     });
 
+    if (response.status === 413) {
+      alert("첨부파일 용량이 너무 큽니다. 파일 용량을 줄인 뒤 다시 시도해 주세요.");
+      return;
+    }
+
+    if (response.redirected || !response.headers.get("Content-Type")?.toLowerCase().startsWith("application/json")) {
+      alert("대관 신청 서버에서 응답을 받지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      return;
+    }
+
     const result = await response.json();
 
-    if (result.success) {
+    if (response.ok && result?.success === true) {
       alert(result.message);
       form.reset();
       // 파일 리스트 초기화
@@ -244,7 +254,7 @@ async function handleRentalFormSubmit(e) {
       }
       // 파일 배열 초기화
       if (typeof window.rentalFormFiles !== "undefined") {
-        window.rentalFormFiles = [];
+        window.rentalFormFiles.length = 0;
       }
       // 캡차 새로고침
       if (captchaImage) {
@@ -253,14 +263,13 @@ async function handleRentalFormSubmit(e) {
     } else {
       // errors 배열이 있으면 사용, 없으면 message 사용
       const errorMessage =
-        result.errors && result.errors.length > 0
+        Array.isArray(result?.errors) && result.errors.length > 0
           ? result.errors.join("\n")
-          : result.message || "신청 처리 중 오류가 발생했습니다.";
+          : result?.message || "신청 처리 중 오류가 발생했습니다.";
       alert(errorMessage);
     }
-  } catch (error) {
-    console.error("Error:", error);
-    alert("신청 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
+  } catch {
+    alert("대관 신청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.");
   } finally {
     // 제출 버튼 활성화
     submitButton.disabled = false;
@@ -341,7 +350,7 @@ function initFileUpload() {
           <i class="fa-regular fa-file"></i>
         </div>
         <div class="no-form-file-upload__item-info">
-          <div class="no-form-file-upload__item-name">${file.name}</div>
+          <div class="no-form-file-upload__item-name"></div>
           <div class="no-form-file-upload__item-size">${size}</div>
         </div>
         <button type="button" class="no-form-file-upload__item-delete" data-index="${index}">
@@ -349,6 +358,7 @@ function initFileUpload() {
         </button>
       `;
 
+      li.querySelector(".no-form-file-upload__item-name").textContent = file.name;
       fileList.appendChild(li);
     });
   }

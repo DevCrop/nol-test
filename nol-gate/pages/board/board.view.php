@@ -314,14 +314,14 @@ include_once "../../inc/admin.js.php";
                                 <!-- admin-block -->
 
                                 <!-- 내용 -->
-                                <?php $contents = htmlspecialchars_decode($data['contents']); ?>
+                                <?php $contents = sanitize_stored_board_html($data['contents'] ?? ''); ?>
                                 <div class="no-admin-block">
                                     <h3 class="no-admin-title">
                                         <label for="contents">내용</label>
                                     </h3>
                                     <div class="no-admin-content">
                                         <div class="no-admin-check">
-                                            <textarea name="contents" id="contents"><?= $contents ?></textarea>
+                                            <textarea name="contents" id="contents"><?= htmlspecialchars($contents, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
                                         </div>
                                     </div>
                                 </div>

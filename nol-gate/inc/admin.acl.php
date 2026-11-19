@@ -8,11 +8,11 @@ $aclActions = ['view' => '조회', 'create' => '등록', 'update' => '수정', '
     <h3 class="no-admin-title">메뉴 권한</h3>
     <div class="no-admin-content">
         <p class="no-admin-acl__hint">일반 관리자가 쓸 메뉴만 선택하세요. 등록·수정·삭제는 조회가 필요합니다.</p>
-        <div class="no-table-responsive no-admin-acl__table">
+        <div class="no-table-responsive no-admin-acl__table" role="region" aria-label="메뉴별 권한" tabindex="0">
             <table class="no-table">
                 <thead>
                     <tr>
-                        <th scope="col">메뉴</th>
+                        <th scope="col" class="no-admin-acl__menu">메뉴</th>
                         <?php foreach ($aclActions as $label): ?>
                         <th scope="col" class="no-admin-acl__col"><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></th>
                         <?php endforeach; ?>
@@ -32,6 +32,7 @@ $aclActions = ['view' => '조회', 'create' => '등록', 'update' => '수정', '
                                         id="acl-<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>-<?= $action ?>"
                                         value="1"
                                         data-acl-action="<?= $action ?>"
+                                        aria-label="<?= htmlspecialchars($title . ' ' . $label, ENT_QUOTES, 'UTF-8') ?>"
                                         <?= !empty($row[$action]) ? 'checked' : '' ?>>
                                     <span><i class="bx bxs-check-square"></i></span>
                                 </label>

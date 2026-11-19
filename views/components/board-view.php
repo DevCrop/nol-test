@@ -3,13 +3,13 @@
 $backUrl = $backUrl ?? 'javascript:history.back();';
 $title = $title ?? '';
 $date = $date ?? '';
-$content = $content ?? '';
+$content = sanitize_stored_board_html($content ?? '');
 $writeName = $writeName ?? '';
 $thumbImage = $thumbImage ?? '';
 $files = $files ?? [];
 $isFile = $isFile ?? 'N';
 $boardNo = $boardNo ?? null;
-$directUrl = $directUrl ?? '';
+$directUrl = safe_url($directUrl ?? '', ['http', 'https'], true);
 $prevPost = $prevPost ?? null; // ['title' => '...', 'url' => '...']
 $nextPost = $nextPost ?? null; // ['title' => '...', 'url' => '...']
 $showNav = $showNav ?? true; // prev/next 네비게이션 표시 여부
@@ -57,7 +57,7 @@ $attachedFiles = array_filter($files, function ($file) {
     <?php if (!empty($content)): ?>
         <div class="no-board-view__contents">
             <div class="no-board-view__content">
-                <?= html_entity_decode($content, ENT_QUOTES | ENT_HTML5, 'UTF-8') ?>
+                <?= $content ?>
             </div>
         </div>
     <?php endif; ?>

@@ -22,8 +22,8 @@ $searchKeyword  = isset($_GET['searchKeyword'])  ? trim($_GET['searchKeyword']) 
 /* =============================
  * WHERE 절 구성
  * ============================= */
-$where  = "WHERE 1=1";
-$params = [];
+$where = "WHERE r.sitekey = :sitekey";
+$params = [':sitekey' => $NO_SITE_UNIQUE_KEY];
 
 if ($searchColumn !== '' && $searchKeyword !== '') {
     $allowedColumns = [
@@ -74,8 +74,12 @@ $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
 $stmt->bindValue(':perpage', (int)$perpage, PDO::PARAM_INT);
 $stmt->execute();
 $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
-foreach ($requests as $item) {
-    PrivacyAccessLogger::record('view', 'inquiry', (int) $item['no'], (string) ($item['name'] ?? ''), '대관신청 목록 열람');
+try {
+    foreach ($requests as $item) {
+        PrivacyAccessLogger::record('view', 'inquiry', (int) $item['no'], (string) ($item['name'] ?? ''), '대관신청 목록 열람');
+    }
+} catch (RuntimeException $e) {
+    no_render_internal_error($e->getMessage(), 503);
 }
 ?>
 

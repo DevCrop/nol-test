@@ -3,12 +3,18 @@ include_once dirname(__DIR__) . "/inc/lib/base.class.php";
 require_once __DIR__ . "/lib/mfa.php";
 
 if (!empty($_SESSION['no_adm_login_uid'])) {
-    header('Location: ./pages/board/board.list.php');
+    header('Location: ' . (new PasswordChangeGate())->landingAfterLogin());
     exit;
 }
 
 $pending = Mfa::pending();
-if ($pending === null) {
+$error = (string) ($_SESSION['mfa_error'] ?? '');
+unset($_SESSION['mfa_error']);
+if ($pending === null || (int) ($pending['expires'] ?? 0) <= time()) {
+    Mfa::clear();
+    if ($error !== '' || $pending !== null) {
+        $_SESSION['admin_flash_error'] = $error !== '' ? $error : '인증번호가 만료되었습니다. 다시 로그인하세요.';
+    }
     header('Location: ./index.php');
     exit;
 }
@@ -16,8 +22,8 @@ if ($pending === null) {
 $sent = Mfa::sent($pending);
 $minutes = Mfa::ttlMinutes();
 $codeLen = Mfa::codeLength();
-$masked = $sent ? Mfa::maskEmail((string) $pending['email']) : '';
-$expires = $sent ? (int) ($pending['expires'] ?? 0) : 0;
+$masked = Mfa::maskEmail((string) $pending['email']);
+$expires = (int) $pending['expires'];
 ?>
 <!DOCTYPE html>
 <html lang="ko">
@@ -44,46 +50,24 @@ $expires = $sent ? (int) ($pending['expires'] ?? 0) : 0;
     </header>
 
     <main id="no-main">
-      <?php if (!$sent): ?>
-      <form method="POST" action="./lib/login/mfa.email.php" autocomplete="off" data-loading-message="인증번호를 이메일로 보내고 있습니다.">
-        <?= Csrf::field() ?>
-        <div class="no-login-wrap">
-          <div class="no-login-content">
-            <div class="no-login-top">
-              <h2 class="no-login-title">이메일 인증</h2>
-              <p class="no-login-desc">관리자 계정에 등록된 이메일을 입력하세요.</p>
-            </div>
-            <div class="no-login-control">
-              <div class="no-auth-field">
-                <label for="mfa_email">이메일</label>
-                <div class="no-auth-input">
-                  <i class="bx bxs-envelope" aria-hidden="true"></i>
-                  <input type="email" name="mfa_email" id="mfa_email" placeholder="name@example.com" required maxlength="254" />
-                </div>
-              </div>
-            </div>
-            <div class="no-login-bot">
-              <div class="no-form-btn">
-                <button type="submit" class="no-btn--submit">인증번호 받기</button>
-              </div>
-              <small>
-                <span><a href="./index.php">로그인으로</a></span>
-              </small>
-            </div>
-          </div>
-        </div>
-      </form>
-      <?php else: ?>
-      <form method="POST" action="./lib/login/mfa.process.php" autocomplete="off" data-mfa-form data-loading-message="인증번호를 확인하고 있습니다.">
+      <form method="POST" action="./lib/login/mfa.process.php" autocomplete="off" data-mfa-form data-mfa-sent="<?= $sent ? 'true' : 'false' ?>" data-loading-message="인증번호를 확인하고 있습니다.">
         <?= Csrf::field() ?>
         <div class="no-login-wrap">
           <div class="no-login-content">
             <div class="no-login-top">
               <h2 class="no-login-title">이메일 인증</h2>
               <p class="no-login-desc">
-                <?= htmlspecialchars($masked, ENT_QUOTES, 'UTF-8') ?> 으로 보낸<br>
+                <?php if ($sent): ?>
+                등록된 <?= htmlspecialchars($masked, ENT_QUOTES, 'UTF-8') ?>로 보낸<br>
                 <?= $codeLen ?>자리 인증번호를 <?= (int) $minutes ?>분 안에 입력하세요.
+                <?php else: ?>
+                등록된 <?= htmlspecialchars($masked, ENT_QUOTES, 'UTF-8') ?>로<br>
+                인증번호를 보내지 못했습니다. 다시 요청해 주세요.
+                <?php endif; ?>
               </p>
+              <?php if ($error !== '' && ($sent || $error !== Mfa::DELIVERY_ERROR)): ?>
+              <p class="no-login-error show" role="alert"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p>
+              <?php endif; ?>
             </div>
             <div class="no-mfa-timer" data-mfa-expires="<?= $expires ?>" aria-live="polite">
               <i class="bx bx-time-five" aria-hidden="true"></i>
@@ -95,13 +79,13 @@ $expires = $sent ? (int) ($pending['expires'] ?? 0) : 0;
                 <label for="mfa_code">인증번호</label>
                 <div class="no-auth-input">
                   <i class="bx bxs-key" aria-hidden="true"></i>
-                  <input type="text" name="mfa_code" id="mfa_code" inputmode="numeric" pattern="[0-9]*" maxlength="<?= $codeLen ?>" placeholder="<?= $codeLen ?>자리 인증번호" required />
+                  <input type="text" name="mfa_code" id="mfa_code" inputmode="numeric" pattern="[0-9]*" maxlength="<?= $codeLen ?>" placeholder="<?= $codeLen ?>자리 인증번호" autocomplete="one-time-code" required<?= $sent ? '' : ' disabled' ?> />
                 </div>
               </div>
             </div>
             <div class="no-login-bot">
               <div class="no-form-btn">
-                <button type="submit" class="no-btn--submit">확인</button>
+                <button type="submit" class="no-btn--submit"<?= $sent ? '' : ' disabled' ?>>확인</button>
               </div>
               <small>
                 <span><button type="submit" form="mfa-resend" class="no-btn--link">인증번호 다시 받기</button></span>
@@ -111,7 +95,6 @@ $expires = $sent ? (int) ($pending['expires'] ?? 0) : 0;
           </div>
         </div>
       </form>
-      <?php endif; ?>
       <form id="mfa-resend" method="POST" action="./lib/login/mfa.resend.php" data-loading-message="인증번호를 다시 보내고 있습니다."><?= Csrf::field() ?></form>
     </main>
 

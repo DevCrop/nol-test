@@ -2,6 +2,16 @@
 
 class PrivacyAccessModel
 {
+    public static function requireTransactionalRental(PDO $db): void
+    {
+        $count = $db->query("SELECT COUNT(*) FROM information_schema.TABLES
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('nb_request', 'nb_admin_privacy_access')
+            AND ENGINE = 'InnoDB'")->fetchColumn();
+        if ((int) $count !== 2) {
+            throw new RuntimeException('대관 처리기록 저장을 위한 DB 설정이 필요합니다.');
+        }
+    }
+
     public static function insert(array $row): bool
     {
         try {
@@ -13,7 +23,7 @@ class PrivacyAccessModel
             );
             return $stmt->execute($row);
         } catch (PDOException $e) {
-            error_log('[privacy-access] insert ' . $e->getMessage());
+            error_log('[privacy-access] insert failed');
             return false;
         }
     }
@@ -22,7 +32,7 @@ class PrivacyAccessModel
     {
         $where = ' WHERE sitekey = :site';
         $params = ['site' => $sitekey];
-        foreach (['action' => ['view', 'download'], 'entity' => ['inquiry', 'admin_account']] as $field => $allowed) {
+        foreach (['action' => PrivacyAccessLogger::ACTIONS, 'entity' => array_keys(PrivacyAccessLogger::ENTITIES)] as $field => $allowed) {
             if (in_array($filters[$field] ?? '', $allowed, true)) {
                 $where .= ' AND ' . $field . ' = :' . $field;
                 $params[$field] = $filters[$field];

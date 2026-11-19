@@ -1,92 +1,79 @@
 <?php
 
-include_once "../../../../inc/lib/base.class.php";
-include_once "../../../lib/admin.check.ajax.php";
-require_once dirname(__DIR__, 3) . "/lib/AuditLogger.php";
+require_once __DIR__ . '/../../../../inc/lib/base.class.php';
+require_once dirname(__DIR__, 3) . '/lib/admin.check.ajax.php';
+require_once dirname(__DIR__, 3) . '/lib/AuditLogger.php';
+require_once dirname(__DIR__, 3) . '/lib/upload.guard.php';
+
 $role->requireLogin();
 $role->requireCanModify();
 
-$pdo = DB::getInstance();
+$respond = static function (bool $success, string $message): void {
+    header('Content-Type: application/json; charset=UTF-8');
+    echo json_encode(['result' => $success ? 'success' : 'fail', 'msg' => $message]);
+    exit;
+};
+
 $mode = $_POST['mode'] ?? '';
-
 if ($mode === 'delete') {
-    $no = (int)($_POST['no'] ?? 0);
-    if ($no <= 0) {
-        echo json_encode(["result" => "fail", "msg" => "잘못된 요청입니다."]);
-        exit;
-    }
-
-    $fileFields = ['file_1', 'file_2', 'file_3', 'file_4', 'file_5'];
-    $stmt = $pdo->prepare("SELECT " . implode(',', $fileFields) . " FROM nb_request WHERE no = :no");
-    $stmt->execute([':no' => $no]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if ($row) {
-        foreach ($fileFields as $field) {
-            if (!empty($row[$field])) {
-                $filePath = rtrim($UPLOAD_DIR_REQUEST, '/\\') . '/' . $row[$field];
-                if (file_exists($filePath)) {
-                    @unlink($filePath);
-                }
-            }
-        }
-    }
-
-    $stmt = $pdo->prepare("DELETE FROM nb_request WHERE no = :no");
-    $result = $stmt->execute([':no' => $no]);
-
-    echo json_encode([
-        "result" => $result ? "success" : "fail",
-        "msg" => $result ? "삭제되었습니다." : "삭제 중 오류가 발생했습니다."
-    ]);
-    if ($result && $stmt->rowCount() > 0) {
-        AuditLogger::record('delete', 'inquiry', $no, (string) $no);
-    }
-    exit;
+    $ids = [(int) ($_POST['no'] ?? 0)];
+} elseif ($mode === 'delete.array' && is_string($_POST['nos'] ?? null)) {
+    $ids = array_map('intval', explode(',', $_POST['nos']));
+} else {
+    $respond(false, '잘못된 요청입니다.');
+}
+$ids = array_values(array_unique(array_filter($ids, static function (int $id): bool {
+    return $id > 0;
+})));
+if (!$ids) {
+    $respond(false, '삭제할 항목을 선택해 주세요.');
 }
 
-if ($mode === 'delete.array') {
-    $nos = $_POST['nos'] ?? '';
-    if (empty($nos)) {
-        echo json_encode(["result" => "fail", "msg" => "삭제할 항목을 선택해주세요."]);
-        exit;
-    }
+$db = DB::getInstance();
+$fields = ['file_1', 'file_2', 'file_3', 'file_4', 'file_5'];
+$placeholders = implode(',', array_fill(0, count($ids), '?'));
+$deleted = [];
+try {
+    PrivacyAccessModel::requireTransactionalRental($db);
+    $db->beginTransaction();
+    $stmt = $db->prepare('SELECT no, name, ' . implode(',', $fields) .
+        " FROM nb_request WHERE sitekey = ? AND no IN ($placeholders) FOR UPDATE");
+    $stmt->execute(array_merge([$NO_SITE_UNIQUE_KEY], $ids));
 
-    $noArr = MutationTargets::existing('nb_request', explode(',', $nos));
-    if (empty($noArr)) {
-        echo json_encode(["result" => "fail", "msg" => "잘못된 요청입니다."]);
-        exit;
-    }
-
-    $placeholders = implode(',', array_fill(0, count($noArr), '?'));
-
-    $fileFields = ['file_1', 'file_2', 'file_3', 'file_4', 'file_5'];
-    $stmt = $pdo->prepare("SELECT " . implode(',', $fileFields) . " FROM nb_request WHERE no IN ($placeholders)");
-    $stmt->execute($noArr);
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    foreach ($rows as $row) {
-        foreach ($fileFields as $field) {
-            if (!empty($row[$field])) {
-                $filePath = rtrim($UPLOAD_DIR_REQUEST, '/\\') . '/' . $row[$field];
-                if (file_exists($filePath)) {
-                    @unlink($filePath);
-                }
-            }
+    $delete = $db->prepare('DELETE FROM nb_request WHERE sitekey = ? AND no = ?');
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        $no = (int) $row['no'];
+        $delete->execute([$NO_SITE_UNIQUE_KEY, $no]);
+        if ($delete->rowCount() === 1) {
+            PrivacyAccessLogger::record('delete', 'inquiry', $no, (string) $row['name'], '대관 신청 삭제');
+            $deleted[$no] = $row;
         }
     }
-
-    $stmt = $pdo->prepare("DELETE FROM nb_request WHERE no IN ($placeholders)");
-    $result = $stmt->execute($noArr);
-
-    echo json_encode([
-        "result" => $result ? "success" : "fail",
-        "msg" => $result ? "선택한 항목이 삭제되었습니다." : "삭제 중 오류가 발생했습니다."
-    ]);
-    if ($result) {
-        AuditLogger::record('delete', 'inquiry', 0, count($noArr) . '건', ['ids' => $noArr]);
-    }
-    exit;
+    $db->commit();
+} catch (Throwable $e) {
+    if ($db->inTransaction()) $db->rollBack();
+    http_response_code(503);
+    $respond(false, '대관 신청을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.');
 }
 
-echo json_encode(["result" => "fail", "msg" => "잘못된 요청입니다."]);
+foreach ($deleted as $no => $row) {
+    foreach ($fields as $field) {
+        $name = (string) $row[$field];
+        if ($name === '') continue;
+        $candidate = $UPLOAD_DIR_REQUEST . '/' . $name;
+        if (no_upload_guard_path($UPLOAD_DIR_REQUEST, $candidate) !== null && !@unlink($candidate)) {
+            error_log('[inquiry-delete] unable to remove attachment for request ' . $no);
+        }
+    }
+}
+$deleted = array_keys($deleted);
+
+if (!$deleted) {
+    $respond(false, '삭제할 항목을 찾을 수 없습니다.');
+}
+if ($mode === 'delete') {
+    AuditLogger::record('delete', 'inquiry', $deleted[0], (string) $deleted[0]);
+    $respond(true, '삭제되었습니다.');
+}
+AuditLogger::record('delete', 'inquiry', 0, count($deleted) . '건', ['ids' => $deleted]);
+$respond(true, '선택한 항목이 삭제되었습니다.');

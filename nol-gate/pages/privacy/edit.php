@@ -98,11 +98,11 @@ include_once "../../inc/admin.js.php";
                                 </div>
 
                                 <!-- 내용 -->
-                                <?php $contentValue = htmlspecialchars_decode($data['content'] ?? ''); ?>
+                                <?php $contentValue = htmlspecialchars_decode($data['content'] ?? '', ENT_QUOTES); ?>
                                 <div class="no-admin-block">
                                     <h3 class="no-admin-title"><label for="content">내용</label></h3>
                                     <div class="no-admin-content">
-                                        <textarea id="content" name="content"><?= $contentValue ?></textarea>
+                                        <textarea id="content" name="content"><?= htmlspecialchars($contentValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></textarea>
                                     </div>
                                 </div>
 

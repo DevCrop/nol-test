@@ -35,7 +35,10 @@ if (!function_exists('no_load_dotenv')) {
             return;
         }
 
-        foreach ($lines as $line) {
+        foreach ($lines as $index => $line) {
+            if ($index === 0 && substr($line, 0, 3) === "\xEF\xBB\xBF") {
+                $line = substr($line, 3);
+            }
             $line = trim($line);
             if ($line === '' || $line[0] === '#' || strpos($line, '=') === false) {
                 continue;
@@ -127,6 +130,9 @@ if (!defined('MFA_TTL_SECONDS')) {
 }
 if (!defined('MFA_MAX_ATTEMPTS')) {
     define('MFA_MAX_ATTEMPTS', (int) env('MFA_MAX_ATTEMPTS', 5));
+}
+if (!defined('MFA_RESEND_SECONDS')) {
+    define('MFA_RESEND_SECONDS', (int) env('MFA_RESEND_SECONDS', 30));
 }
 if (!defined('ACCOUNT_IDLE_DAYS')) {
     define('ACCOUNT_IDLE_DAYS', (int) env('ACCOUNT_IDLE_DAYS', 90));

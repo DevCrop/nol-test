@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/inc/lib/error.bootstrap.php';
 require_once __DIR__ . '/inc/lib/PhpGateRouter.php';
 $phpGateTarget = (new PhpGateRouter(__DIR__, 'nol-gate'))->start();
 if ($phpGateTarget !== null) {

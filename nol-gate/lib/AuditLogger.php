@@ -5,6 +5,7 @@ require_once dirname(__DIR__) . '/Model/AccountModel.php';
 require_once dirname(__DIR__) . '/Model/AclModel.php';
 require_once __DIR__ . '/AdminClock.php';
 require_once __DIR__ . '/PiiMask.php';
+require_once __DIR__ . '/PrivacyAccessLogger.php';
 require_once __DIR__ . '/MutationTargets.php';
 
 class AuditLogger
@@ -61,7 +62,19 @@ class AuditLogger
                 'detail_json' => $encodedDetail,
                 'created_at' => (new AdminClock())->stamp(),
             ]);
-            if ($entity === 'account' && !$saved) throw new RuntimeException('계정 변경 이력을 저장하지 못했습니다.');
+            if ($entity === 'account') {
+                if (!$saved) throw new RuntimeException('계정 변경 이력을 저장하지 못했습니다.');
+                $subject = $detail['authority_after']['owner_display_name']
+                    ?? $detail['authority_before']['owner_display_name'] ?? '';
+                PrivacyAccessLogger::record(
+                    $action,
+                    'admin_account',
+                    (int) $targetNo,
+                    (string) $subject,
+                    '관리자 계정 ' . PrivacyAccessLogger::actionLabel($action),
+                    (string) ($detail['change_reason'] ?? '')
+                );
+            }
         } catch (Throwable $e) {
             if ($entity === 'account') throw new RuntimeException('계정 변경 이력을 저장하지 못했습니다.', 0, $e);
             error_log('[audit] ' . $e->getMessage());

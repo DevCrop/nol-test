@@ -52,8 +52,9 @@ try {
         }
 
         $data['sort_no'] = 1;
-        $result = PopupModel::insert($data);
-        AuditLogger::ifOk($result, 'create', 'popup', AuditLogger::lastId(), (string) $data['title']);
+        $id = PopupModel::insert($data);
+        $result = $id > 0;
+        AuditLogger::ifOk($result, 'create', 'popup', $id, (string) $data['title']);
 
         echo json_encode([
             'success' => $result,

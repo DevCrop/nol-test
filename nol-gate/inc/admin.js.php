@@ -11,7 +11,7 @@ window.NO_ADMIN_RESOURCE_BASE = <?= json_encode($NO_ADMIN_RESOURCE_BASE) ?>;
 <!--  js  -->
 <script type="text/javascript" src="<?=$NO_ADMIN_RESOURCE_BASE?>/js/admin.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>"
     defer></script>
-<script type="text/javascript" src="<?=$NO_ADMIN_RESOURCE_BASE?>/js/script.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>"
+<script type="text/javascript" src="<?=$NO_ADMIN_RESOURCE_BASE?>/js/script.js?c=<?=filemtime($NO_ADMIN_PATH . '/resource/js/script.js')?>"
     defer></script>
 
 <script type="text/javascript" src="<?=$NO_ADMIN_RESOURCE_BASE?>/js/form.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>"
@@ -46,5 +46,5 @@ window.NO_ADMIN_RESOURCE_BASE = <?= json_encode($NO_ADMIN_RESOURCE_BASE) ?>;
 <script type="module" src="<?=$NO_ADMIN_RESOURCE_BASE?>/js/core/previewImage.js?v=20261030"></script>
 <!-- <script type="text/javascript" src="<?=$NO_IS_SUBDIR?>/resource/js/datepicker.custom.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>"></script> -->
 <script src="<?=$NO_ADMIN_RESOURCE_BASE?>/js/private-page.js?v=20261021" defer></script>
-<script type="module" src="<?=$NO_ADMIN_RESOURCE_BASE?>/js/app.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>&auth=20261030" defer>
+<script type="module" src="<?=$NO_ADMIN_RESOURCE_BASE?>/js/app.js?c=<?=$STATIC_ADMIN_JS_MODIFY_DATE?>&amp;ui=20261119-privacy" defer>
 </script>

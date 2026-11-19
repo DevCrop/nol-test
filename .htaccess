@@ -10,17 +10,22 @@ LimitRequestBody 115343360
 </IfModule>
 
 <IfModule mod_rewrite.c>
-    Options +FollowSymLinks
+    Options +FollowSymLinks -Indexes
     RewriteEngine On
 
     # Deny environment backups/prepared deployment files as well as .env itself.
     RewriteRule (^|/)\.env(?:\.[^/]*)?(?:/|$) - [R=404,L,NC]
 
 
-    RewriteRule ^(?:inc|src|config|bootstrap|routes|sql|qa|storage)(?:/|$) - [R=404,L,NC]
+    RewriteRule ^(?:inc|src|config|bootstrap|routes|views|sql|qa|storage|deploy|logs)(?:/|$) - [R=404,L,NC]
     RewriteRule ^resource/vendor/(?:fullPage\.js-2\.9\.7/(?:examples|tests)|tinymce/plugins/example)(?:/|$) - [R=404,L,NC]
     RewriteRule ^resource/vendor/tinymce/plugins/jbimages(?:/|$) - [R=404,L,NC]
     RewriteRule \.(?:sql|bak|old|orig|env)$ - [R=404,L,NC]
+
+    # Local server configuration, empty guides and developer helpers.
+    RewriteRule ^(?:apache\.conf|(?:admin/|nol-gate/)?guide\.php|nol-gate/hash\.php|module/request\.booking\.php)$ - [R=404,L,NC]
+    RewriteRule (?:^|/)\.(?:git|bash_(?:logout|profile|history)|bashrc|user\.ini|DS_Store)(?:/|$) - [R=404,L,NC]
+    RewriteRule \.(?:log|backup|sql\.(?:gz|zip|bz2|xz))$ - [R=404,L,NC]
 
     # Shared files must retain their child directory access rules.
     RewriteRule ^uploads/request(?:/|$) - [R=403,L,NC]
