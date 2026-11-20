@@ -13,6 +13,18 @@ final class RentalRequestService
         $this->sitekey = $sitekey;
     }
 
+    public function currentNotice(): ?array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT no, contents, r_sdate, r_edate FROM nb_request_manage
+             WHERE sitekey = :sitekey AND r_view = 'Y'
+               AND :current_date BETWEEN r_sdate AND r_edate
+             ORDER BY regdate DESC, no DESC LIMIT 1"
+        );
+        $stmt->execute(['sitekey' => $this->sitekey, 'current_date' => date('Y-m-d')]);
+        return $stmt->fetch(\PDO::FETCH_ASSOC) ?: null;
+    }
+
     public function create(array $fields, array $files = [], array $originalNames = []): int
     {
         $id = 0;

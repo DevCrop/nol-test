@@ -5,7 +5,15 @@ final class Runtime
 {
     public static function boot(): void
     {
-        self::cors(); self::https(); Gate::enforce(); Csrf::validateRequest();
+        self::cors();
+        self::https();
+        Gate::enforce();
+        $path = strtolower((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+        if (strpos($path, '/admin/') === 0 && (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST'
+            || preg_match('#/(?:ajax/|process\.php$)|^/admin/lib/(?:login/|session/)#', $path))) {
+            BrowserFormResponse::handleJson(blue_admin_url('/admin/index.php'));
+        }
+        Csrf::validateRequest();
     }
 
     private static function https(): void

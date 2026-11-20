@@ -2,31 +2,53 @@
 
 include_once "../../inc/lib/base.class.php";
 
+\Security\BrowserFormResponse::handleJson('/pages/rental/inquiry.php');
 header('Content-Type: application/json; charset=utf-8');
-if (!\Security\Csrf::valid((string) ($_POST['_csrf'] ?? ''))) {
-    http_response_code(403); echo json_encode(['result' => 'fail', 'msg' => '잘못된 요청입니다.']); exit;
-}
-
-// POST 데이터 가져오기 및 보안 처리
-$performance_name = xss_clean($_POST['performance_name']);
-$organization_name = xss_clean($_POST['organization_name']);
-$manager_name = xss_clean($_POST['manager_name']);
-$phone = xss_clean($_POST['phone']);
-$email = xss_clean($_POST['email']);
-$contents = xss_clean($_POST['contents']);
-$r_captcha = xss_clean($_POST['r_captcha']);
-
-// 캡차 확인
-if (!isset($_SESSION['captcha_secure']) || $_SESSION['captcha_secure'] !== $r_captcha) {
-    echo json_encode([
-        "result" => "fail",
-        "msg" => "보안코드가 일치하지 않습니다. 다시 입력해주세요."
-    ]);
+$fail = static function (int $status, string $message): void {
+    http_response_code($status);
+    echo json_encode(['result' => 'fail', 'msg' => $message]);
     exit;
+};
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    header('Allow: POST');
+    $fail(405, '잘못된 요청입니다.');
+}
+$token = $_POST['_csrf'] ?? '';
+if (!is_string($token) || !\Security\Csrf::valid($token)) {
+    $fail(403, '잘못된 요청입니다.');
 }
 
-// 캡차가 맞으면 세션 초기화
+try {
+    $service = new \Security\RentalRequestService(DB::getInstance(), $NO_SITE_UNIQUE_KEY);
+    $notice = $service->currentNotice();
+} catch (Throwable $e) {
+    blue_safe_error($e);
+    $fail(500, '대관 신청을 처리할 수 없습니다. 잠시 후 다시 시도해주세요.');
+}
+if (!$notice) $fail(422, '현재 대관 문의 기간이 아닙니다.');
+
+$required = [
+    'performance_name' => '공연명', 'organization_name' => '단체명', 'manager_name' => '담당자명',
+    'phone' => '담당자 연락처', 'email' => '담당자 이메일', 'contents' => '문의 내용',
+];
+$fields = [];
+foreach ($required as $key => $label) {
+    $value = $_POST[$key] ?? '';
+    if (!is_string($value) || trim($value) === '') $fail(422, $label . ' 항목을 입력해주세요.');
+    $value = trim($value);
+    if ($key === 'email' && !filter_var($value, FILTER_VALIDATE_EMAIL)) $fail(422, '올바른 이메일 주소를 입력해주세요.');
+    $fields[$key] = htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}
+if (($_POST['check'] ?? '') !== '1') $fail(422, '개인정보 수집 및 이용에 동의해주세요.');
+
+$captcha = $_POST['r_captcha'] ?? '';
+$expected = $_SESSION['captcha_secure'] ?? '';
+if (!is_string($captcha) || !is_string($expected) || $expected === '' || !hash_equals($expected, trim($captcha))) {
+    $fail(422, '보안문자가 일치하지 않습니다. 다시 입력해주세요.');
+}
 unset($_SESSION['captcha_secure']);
+['performance_name' => $performance_name, 'organization_name' => $organization_name,
+ 'manager_name' => $manager_name, 'phone' => $phone, 'email' => $email, 'contents' => $contents] = $fields;
 
 // 파일 업로드 설정
 $uploadDir = $_SERVER['DOCUMENT_ROOT'] . '/uploads/board';
@@ -35,14 +57,7 @@ if (!is_dir($uploadDir)) {
     mkdir($uploadDir, 0755, true);
 }
 
-// 파일 개수 초과 확인
-if (count($_FILES) > 10) {
-    echo json_encode([
-        "result" => "fail",
-        "msg" => "첨부할 수 있는 파일은 최대 10개입니다."
-    ]);
-    exit;
-}
+if (count($_FILES) > 5) $fail(422, '첨부할 수 있는 파일은 최대 5개입니다.');
 
 $filePaths = [];
 $persisted = false;
@@ -58,34 +73,25 @@ $fileOriginNames = [];
 $maxFileSize = 20 * 1024 * 1024; // 20MB
 
 foreach ($_FILES as $key => $file) {
-    if (preg_match('/^file_[1-5]$/D', $key) && $file['error'] == UPLOAD_ERR_OK) {
-        $fileTmpName = $file['tmp_name'];
-        $originalName = basename($file['name']);
-        try { [$fileExt] = \Security\UploadGuard::attachment($file, $maxFileSize); }
-        catch (Throwable $e) { $message = $e instanceof RuntimeException ? $e->getMessage() : blue_safe_error($e); echo json_encode(['result' => 'fail', 'msg' => $message]); exit; }
-
-        if ($file['size'] > $maxFileSize){
-            echo json_encode([
-                "result" => "fail",
-                "msg" => "각 파일의 최대 크기는 20MB입니다. [$key] 파일을 확인해주세요."
-            ]);
-            exit;
-        }
-
-        $savedName = uniqid("file_", true) . '.' . $fileExt;
-        $targetPath = $uploadDir . '/' . $savedName;
-
-        if (move_uploaded_file($fileTmpName, $targetPath)) {
-            $filePaths[$key] = $savedName;
-            $fileOriginNames[$key] = $originalName;
-        } else {
-            echo json_encode([
-                "result" => "fail",
-                "msg" => "파일 업로드에 실패했습니다."
-            ]);
-            exit;
-        }
+    $error = $file['error'] ?? null;
+    if (!preg_match('/^file_[1-5]$/D', $key) || !is_int($error)) $fail(422, '잘못된 첨부파일 요청입니다.');
+    if ($error === UPLOAD_ERR_NO_FILE) continue;
+    if ($error === UPLOAD_ERR_INI_SIZE || $error === UPLOAD_ERR_FORM_SIZE || (int) ($file['size'] ?? 0) > $maxFileSize) {
+        $fail(413, '첨부파일은 파일당 20MB 이하만 등록할 수 있습니다.');
     }
+    if ($error !== UPLOAD_ERR_OK) $fail(422, '첨부파일 업로드가 완료되지 않았습니다. 다시 선택해주세요.');
+
+    try {
+        [$extension] = \Security\UploadGuard::attachment($file, $maxFileSize);
+    } catch (Throwable $e) {
+        $fail(422, $e instanceof RuntimeException ? $e->getMessage() : blue_safe_error($e));
+    }
+    $savedName = uniqid('file_', true) . '.' . $extension;
+    if (!move_uploaded_file($file['tmp_name'], $uploadDir . '/' . $savedName)) {
+        $fail(500, '파일 업로드에 실패했습니다.');
+    }
+    $filePaths[$key] = $savedName;
+    $fileOriginNames[$key] = basename($file['name']);
 }
 
 $targetEmails = [];
@@ -139,8 +145,7 @@ $failedMails = [];
 
 // Persist before notifying: failed storage must never produce a receipt email.
 try {
-    $service = new \Security\RentalRequestService(DB::getInstance(), $NO_SITE_UNIQUE_KEY);
-    $service->create(compact('performance_name', 'organization_name', 'manager_name', 'phone', 'email', 'contents'), $filePaths, $fileOriginNames);
+    $service->create($fields, $filePaths, $fileOriginNames);
     $persisted = true;
     $transport = new \Security\SmtpMailTransport();
     foreach ($targetEmails as $mailInfo) {

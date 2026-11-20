@@ -14,38 +14,17 @@ function normalizeRequestNoticeHtml($html) {
 ?>
 
 <?php
-		$pdo = DB::getInstance();
-
-	 try {
-        $current_date = date('Y-m-d');
-
-        $query = "SELECT no, contents, r_sdate, r_edate
-				  FROM nb_request_manage
-				  WHERE sitekey = :sitekey
-				    AND r_view = 'Y'
-				    AND :current_date BETWEEN r_sdate AND r_edate
-				  ORDER BY regdate DESC, no DESC
-				  LIMIT 1";
-
-        $stmt = $pdo->prepare($query);
-        $stmt->execute([
-			'sitekey' => $NO_SITE_UNIQUE_KEY,
-			'current_date' => $current_date
-		]);
-
-        $requestNotice = $stmt->fetch(PDO::FETCH_ASSOC);
-		$is_form_visible = $requestNotice ? true : false;
-    }  
-	catch (Exception $e) {
-		$is_form_visible = false; // 에러 발생 시 폼 숨기기
-		error_log("Error fetching date range: " . blue_safe_error($e));
-	}
-
-	// 폼 비활성화일 경우 차단
-	if (!$is_form_visible) {
-		echo "<script>alert('지금은 문의기간이 아닙니다.'); history.back();</script>";
-		exit;
-	}
+try {
+    $rental = new \Security\RentalRequestService(DB::getInstance(), $NO_SITE_UNIQUE_KEY);
+    $requestNotice = $rental->currentNotice();
+} catch (Throwable $e) {
+    blue_safe_error($e);
+    $requestNotice = null;
+}
+if (!$requestNotice) {
+    echo "<script>alert('지금은 문의기간이 아닙니다.'); history.back();</script>";
+    exit;
+}
 
 ?>
 
@@ -84,7 +63,7 @@ function normalizeRequestNoticeHtml($html) {
 		</div>
 	</section>
 
-	<form action="" method="POST" id ="frm" enctype="multipart/form-data">
+	<form action="/module/ajax/request.process.php" method="POST" id="frm" enctype="multipart/form-data">
 		<input type="hidden" name="_csrf" value="<?=htmlspecialchars(\Security\Csrf::token(), ENT_QUOTES, 'UTF-8')?>">
 		<section class="no-sub-inquiry no-pd-xl--t no-pd-2xl--b">
 			<div class="no-container-lg">
@@ -198,20 +177,11 @@ function normalizeRequestNoticeHtml($html) {
 								개인정보 수집 및 이용 안내
 							</p>
 							<div class="no-form-checkbox">
-								<label for="check " class="--w-100">
-									<input type="checkbox" name="check" id="check">
-									<span>
-										<button type="button" class="no-modal-privacy-btn --w-100 --t-start" data-modal-id="privacy">자세히 보기</button>
-										<i class="fa-regular fa-plus"></i>
-										<!--
-										<div>
-											<div class="no-form-checkbox__box">
-												<i class="fa-regular fa-check" aria-hidden="true"></i>
-											</div>
-										</div>-->
-									</span>
-
+								<label for="check">
+									<input type="checkbox" name="check" id="check" value="1" required style="display:inline-block">
+									개인정보 수집 및 이용에 동의합니다.
 								</label>
+								<button type="button" class="no-modal-privacy-btn" data-modal-id="privacy">자세히 보기</button>
 								
 							</div>
 						</div>
@@ -332,7 +302,7 @@ function normalizeRequestNoticeHtml($html) {
 					</div>
 				</div>
 				<div class="no-form-action --full no-pd-xl--t">
-					<button type="button" class="submit-btn no-btn no-btn__fill--primary --form-radius">전송하기</button>
+					<button type="submit" class="submit-btn no-btn no-btn__fill--primary --form-radius">전송하기</button>
 				</div>
 			</div>
 		</section>
@@ -358,10 +328,12 @@ function normalizeRequestNoticeHtml($html) {
 			requestAnimationFrame(raf);
 		}
 
-		// 캡차 새로고침 버튼 클릭 시
-		$(".no-form-captcha__reload button").click(function () {
-			$(".no-form-captcha__img img").attr("src", "/inc/lib/captcha.n.php?" + new Date().getTime());
-		});
+		function refreshCaptcha() {
+			$(".no-form-captcha__img img").attr("src", "/inc/lib/captcha.n.php?" + Date.now());
+			$("#r_captcha").val("");
+		}
+
+		$(".no-form-captcha__reload button").click(refreshCaptcha);
 
 		function doRequest() {
 			// 입력 필드 검증
@@ -421,47 +393,36 @@ function normalizeRequestNoticeHtml($html) {
 				processData: false,
 				contentType: false,
 				cache: false,
+				dataType: "json",
 				success: function (data) {
-					var jsonData = JSON.parse(data);
-
-					// ✅ Lenis 스크롤 다시 활성화
-					if (typeof lenis !== "undefined") {
-						lenis.start();
-						console.log("Lenis 스크롤 다시 활성화됨 ✅");
-					}
-
-					// 로딩 숨기기
-					loader.classList.remove("active");
-					$(".submit-btn").prop("disabled", false);
-
-					if (jsonData.result === "fail") {
-						alert(jsonData.msg);
-						$(".no-form-captcha__img img").attr("src", "/inc/lib/captcha.php?" + new Date().getTime());
-						$("#r_captcha").val(""); // 입력 필드 초기화
-					} else if (jsonData.result === "success") {
-						alert(jsonData.msg);
+					if (data && data.result === "success") {
+						alert(data.msg || "정상적으로 등록되었습니다.");
 						location.reload();
+						return;
 					}
+					alert(data?.msg || "접수 결과를 확인하지 못했습니다. 다시 시도해주세요.");
+					refreshCaptcha();
 				},
-				error: function () {
-					// ✅ Lenis 스크롤 다시 활성화
+				error: function (xhr) {
+					const message = xhr.status === 413
+						? "첨부 용량이 서버 제한을 초과했습니다. 파일 크기를 줄여 다시 시도해주세요."
+						: (xhr.responseJSON?.msg || "접수 결과를 확인하지 못했습니다. 다시 시도해주세요.");
+					alert(message);
+					refreshCaptcha();
+				},
+				complete: function () {
 					if (typeof lenis !== "undefined") {
 						lenis.start();
-						console.log("Lenis 스크롤 다시 활성화됨 ✅");
 					}
-
-					// 로딩 숨기기
 					loader.classList.remove("active");
 					$(".submit-btn").prop("disabled", false);
-					
-					alert("오류가 발생했습니다. 다시 시도해주세요.\n지속적인 오류 발생시 담당자에게 문의해주시기 바랍니다.");
 				}
 			});
 		}
 
-		// 전송 버튼 클릭 시 doRequest 실행
-		$(".submit-btn").click(function () {
-			doRequest();
+		$("#frm").on("submit", function (event) {
+			event.preventDefault();
+			if (!loader.classList.contains("active")) doRequest();
 		});
 	});
 
