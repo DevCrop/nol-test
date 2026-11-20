@@ -17,11 +17,24 @@
 
   window.NoAuthLoading = { show, hide };
 
-  document.querySelectorAll("form[data-loading-message]").forEach((form) => {
-    form.addEventListener("submit", () => {
-      if (!form.checkValidity()) return;
-      const button = form.querySelector('[type="submit"]');
-      if (button) button.disabled = true;
+  let submitting = false;
+  const lockedButtons = new Set();
+  const forms = Array.from(document.querySelectorAll("form[data-loading-message]"));
+  forms.forEach((form) => {
+    form.addEventListener("submit", (event) => {
+      if (submitting) {
+        event.preventDefault();
+        return;
+      }
+      if (event.defaultPrevented || !form.checkValidity()) return;
+      submitting = true;
+      forms.forEach((item) => { item.dataset.submitting = "true"; });
+      document.querySelectorAll('button[type="submit"]').forEach((button) => {
+        if (forms.includes(button.form) && !button.disabled) {
+          lockedButtons.add(button);
+          button.disabled = true;
+        }
+      });
       show(form.dataset.loadingMessage);
     });
   });
@@ -30,5 +43,11 @@
     link.addEventListener("click", () => show(link.dataset.loadingMessage));
   });
 
-  window.addEventListener("pageshow", hide);
+  window.addEventListener("pageshow", () => {
+    submitting = false;
+    forms.forEach((form) => { delete form.dataset.submitting; });
+    lockedButtons.forEach((button) => { button.disabled = false; });
+    lockedButtons.clear();
+    hide();
+  });
 })();

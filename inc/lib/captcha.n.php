@@ -17,7 +17,7 @@ imagefill($image, 0, 0, $background);
 $linecolor = imagecolorallocate($image, 255, 255, 255);
 $textcolor = imagecolorallocate($image, 255, 255, 255);
 
-session_start();
+require_once __DIR__ . '/session.boot.php';
 
 // 캔버스에 랜덤 숫자 추가
 $digit = '';

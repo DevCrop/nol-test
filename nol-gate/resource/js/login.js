@@ -51,6 +51,7 @@ const initLogin = () => {
 
   const processLogin = (e) => {
     e.preventDefault();
+    if (submitButton.disabled) return;
 
     const isValid = {
       id: false,

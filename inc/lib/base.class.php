@@ -119,8 +119,10 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
         header('Expires: 0');
     }
 }
-Csrf::guard($NO_ADMIN_PATH);
+require_once __DIR__ . '/BrowserFormResponse.php';
 require_once $NO_ADMIN_PATH . '/lib/AdminRequest.php';
+AdminRequest::prepareDocumentResponse($NO_ADMIN_PATH, $NO_ADMIN_BASE . '/index.php');
+Csrf::guard($NO_ADMIN_PATH);
 AdminRequest::requireAuthentication($NO_ADMIN_PATH);
 // ── 캐시/헤더는 세션 시작 전에 설정 ─────────────────────────────
 // if (session_status() !== PHP_SESSION_ACTIVE) {

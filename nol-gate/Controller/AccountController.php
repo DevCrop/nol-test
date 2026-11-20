@@ -18,7 +18,13 @@ if (!$role->isSuper()) {
     exit;
 }
 
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    header('Allow: POST');
+    echo json_encode(['success' => false, 'message' => '계정 관리 화면에서 다시 요청해 주세요.']);
+    exit;
+}
 
 $currentAdminNo = (int)($_SESSION['no_adm_login_no'] ?? 0);
 

@@ -9,6 +9,7 @@ require_once __DIR__ . '/../inc/lib/base.class.php';
 ob_end_clean();
 require_once __DIR__ . '/../nol-gate/lib/upload.guard.php';
 require_once __DIR__ . '/../nol-gate/lib/PrivacyAccessLogger.php';
+BrowserFormResponse::handleJson('/rental/apply');
 
 header('Content-Type: application/json; charset=utf-8');
 
